@@ -131,6 +131,8 @@ export interface DashboardStats {
     check_in: string;
     check_out: string;
     status: BookingStatus;
+    final_amount: number;
+    booking_source: string;
   }[];
   todaysCheckins: {
     id: number;
@@ -138,6 +140,8 @@ export interface DashboardStats {
     property_name: string;
     check_in: string;
     status: BookingStatus;
+    room_id: number | null;
+    bed_id: number | null;
   }[];
   todaysCheckouts: {
     id: number;
@@ -145,6 +149,11 @@ export interface DashboardStats {
     property_name: string;
     check_out: string;
     status: BookingStatus;
+    room_id: number | null;
+    bed_id: number | null;
   }[];
   properties: Property[];
+  bedsData: any[];
+  propertyOccupancy: any[];
+  monthlyRevenueBreakdown: any[];
 }
