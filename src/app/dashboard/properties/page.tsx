@@ -29,7 +29,7 @@ const AMENITIES_OPTIONS = [
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
-  const [beds, setBeds] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
@@ -59,18 +59,18 @@ export default function PropertiesPage() {
 
   async function fetchProperties() {
     try {
-      const [propsRes, bedsRes] = await Promise.all([
+      const [propsRes, roomsRes] = await Promise.all([
         fetch("/api/properties"),
-        fetch("/api/beds"),
+        fetch("/api/rooms"),
       ]);
       
       if (propsRes.ok) {
         const propsData = await propsRes.json();
         setProperties(propsData.properties);
       }
-      if (bedsRes.ok) {
-        const bedsData = await bedsRes.json();
-        setBeds(bedsData.beds);
+      if (roomsRes.ok) {
+        const roomsData = await roomsRes.json();
+        setRooms(roomsData.rooms);
       }
     } finally {
       setLoading(false);
@@ -581,7 +581,7 @@ export default function PropertiesPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-slate-900">
-                      Booked: {beds.filter(b => b.property_id === property.id && b.status === 'occupied').length} / Total: {property.total_beds}
+                      Beds: {rooms.filter(r => r.property_id === property.id).reduce((sum, r) => sum + r.capacity, 0)} / {property.total_beds}
                     </span>
                     {property.amenities && property.amenities.length > 0 && (
                       <span className="text-xs text-slate-500">

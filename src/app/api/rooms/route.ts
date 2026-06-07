@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { propertyId, name, type, capacity, pricePerNight, status } = body;
+  const { propertyId, name, type, capacity, pricePerNight, status } = body;
 
     if (!propertyId || !name?.trim() || !type || !capacity || !pricePerNight) {
       return NextResponse.json(
@@ -70,6 +70,39 @@ export async function POST(request: Request) {
     if (isNaN(price) || price < 0) {
       return NextResponse.json(
         { error: "Price must be a non-negative number" },
+        { status: 400 }
+      );
+    }
+
+    // Check property bed limit
+    const propertyInfo = await sql`
+      SELECT total_beds
+      FROM properties
+      WHERE id = ${propertyId} AND owner_id = ${owner.ownerId}
+    `;
+
+    if (!propertyInfo || propertyInfo.length === 0) {
+      return NextResponse.json(
+        { error: "Property not found" },
+        { status: 404 }
+      );
+    }
+
+    const totalBedsLimit = propertyInfo[0].total_beds;
+
+    // Calculate existing room beds for this property
+    const existingBeds = await sql`
+      SELECT COALESCE(SUM(capacity), 0)::int as total_beds
+      FROM rooms
+      WHERE property_id = ${propertyId}
+    `;
+
+    const currentBedsCount = existingBeds[0]?.total_beds || 0;
+    const newTotalBeds = currentBedsCount + cap;
+
+    if (newTotalBeds > totalBedsLimit) {
+      return NextResponse.json(
+        { error: `Only ${totalBedsLimit - currentBedsCount} beds remaining. Cannot add room with ${cap} beds.` },
         { status: 400 }
       );
     }

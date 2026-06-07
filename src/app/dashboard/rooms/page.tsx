@@ -277,9 +277,16 @@ export default function RoomsPage() {
   const maintenanceBeds = filteredBeds.filter((b) => b.status === 'maintenance').length;
   
   // Calculate total room capacity (for reference only, not for limit)
-  const totalRoomCapacity = filteredRooms.reduce((sum, room) => sum + room.capacity, 0);
+  const totalRoomBeds = filteredRooms.reduce((sum, room) => sum + room.capacity, 0);
   const roomCount = filteredRooms.length;
-  const bedUsagePercent = totalBedsLimit > 0 ? (currentBedCount / totalBedsLimit) * 100 : 0;
+  const bedUsagePercent = totalBedsLimit > 0 ? (totalRoomBeds / totalBedsLimit) * 100 : 0;
+
+  // Calculate room sequential numbering per property
+  const getRoomNumber = (roomId: number, propertyId: number) => {
+    const propertyRooms = filteredRooms.filter(r => r.property_id === propertyId);
+    const index = propertyRooms.findIndex(r => r.id === roomId);
+    return index + 1;
+  };
 
   function getBedStatusColor(status: string) {
     switch (status) {
@@ -292,6 +299,7 @@ export default function RoomsPage() {
       default:
         return "bg-slate-500";
     }
+  }
   }
 
   return (
@@ -332,12 +340,12 @@ export default function RoomsPage() {
           <div className="mt-4 p-4 bg-slate-50 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-slate-700">Beds Added</p>
+                <p className="text-sm font-semibold text-slate-700">Beds Used</p>
                 <p className="text-xs text-slate-500">{selectedPropertyData.name}</p>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-slate-900">
-                  {currentBedCount} / {totalBedsLimit}
+                  {totalRoomBeds} / {totalBedsLimit}
                 </p>
                 <p className={`text-sm font-semibold ${
                   bedUsagePercent >= 100 ? 'text-red-600' :
@@ -362,16 +370,14 @@ export default function RoomsPage() {
             </div>
             {bedUsagePercent >= 100 && (
               <p className="mt-2 text-xs font-semibold text-red-600">
-                ⚠️ All {totalBedsLimit} beds are added. Cannot add more beds.
+                ⚠️ All {totalBedsLimit} beds are allocated. Cannot add more rooms.
               </p>
             )}
             <div className="mt-3 text-xs text-slate-600 flex flex-wrap gap-2">
               <span className="font-semibold">Summary:</span>
-              <span>Beds Added: {currentBedCount}</span>
+              <span>Beds Used: {totalRoomBeds}</span>
               <span>|</span>
-              <span>Available: {availableBeds}</span>
-              <span>|</span>
-              <span>Booked: {bookedBeds}</span>
+              <span>Available: {totalBedsLimit - totalRoomBeds}</span>
               <span>|</span>
               <span>Property Limit: {totalBedsLimit}</span>
             </div>
@@ -441,6 +447,7 @@ export default function RoomsPage() {
                 type="number"
                 required
                 min={1}
+                max={totalBedsLimit - totalRoomBeds}
                 value={roomForm.capacity}
                 onChange={(e) => setRoomForm({ ...roomForm, capacity: e.target.value })}
                 className="input-field"
@@ -662,7 +669,7 @@ export default function RoomsPage() {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-slate-900">
-                          {room.name}
+                          Room {getRoomNumber(room.id, room.property_id)}
                         </h3>
                         <div className="flex items-center gap-2 mt-1 text-sm text-slate-600">
                           <span className="badge-info">
