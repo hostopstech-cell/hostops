@@ -64,109 +64,124 @@ export default function RevenuePage() {
   }, []);
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading revenue data...</p>;
+    return (
+      <div className="card p-12 text-center">
+        <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-slate-600">Loading revenue data...</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Revenue</h1>
-        <p className="mt-1 text-slate-600">
+        <h1 className="text-3xl font-bold text-slate-900">Revenue</h1>
+        <p className="mt-2 text-slate-600 text-lg">
           Track your revenue and financial performance
         </p>
       </div>
 
       {/* Revenue Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Daily Revenue</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                ₹{revenueData.daily.toLocaleString()}
-              </p>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-orange flex items-center justify-center">
+              <Calendar size={24} />
             </div>
-            <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
-              <Calendar className="h-6 w-6 text-orange-600" />
-            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Daily</span>
           </div>
+          <p className="text-3xl font-bold text-slate-900">
+            ₹{revenueData.daily.toLocaleString()}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">Daily revenue</p>
         </div>
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Weekly Revenue</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                ₹{revenueData.weekly.toLocaleString()}
-              </p>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-blue flex items-center justify-center">
+              <TrendingUp size={24} />
             </div>
-            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-blue-600" />
-            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Weekly</span>
           </div>
+          <p className="text-3xl font-bold text-slate-900">
+            ₹{revenueData.weekly.toLocaleString()}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">Weekly revenue</p>
         </div>
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Monthly Revenue</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                ₹{revenueData.monthly.toLocaleString()}
-              </p>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-green flex items-center justify-center">
+              <DollarSign size={24} />
             </div>
-            <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-              <DollarSign className="h-6 w-6 text-emerald-600" />
-            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monthly</span>
           </div>
+          <p className="text-3xl font-bold text-slate-900">
+            ₹{revenueData.monthly.toLocaleString()}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">Monthly revenue</p>
         </div>
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Yearly Revenue</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                ₹{(revenueData.yearly / 100000).toFixed(1)}L
-              </p>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-purple flex items-center justify-center">
+              <Building2 size={24} />
             </div>
-            <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-purple-600" />
-            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Yearly</span>
           </div>
+          <p className="text-3xl font-bold text-slate-900">
+            ₹{(revenueData.yearly / 100000).toFixed(1)}L
+          </p>
+          <p className="mt-1 text-sm text-slate-500">Yearly revenue</p>
         </div>
       </div>
 
       {/* Revenue Trend Chart */}
-      <div className="card p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Revenue Trend (Last 30 Days)</h2>
-        <ResponsiveContainer width="100%" height={300}>
+      <div className="card p-8">
+        <h2 className="text-xl font-bold text-slate-900 mb-6">Revenue Trend (Last 30 Days)</h2>
+        <ResponsiveContainer width="100%" height={320}>
           <LineChart data={revenueData.trend}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+            <XAxis dataKey="date" stroke="#64748B" />
+            <YAxis stroke="#64748B" />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: '#FFFFFF', 
+                border: '1px solid #E2E8F0', 
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+              }} 
+            />
             <Legend />
-            <Line type="monotone" dataKey="revenue" stroke="#F97316" strokeWidth={2} />
+            <Line type="monotone" dataKey="revenue" stroke="#F97316" strokeWidth={3} dot={{ fill: '#F97316', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
         {/* Revenue by Property */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Revenue by Property</h2>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="card p-8">
+          <h2 className="text-xl font-bold text-slate-900 mb-6">Revenue by Property</h2>
+          <ResponsiveContainer width="100%" height={320}>
             <BarChart data={revenueData.byProperty}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" stroke="#64748B" />
+              <YAxis stroke="#64748B" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#FFFFFF', 
+                  border: '1px solid #E2E8F0', 
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }} 
+              />
               <Legend />
-              <Bar dataKey="revenue" fill="#F97316" />
+              <Bar dataKey="revenue" fill="#F97316" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Revenue by Source */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Revenue by Source</h2>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="card p-8">
+          <h2 className="text-xl font-bold text-slate-900 mb-6">Revenue by Source</h2>
+          <ResponsiveContainer width="100%" height={320}>
             <PieChart>
               <Pie
                 data={revenueData.bySource}
@@ -174,7 +189,7 @@ export default function RevenuePage() {
                 cy="50%"
                 labelLine={false}
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
+                outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -182,24 +197,38 @@ export default function RevenuePage() {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#FFFFFF', 
+                  border: '1px solid #E2E8F0', 
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }} 
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Monthly Comparison */}
-      <div className="card p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Monthly Comparison</h2>
-        <ResponsiveContainer width="100%" height={300}>
+      <div className="card p-8">
+        <h2 className="text-xl font-bold text-slate-900 mb-6">Monthly Comparison</h2>
+        <ResponsiveContainer width="100%" height={320}>
           <BarChart data={revenueData.monthlyComparison}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+            <XAxis dataKey="month" stroke="#64748B" />
+            <YAxis stroke="#64748B" />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: '#FFFFFF', 
+                border: '1px solid #E2E8F0', 
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+              }} 
+            />
             <Legend />
-            <Bar dataKey="revenue" fill="#F97316" name="This Year" />
-            <Bar dataKey="lastYear" fill="#94A3B8" name="Last Year" />
+            <Bar dataKey="revenue" fill="#F97316" name="This Year" radius={[8, 8, 0, 0]} />
+            <Bar dataKey="lastYear" fill="#94A3B8" name="Last Year" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

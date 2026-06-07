@@ -37,8 +37,8 @@ export default function ReportsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
-        <p className="mt-1 text-slate-600">
+        <h1 className="text-3xl font-bold text-slate-900">Reports</h1>
+        <p className="mt-2 text-slate-600 text-lg">
           Generate and export detailed reports
         </p>
       </div>
@@ -47,23 +47,23 @@ export default function ReportsPage() {
         {reportTypes.map((report) => {
           const Icon = report.icon;
           return (
-            <div key={report.id} className="card p-6">
+            <div key={report.id} className="card-premium p-8">
               <div className="flex items-start gap-4">
-                <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
-                  <Icon className="h-6 w-6 text-orange-600" />
+                <div className="h-14 w-14 rounded-xl icon-bg-orange flex items-center justify-center flex-shrink-0">
+                  <Icon size={28} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-slate-900">
+                  <h3 className="text-xl font-bold text-slate-900">
                     {report.title}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-2 text-slate-600">
                     {report.description}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {report.periods.map((period) => (
                       <button
                         key={period}
-                        className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 text-slate-700 hover:border-orange-500 hover:text-orange-600 transition-colors"
+                        className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-slate-700 hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50 transition-all"
                       >
                         {period}
                       </button>
@@ -71,7 +71,7 @@ export default function ReportsPage() {
                   </div>
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2">
+              <div className="mt-6 pt-6 border-t border-slate-100 flex gap-3">
                 <button className="btn-primary flex items-center gap-2 text-sm">
                   <FileText size={16} />
                   Generate
@@ -86,14 +86,16 @@ export default function ReportsPage() {
         })}
       </div>
 
-      <div className="card p-6 bg-orange-50 border-orange-200">
+      <div className="card p-8 bg-gradient-to-br from-orange-50 to-white border-orange-200">
         <div className="flex items-start gap-4">
-          <Calendar className="h-6 w-6 text-orange-600 flex-shrink-0 mt-1" />
+          <div className="h-12 w-12 rounded-xl icon-bg-orange flex items-center justify-center flex-shrink-0">
+            <Calendar size={24} />
+          </div>
           <div>
-            <h3 className="font-semibold text-orange-900">
+            <h3 className="text-lg font-bold text-orange-900">
               Export Options Coming Soon
             </h3>
-            <p className="mt-1 text-sm text-orange-700">
+            <p className="mt-2 text-slate-700">
               PDF and Excel export functionality will be available in future updates.
               For now, you can generate reports and print them directly from your browser.
             </p>

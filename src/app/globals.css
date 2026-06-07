@@ -3,12 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F8FAFC;
+  --foreground: #1E293B;
   --primary: #F97316;
   --primary-dark: #EA580C;
-  --sidebar-bg: #1a1a2e;
+  --sidebar-bg: #0F172A;
   --sidebar-text: #ffffff;
+  --sidebar-hover: #1E293B;
+  --success: #10B981;
+  --error: #EF4444;
+  --warning: #F59E0B;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,41 +25,107 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+  
+  .gradient-orange {
+    background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+  }
+  
+  .gradient-sidebar {
+    background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-orange-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors;
+    @apply bg-orange-500 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-orange-600 transition-all duration-200 shadow-sm hover:shadow-md;
   }
   
   .btn-secondary {
-    @apply bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-slate-200 transition-colors;
+    @apply bg-slate-100 text-slate-700 px-5 py-2.5 rounded-lg font-semibold hover:bg-slate-200 transition-all duration-200;
   }
   
   .btn-danger {
-    @apply bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors;
+    @apply bg-red-500 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-red-600 transition-all duration-200 shadow-sm hover:shadow-md;
   }
   
   .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+  
+  .card-premium {
+    @apply bg-white rounded-xl border border-slate-200 shadow-lg hover:shadow-xl transition-shadow duration-300;
   }
   
   .input-field {
-    @apply w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent;
+    @apply w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200;
+  }
+  
+  .input-field:focus {
+    @apply bg-white;
   }
   
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-3 text-white rounded-lg transition-colors hover:bg-white/10;
+    @apply flex items-center gap-3 px-4 py-3 text-slate-300 rounded-lg transition-all duration-200 hover:bg-slate-800 hover:text-white;
   }
   
   .sidebar-link-active {
-    @apply bg-orange-500 text-white;
+    @apply bg-orange-500 text-white shadow-md;
+  }
+  
+  .stat-card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 p-6;
+  }
+  
+  .badge-success {
+    @apply bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .badge-warning {
+    @apply bg-yellow-50 text-yellow-700 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .badge-error {
+    @apply bg-red-50 text-red-700 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .badge-info {
+    @apply bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .table-header {
+    @apply bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider;
+  }
+  
+  .table-row {
+    @apply border-b border-slate-100 hover:bg-slate-50 transition-colors duration-150;
+  }
+  
+  .icon-bg-orange {
+    @apply bg-orange-100 text-orange-600;
+  }
+  
+  .icon-bg-blue {
+    @apply bg-blue-100 text-blue-600;
+  }
+  
+  .icon-bg-green {
+    @apply bg-emerald-100 text-emerald-600;
+  }
+  
+  .icon-bg-purple {
+    @apply bg-purple-100 text-purple-600;
+  }
+  
+  .icon-bg-slate {
+    @apply bg-slate-100 text-slate-600;
   }
 }

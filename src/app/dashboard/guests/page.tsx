@@ -151,8 +151,8 @@ export default function GuestsPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Guests</h1>
-          <p className="mt-1 text-slate-600">
+          <h1 className="text-3xl font-bold text-slate-900">Guests</h1>
+          <p className="mt-2 text-slate-600 text-lg">
             Manage guest information and history
           </p>
         </div>
@@ -169,13 +169,13 @@ export default function GuestsPage() {
       </div>
 
       {success && (
-        <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          {success}
-        </p>
+        <div className="card p-4 bg-emerald-50 border-emerald-200">
+          <p className="text-sm font-semibold text-emerald-800">{success}</p>
+        </div>
       )}
 
       {/* Search and Filter */}
-      <div className="card p-4">
+      <div className="card p-6">
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
@@ -203,13 +203,13 @@ export default function GuestsPage() {
 
       {/* Guest Form */}
       {showForm && (
-        <div className="card p-6">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
+        <div className="card-premium p-8">
+          <h2 className="mb-6 text-xl font-bold text-slate-900">
             {editingGuest ? "Edit Guest" : "New Guest"}
           </h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Name *
               </label>
               <input
@@ -222,7 +222,7 @@ export default function GuestsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Phone *
               </label>
               <input
@@ -235,7 +235,7 @@ export default function GuestsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Email
               </label>
               <input
@@ -247,7 +247,7 @@ export default function GuestsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Country
               </label>
               <input
@@ -259,7 +259,7 @@ export default function GuestsPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Address
               </label>
               <textarea
@@ -271,7 +271,7 @@ export default function GuestsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 ID Type
               </label>
               <select
@@ -288,7 +288,7 @@ export default function GuestsPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 ID Number
               </label>
               <input
@@ -300,7 +300,7 @@ export default function GuestsPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Notes
               </label>
               <textarea
@@ -313,9 +313,9 @@ export default function GuestsPage() {
             </div>
 
             {error && (
-              <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                {error}
-              </p>
+              <div className="sm:col-span-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+                <p className="text-sm font-semibold text-red-700">{error}</p>
+              </div>
             )}
 
             <div className="sm:col-span-2 flex gap-3">
@@ -340,48 +340,63 @@ export default function GuestsPage() {
 
       {/* Guests List */}
       {loading ? (
-        <p className="text-sm text-slate-500">Loading guests...</p>
+        <div className="card p-12 text-center">
+          <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading guests...</p>
+        </div>
       ) : filteredGuests.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
-          <User className="mx-auto h-12 w-12 text-slate-400" />
-          <p className="mt-4 text-slate-600">No guests found.</p>
-          <p className="mt-1 text-sm text-slate-500">
+        <div className="card p-12 text-center bg-gradient-to-br from-orange-50 to-white">
+          <div className="h-16 w-16 rounded-2xl icon-bg-orange flex items-center justify-center mx-auto mb-4">
+            <User size={32} />
+          </div>
+          <p className="text-lg font-semibold text-slate-900 mb-2">No guests found</p>
+          <p className="text-slate-600 mb-6">
             {searchTerm || filter !== "all"
               ? "Try adjusting your search or filters."
               : "Add your first guest to get started."}
           </p>
+          <button
+            onClick={() => {
+              handleCancel();
+              setShowForm(true);
+            }}
+            className="btn-primary inline-flex items-center gap-2"
+          >
+            <User size={18} />
+            Add Guest
+          </button>
         </div>
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-slate-500 bg-slate-50">
-                  <th className="px-6 py-3 font-medium">Guest</th>
-                  <th className="px-6 py-3 font-medium">Contact</th>
-                  <th className="px-6 py-3 font-medium">Location</th>
-                  <th className="px-6 py-3 font-medium">ID</th>
-                  <th className="px-6 py-3 font-medium">Stats</th>
-                  <th className="px-6 py-3 font-medium">Last Visit</th>
-                  <th className="px-6 py-3 font-medium">Actions</th>
+                <tr className="table-header">
+                  <th className="px-6 py-3">Guest</th>
+                  <th className="px-6 py-3">Contact</th>
+                  <th className="px-6 py-3">Location</th>
+                  <th className="px-6 py-3">ID</th>
+                  <th className="px-6 py-3">Stats</th>
+                  <th className="px-6 py-3">Last Visit</th>
+                  <th className="px-6 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredGuests.map((guest) => (
                   <tr
                     key={guest.id}
-                    className="border-b border-slate-50 last:border-0 hover:bg-slate-50"
+                    className="table-row"
                   >
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600 font-semibold">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full icon-bg-orange text-white font-bold text-lg">
                           {guest.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-slate-900">{guest.name}</p>
                             {guest.total_stays > 1 && (
-                              <span className="rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 flex items-center gap-1">
+                              <span className="badge-info flex items-center gap-1">
                                 <Repeat size={10} />
                                 Repeat
                               </span>

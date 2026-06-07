@@ -43,11 +43,11 @@ export default function ComingSoonPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-orange-100 mb-4">
-          <Rocket className="h-8 w-8 text-orange-600" />
+        <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl icon-bg-orange mb-6">
+          <Rocket size={40} />
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Coming Soon</h1>
-        <p className="mt-1 text-slate-600">
+        <h1 className="text-3xl font-bold text-slate-900">Coming Soon</h1>
+        <p className="mt-2 text-slate-600 text-lg">
           Exciting features on the horizon
         </p>
       </div>
@@ -56,19 +56,19 @@ export default function ComingSoonPage() {
         {features.map((feature) => {
           const Icon = feature.icon;
           return (
-            <div key={feature.title} className="card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center">
-                  <Icon className="h-6 w-6 text-orange-600" />
+            <div key={feature.title} className="card-premium p-8">
+              <div className="flex items-center justify-between mb-6">
+                <div className="h-14 w-14 rounded-xl icon-bg-orange flex items-center justify-center">
+                  <Icon size={28} />
                 </div>
-                <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+                <span className="text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full">
                   {feature.status}
                 </span>
               </div>
-              <h3 className="text-lg font-semibold text-slate-900">
+              <h3 className="text-xl font-bold text-slate-900">
                 {feature.title}
               </h3>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-3 text-slate-600">
                 {feature.description}
               </p>
             </div>
@@ -76,23 +76,25 @@ export default function ComingSoonPage() {
         })}
       </div>
 
-      <div className="card p-6 bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+      <div className="card p-8 bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg">
         <div className="flex items-center gap-4">
-          <CheckCircle className="h-8 w-8" />
+          <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
+            <CheckCircle size={28} />
+          </div>
           <div>
-            <h3 className="font-semibold text-lg">Stay Updated</h3>
-            <p className="text-orange-100 text-sm mt-1">
+            <h3 className="text-xl font-bold">Stay Updated</h3>
+            <p className="text-orange-100 mt-1">
               Subscribe to our newsletter to get notified when new features launch
             </p>
           </div>
         </div>
-        <div className="mt-4 flex gap-3">
+        <div className="mt-6 flex gap-3">
           <input
             type="email"
             placeholder="Enter your email"
-            className="flex-1 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-orange-200 focus:outline-none focus:ring-2 focus:ring-white/50"
+            className="flex-1 px-5 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-orange-200 focus:outline-none focus:ring-2 focus:ring-white/50"
           />
-          <button className="px-6 py-2 bg-white text-orange-600 rounded-lg font-medium hover:bg-orange-50 transition-colors">
+          <button className="px-8 py-3 bg-white text-orange-600 rounded-xl font-bold hover:bg-orange-50 transition-all shadow-md">
             Subscribe
           </button>
         </div>

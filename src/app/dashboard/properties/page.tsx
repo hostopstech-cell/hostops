@@ -188,8 +188,8 @@ export default function PropertiesPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Properties</h1>
-          <p className="mt-1 text-slate-600">
+          <h1 className="text-3xl font-bold text-slate-900">Properties</h1>
+          <p className="mt-2 text-slate-600 text-lg">
             Manage your hotels, hostels, dorms, and guesthouses
           </p>
         </div>
@@ -206,22 +206,22 @@ export default function PropertiesPage() {
       </div>
 
       {success && (
-        <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          {success}
-        </p>
+        <div className="card p-4 bg-emerald-50 border-emerald-200">
+          <p className="text-sm font-semibold text-emerald-800">{success}</p>
+        </div>
       )}
 
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="card-premium p-8"
         >
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
+          <h2 className="mb-6 text-xl font-bold text-slate-900">
             {editingProperty ? "Edit Property" : "New Property"}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Property Name *
               </label>
               <input
@@ -234,7 +234,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Type *
               </label>
               <select
@@ -252,7 +252,7 @@ export default function PropertiesPage() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Address *
               </label>
               <input
@@ -265,7 +265,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 City *
               </label>
               <input
@@ -278,7 +278,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 State *
               </label>
               <select
@@ -294,7 +294,7 @@ export default function PropertiesPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Pincode
               </label>
               <input
@@ -306,7 +306,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Contact Number
               </label>
               <input
@@ -318,7 +318,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Email
               </label>
               <input
@@ -330,7 +330,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Total Beds *
               </label>
               <input
@@ -346,7 +346,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Status
               </label>
               <select
@@ -359,7 +359,7 @@ export default function PropertiesPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Check-in Time
               </label>
               <input
@@ -370,7 +370,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Check-out Time
               </label>
               <input
@@ -381,7 +381,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Description
               </label>
               <textarea
@@ -393,7 +393,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Amenities
               </label>
               <div className="flex flex-wrap gap-2">
@@ -414,7 +414,7 @@ export default function PropertiesPage() {
               </div>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Policies
               </label>
               <textarea
@@ -426,7 +426,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Google Map Link
               </label>
               <input
@@ -438,7 +438,7 @@ export default function PropertiesPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 UPI ID
               </label>
               <input
@@ -452,9 +452,9 @@ export default function PropertiesPage() {
           </div>
 
           {error && (
-            <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              {error}
-            </p>
+            <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+              <p className="text-sm font-semibold text-red-700">{error}</p>
+            </div>
           )}
 
           <div className="mt-4 flex gap-3">
@@ -477,52 +477,74 @@ export default function PropertiesPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading properties...</p>
+        <div className="card p-12 text-center">
+          <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading properties...</p>
+        </div>
       ) : properties.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
-          <Building2 className="mx-auto h-12 w-12 text-slate-400" />
-          <p className="mt-4 text-slate-600">No properties yet.</p>
-          <p className="mt-1 text-sm text-slate-500">
+        <div className="card p-12 text-center bg-gradient-to-br from-orange-50 to-white">
+          <div className="h-16 w-16 rounded-2xl icon-bg-orange flex items-center justify-center mx-auto mb-4">
+            <Building2 size={32} />
+          </div>
+          <p className="text-lg font-semibold text-slate-900 mb-2">No properties yet</p>
+          <p className="text-slate-600 mb-6">
             Add your first hotel, hostel, or guesthouse to get started.
           </p>
+          <button
+            onClick={() => {
+              handleCancel();
+              setShowForm(true);
+            }}
+            className="btn-primary inline-flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Add Property
+          </button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {properties.map((property) => (
             <div
               key={property.id}
-              className="card p-5 hover:shadow-md transition-shadow"
+              className="card-premium p-6 hover:border-orange-300 transition-all duration-200"
             >
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900">
-                    {property.name}
-                  </h3>
-                  <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    property.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {capitalize(property.type)}
-                  </span>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-10 w-10 rounded-lg icon-bg-orange flex items-center justify-center">
+                      <Building2 size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-lg">
+                        {property.name}
+                      </h3>
+                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        property.status === 'active' ? 'badge-success' : 'bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-semibold'
+                      }`}>
+                        {capitalize(property.type)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEdit(property)}
-                    className="p-1.5 text-slate-400 hover:text-orange-600 transition-colors"
+                    className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                   >
-                    <Edit size={16} />
+                    <Edit size={18} />
                   </button>
                   <button
                     onClick={() => handleDelete(property.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
               </div>
               
-              <div className="space-y-2 text-sm">
+              <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-2 text-slate-600">
-                  <MapPin size={14} />
+                  <MapPin size={16} className="text-slate-400" />
                   <span className="truncate">{property.address}</span>
                 </div>
                 <div className="text-slate-500">
@@ -530,32 +552,39 @@ export default function PropertiesPage() {
                 </div>
                 {property.contact && (
                   <div className="flex items-center gap-2 text-slate-600">
-                    <Phone size={14} />
+                    <Phone size={16} className="text-slate-400" />
                     <span>{property.contact}</span>
                   </div>
                 )}
                 {property.email && (
                   <div className="flex items-center gap-2 text-slate-600">
-                    <Mail size={14} />
+                    <Mail size={16} className="text-slate-400" />
                     <span className="truncate">{property.email}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 text-slate-600">
-                  <Clock size={14} />
+                  <Clock size={16} className="text-slate-400" />
                   <span>Check-in: {property.check_in_time} | Check-out: {property.check_out_time}</span>
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-slate-100">
+              <div className="mt-5 pt-5 border-t border-slate-100">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-700">
-                    {property.total_beds} beds
-                  </span>
-                  {property.amenities && property.amenities.length > 0 && (
-                    <span className="text-xs text-slate-500">
-                      {property.amenities.length} amenities
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-900">
+                      {property.total_beds} beds
                     </span>
-                  )}
+                    {property.amenities && property.amenities.length > 0 && (
+                      <span className="text-xs text-slate-500">
+                        • {property.amenities.length} amenities
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                    property.status === 'active' ? 'badge-success' : 'bg-slate-100 text-slate-600 px-2 py-1 rounded-full text-xs font-semibold'
+                  }`}>
+                    {capitalize(property.status)}
+                  </span>
                 </div>
               </div>
             </div>

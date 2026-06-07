@@ -21,16 +21,16 @@ export default function BookingSourcesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Booking Sources</h1>
-        <p className="mt-1 text-slate-600">
+        <h1 className="text-3xl font-bold text-slate-900">Booking Sources</h1>
+        <p className="mt-2 text-slate-600 text-lg">
           Track where your bookings come from
         </p>
       </div>
 
       {/* Pie Chart */}
-      <div className="card p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Source Distribution</h2>
-        <ResponsiveContainer width="100%" height={300}>
+      <div className="card p-8">
+        <h2 className="text-xl font-bold text-slate-900 mb-6">Source Distribution</h2>
+        <ResponsiveContainer width="100%" height={320}>
           <PieChart>
             <Pie
               data={pieData}
@@ -38,7 +38,7 @@ export default function BookingSourcesPage() {
               cy="50%"
               labelLine={false}
               label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              outerRadius={100}
+              outerRadius={120}
               fill="#8884d8"
               dataKey="value"
             >
@@ -46,23 +46,30 @@ export default function BookingSourcesPage() {
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: '#FFFFFF', 
+                border: '1px solid #E2E8F0', 
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+              }} 
+            />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
       </div>
 
       {/* Source Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {sourceData.map((source, index) => (
-          <div key={source.name} className="card p-6">
+          <div key={source.name} className="stat-card">
             <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${COLORS[index % COLORS.length]}20` }}>
-                <Globe className="h-5 w-5" style={{ color: COLORS[index % COLORS.length] }} />
+              <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${COLORS[index % COLORS.length]}20` }}>
+                <Globe size={24} style={{ color: COLORS[index % COLORS.length] }} />
               </div>
-              <span className="text-2xl font-bold text-slate-900">{source.percentage}%</span>
+              <span className="text-3xl font-bold text-slate-900">{source.percentage}%</span>
             </div>
-            <h3 className="font-semibold text-slate-900">{source.name}</h3>
+            <h3 className="text-lg font-bold text-slate-900">{source.name}</h3>
             <div className="mt-4 space-y-2">
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <TrendingUp size={14} />
@@ -79,23 +86,23 @@ export default function BookingSourcesPage() {
 
       {/* Detailed Table */}
       <div className="card overflow-hidden">
-        <div className="border-b border-slate-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Source Details</h2>
+        <div className="border-b border-slate-100 px-8 py-6">
+          <h2 className="text-xl font-bold text-slate-900">Source Details</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-slate-500 bg-slate-50">
-                <th className="px-6 py-3 font-medium">Source</th>
-                <th className="px-6 py-3 font-medium">Bookings</th>
-                <th className="px-6 py-3 font-medium">Revenue</th>
-                <th className="px-6 py-3 font-medium">% Contribution</th>
+              <tr className="table-header">
+                <th className="px-6 py-3">Source</th>
+                <th className="px-6 py-3">Bookings</th>
+                <th className="px-6 py-3">Revenue</th>
+                <th className="px-6 py-3">% Contribution</th>
               </tr>
             </thead>
             <tbody>
               {sourceData.map((source, index) => (
-                <tr key={source.name} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
-                  <td className="px-6 py-3 font-medium text-slate-900">{source.name}</td>
+                <tr key={source.name} className="table-row">
+                  <td className="px-6 py-3 font-bold text-slate-900">{source.name}</td>
                   <td className="px-6 py-3 text-slate-600">{source.bookings}</td>
                   <td className="px-6 py-3 text-slate-600">₹{source.revenue.toLocaleString()}</td>
                   <td className="px-6 py-3">
@@ -109,7 +116,7 @@ export default function BookingSourcesPage() {
                           }}
                         />
                       </div>
-                      <span className="text-sm font-medium text-slate-700 w-12 text-right">
+                      <span className="text-sm font-semibold text-slate-700 w-12 text-right">
                         {source.percentage}%
                       </span>
                     </div>

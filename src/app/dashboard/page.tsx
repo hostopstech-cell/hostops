@@ -3,7 +3,7 @@ import { getDashboardStats } from "@/lib/dashboard";
 import StatCard from "@/components/StatCard";
 import { formatINR, formatDate, capitalize } from "@/lib/format";
 import Link from "next/link";
-import { Plus, TrendingUp, Users, BedDouble, Calendar, CreditCard } from "lucide-react";
+import { Plus, TrendingUp, Users, BedDouble, Calendar, CreditCard, Building2 } from "lucide-react";
 
 export default async function DashboardPage() {
   const owner = await getAuthenticatedOwner();
@@ -24,151 +24,195 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="mt-1 text-slate-600">
-          Overview of your properties for today
+      {/* Welcome Banner */}
+      <div className="gradient-orange rounded-2xl p-8 text-white shadow-lg">
+        <h1 className="text-3xl font-bold mb-2">Welcome back, {owner.name}!</h1>
+        <p className="text-white/90 text-lg">
+          Here's what's happening with your properties today
         </p>
       </div>
 
       {!hasProperties && (
-        <div className="rounded-xl border border-orange-200 bg-orange-50 p-6">
-          <p className="font-medium text-orange-800">
-            Welcome to HostOps! Get started by adding your first property.
-          </p>
+        <div className="card p-8 bg-gradient-to-br from-orange-50 to-white border-orange-200">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-orange flex items-center justify-center">
+              <Building2 size={24} />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-slate-900 text-lg">
+                Welcome to HostOps!
+              </p>
+              <p className="text-slate-600 mt-1">
+                Get started by adding your first property to begin managing your hospitality business.
+              </p>
+            </div>
+          </div>
           <Link
             href="/dashboard/properties"
-            className="mt-3 inline-block rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+            className="mt-6 inline-flex items-center gap-2 btn-primary"
           >
+            <Plus size={18} />
             Add Property
           </Link>
         </div>
       )}
 
       {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total Properties"
-          value={String(data.totalProperties)}
-          subtext="Active properties"
-          accent="orange"
-        />
-        <StatCard
-          label="Total Beds"
-          value={String(data.totalBeds)}
-          subtext="Across all properties"
-          accent="blue"
-        />
-        <StatCard
-          label="Available Beds"
-          value={String(data.availableBeds)}
-          subtext="Ready for booking today"
-          accent="emerald"
-        />
-        <StatCard
-          label="Occupied Beds"
-          value={String(data.occupiedBeds)}
-          subtext={`${data.occupancyRate}% occupancy rate`}
-          accent="red"
-        />
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-orange flex items-center justify-center">
+              <Building2 size={24} />
+            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Properties</span>
+          </div>
+          <p className="text-3xl font-bold text-slate-900">{data.totalProperties}</p>
+          <p className="mt-1 text-sm text-slate-500">Active properties</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-blue flex items-center justify-center">
+              <BedDouble size={24} />
+            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Beds</span>
+          </div>
+          <p className="text-3xl font-bold text-slate-900">{data.totalBeds}</p>
+          <p className="mt-1 text-sm text-slate-500">Across all properties</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-green flex items-center justify-center">
+              <Users size={24} />
+            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Occupancy</span>
+          </div>
+          <p className="text-3xl font-bold text-slate-900">{data.occupancyRate}%</p>
+          <p className="mt-1 text-sm text-slate-500">{data.occupiedBeds} of {data.totalBeds} beds</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-purple flex items-center justify-center">
+              <TrendingUp size={24} />
+            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Revenue</span>
+          </div>
+          <p className="text-3xl font-bold text-slate-900">{formatINR(data.revenueToday)}</p>
+          <p className="mt-1 text-sm text-slate-500">Today's revenue</p>
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Occupancy Rate"
-          value={`${data.occupancyRate}%`}
-          subtext={`${data.occupiedBeds} of ${data.totalBeds} beds occupied`}
-          accent="orange"
-        />
-        <StatCard
-          label="Revenue Today"
-          value={formatINR(data.revenueToday)}
-          subtext="From check-ins today"
-          accent="green"
-        />
-        <StatCard
-          label="Revenue This Month"
-          value={formatINR(data.revenueMonth)}
-          subtext="Month to date"
-          accent="blue"
-        />
-        <StatCard
-          label="Check-ins Today"
-          value={String(data.checkinsToday)}
-          subtext={`${data.checkoutsToday} check-outs today`}
-          accent="purple"
-        />
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-slate flex items-center justify-center">
+              <BedDouble size={24} />
+            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Available</span>
+          </div>
+          <p className="text-3xl font-bold text-slate-900">{data.availableBeds}</p>
+          <p className="mt-1 text-sm text-slate-500">Ready for booking</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-orange flex items-center justify-center">
+              <Calendar size={24} />
+            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-ins</span>
+          </div>
+          <p className="text-3xl font-bold text-slate-900">{data.checkinsToday}</p>
+          <p className="mt-1 text-sm text-slate-500">{data.checkoutsToday} check-outs</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-green flex items-center justify-center">
+              <CreditCard size={24} />
+            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monthly</span>
+          </div>
+          <p className="text-3xl font-bold text-slate-900">{formatINR(data.revenueMonth)}</p>
+          <p className="mt-1 text-sm text-slate-500">This month</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-blue flex items-center justify-center">
+              <Users size={24} />
+            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Occupied</span>
+          </div>
+          <p className="text-3xl font-bold text-slate-900">{data.occupiedBeds}</p>
+          <p className="mt-1 text-sm text-slate-500">Currently occupied</p>
+        </div>
       </div>
 
       {/* Quick Actions */}
       {hasProperties && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6">
+        <div className="card p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">
             Quick Actions
           </h2>
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/dashboard/bookings/new"
+              href="/dashboard/bookings"
               className="btn-primary flex items-center gap-2"
             >
               <Calendar size={18} />
-              Add Booking
+              New Booking
             </Link>
             <Link
-              href="/dashboard/rooms/new"
+              href="/dashboard/rooms"
               className="btn-secondary flex items-center gap-2"
             >
               <BedDouble size={18} />
               Add Room
             </Link>
             <Link
-              href="/dashboard/properties/new"
+              href="/dashboard/guests"
               className="btn-secondary flex items-center gap-2"
             >
-              <Plus size={18} />
-              Add Property
+              <Users size={18} />
+              Add Guest
             </Link>
           </div>
         </div>
       )}
 
       {/* Recent Bookings */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="card">
         <div className="border-b border-slate-100 px-6 py-4 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-slate-900">
             Recent Bookings
           </h2>
           <Link
             href="/dashboard/bookings"
-            className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+            className="text-sm text-orange-600 hover:text-orange-700 font-semibold"
           >
-            View All
+            View All →
           </Link>
         </div>
         {data.recentBookings.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-slate-500">
-            No bookings yet.
+          <p className="px-6 py-12 text-sm text-slate-500 text-center">
+            No bookings yet. Create your first booking to get started.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-slate-500">
-                  <th className="px-6 py-3 font-medium">Booking Code</th>
-                  <th className="px-6 py-3 font-medium">Guest</th>
-                  <th className="px-6 py-3 font-medium">Property</th>
-                  <th className="px-6 py-3 font-medium">Check-in</th>
-                  <th className="px-6 py-3 font-medium">Check-out</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
+                <tr className="table-header">
+                  <th className="px-6 py-3">Booking Code</th>
+                  <th className="px-6 py-3">Guest</th>
+                  <th className="px-6 py-3">Property</th>
+                  <th className="px-6 py-3">Check-in</th>
+                  <th className="px-6 py-3">Check-out</th>
+                  <th className="px-6 py-3">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {data.recentBookings.map((booking) => (
                   <tr
                     key={booking.id}
-                    className="border-b border-slate-50 last:border-0"
+                    className="table-row"
                   >
-                    <td className="px-6 py-3 font-medium text-orange-600">
+                    <td className="px-6 py-3 font-semibold text-orange-600">
                       {booking.booking_code}
                     </td>
                     <td className="px-6 py-3 font-medium text-slate-900">
@@ -185,16 +229,16 @@ export default async function DashboardPage() {
                     </td>
                     <td className="px-6 py-3">
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        className={`${
                           booking.status === "confirmed"
-                            ? "bg-blue-50 text-blue-700"
+                            ? "badge-info"
                             : booking.status === "checked_in"
-                            ? "bg-emerald-50 text-emerald-700"
+                            ? "badge-success"
                             : booking.status === "checked_out"
-                            ? "bg-slate-50 text-slate-700"
+                            ? "bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold"
                             : booking.status === "cancelled"
-                            ? "bg-red-50 text-red-700"
-                            : "bg-yellow-50 text-yellow-700"
+                            ? "badge-error"
+                            : "badge-warning"
                         }`}
                       >
                         {capitalize(booking.status.replace("_", " "))}
@@ -209,32 +253,32 @@ export default async function DashboardPage() {
       </div>
 
       {/* Today's Check-ins */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="card">
         <div className="border-b border-slate-100 px-6 py-4">
           <h2 className="text-lg font-semibold text-slate-900">
             Today&apos;s Check-ins
           </h2>
         </div>
         {data.todaysCheckins.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-slate-500">
+          <p className="px-6 py-12 text-sm text-slate-500 text-center">
             No check-ins scheduled for today.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-slate-500">
-                  <th className="px-6 py-3 font-medium">Guest</th>
-                  <th className="px-6 py-3 font-medium">Property</th>
-                  <th className="px-6 py-3 font-medium">Check-in</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
+                <tr className="table-header">
+                  <th className="px-6 py-3">Guest</th>
+                  <th className="px-6 py-3">Property</th>
+                  <th className="px-6 py-3">Check-in</th>
+                  <th className="px-6 py-3">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {data.todaysCheckins.map((checkin) => (
                   <tr
                     key={checkin.id}
-                    className="border-b border-slate-50 last:border-0"
+                    className="table-row"
                   >
                     <td className="px-6 py-3 font-medium text-slate-900">
                       {checkin.guest_name}
@@ -246,7 +290,7 @@ export default async function DashboardPage() {
                       {formatDate(checkin.check_in)}
                     </td>
                     <td className="px-6 py-3">
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                      <span className="badge-success">
                         {capitalize(checkin.status.replace("_", " "))}
                       </span>
                     </td>
@@ -259,32 +303,32 @@ export default async function DashboardPage() {
       </div>
 
       {/* Today's Check-outs */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="card">
         <div className="border-b border-slate-100 px-6 py-4">
           <h2 className="text-lg font-semibold text-slate-900">
             Today&apos;s Check-outs
           </h2>
         </div>
         {data.todaysCheckouts.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-slate-500">
+          <p className="px-6 py-12 text-sm text-slate-500 text-center">
             No check-outs scheduled for today.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-slate-500">
-                  <th className="px-6 py-3 font-medium">Guest</th>
-                  <th className="px-6 py-3 font-medium">Property</th>
-                  <th className="px-6 py-3 font-medium">Check-out</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
+                <tr className="table-header">
+                  <th className="px-6 py-3">Guest</th>
+                  <th className="px-6 py-3">Property</th>
+                  <th className="px-6 py-3">Check-out</th>
+                  <th className="px-6 py-3">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {data.todaysCheckouts.map((checkout) => (
                   <tr
                     key={checkout.id}
-                    className="border-b border-slate-50 last:border-0"
+                    className="table-row"
                   >
                     <td className="px-6 py-3 font-medium text-slate-900">
                       {checkout.guest_name}
@@ -296,7 +340,7 @@ export default async function DashboardPage() {
                       {formatDate(checkout.check_out)}
                     </td>
                     <td className="px-6 py-3">
-                      <span className="rounded-full bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                      <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold">
                         {capitalize(checkout.status.replace("_", " "))}
                       </span>
                     </td>
@@ -310,32 +354,40 @@ export default async function DashboardPage() {
 
       {/* Properties Overview */}
       {hasProperties && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="card">
           <div className="border-b border-slate-100 px-6 py-4 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-slate-900">
               Your Properties
             </h2>
             <Link
               href="/dashboard/properties"
-              className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+              className="text-sm text-orange-600 hover:text-orange-700 font-semibold"
             >
-              View All
+              View All →
             </Link>
           </div>
           <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
             {data.properties.map((property) => (
               <div
                 key={property.id}
-                className="rounded-lg border border-slate-100 p-4 hover:border-orange-200 transition-colors"
+                className="card p-5 hover:border-orange-300 transition-all duration-200 cursor-pointer"
               >
-                <p className="font-medium text-slate-900">{property.name}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {capitalize(property.type)} · {property.city},{" "}
-                  {property.state}
-                </p>
-                <p className="mt-2 text-sm text-slate-600">
-                  {property.total_beds} beds
-                </p>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-lg icon-bg-orange flex items-center justify-center">
+                    <Building2 size={20} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">{property.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {capitalize(property.type)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-sm text-slate-600">
+                  <span>{property.city}, {property.state}</span>
+                  <span className="text-slate-400">•</span>
+                  <span>{property.total_beds} beds</span>
+                </div>
               </div>
             ))}
           </div>

@@ -171,8 +171,8 @@ export default function PaymentsPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Payments</h1>
-          <p className="mt-1 text-slate-600">
+          <h1 className="text-3xl font-bold text-slate-900">Payments</h1>
+          <p className="mt-2 text-slate-600 text-lg">
             Track all payments and collections
           </p>
         </div>
@@ -189,56 +189,53 @@ export default function PaymentsPage() {
       </div>
 
       {success && (
-        <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          {success}
-        </p>
+        <div className="card p-4 bg-emerald-50 border-emerald-200">
+          <p className="text-sm font-semibold text-emerald-800">{success}</p>
+        </div>
       )}
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Today's Collection</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                ₹{summary.todayCollection.toLocaleString()}
-              </p>
+      <div className="grid gap-6 sm:grid-cols-3">
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-green flex items-center justify-center">
+              <TrendingUp size={24} />
             </div>
-            <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-emerald-600" />
-            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Today</span>
           </div>
+          <p className="text-3xl font-bold text-slate-900">
+            ₹{summary.todayCollection.toLocaleString()}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">Today's collection</p>
         </div>
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Monthly Collection</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                ₹{summary.monthlyCollection.toLocaleString()}
-              </p>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-blue flex items-center justify-center">
+              <Calendar size={24} />
             </div>
-            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <Calendar className="h-6 w-6 text-blue-600" />
-            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monthly</span>
           </div>
+          <p className="text-3xl font-bold text-slate-900">
+            ₹{summary.monthlyCollection.toLocaleString()}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">This month</p>
         </div>
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Pending Amount</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                ₹{summary.pendingAmount.toLocaleString()}
-              </p>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-12 w-12 rounded-xl icon-bg-orange flex items-center justify-center">
+              <CreditCard size={24} />
             </div>
-            <div className="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
-              <CreditCard className="h-6 w-6 text-yellow-600" />
-            </div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pending</span>
           </div>
+          <p className="text-3xl font-bold text-slate-900">
+            ₹{summary.pendingAmount.toLocaleString()}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">Pending amount</p>
         </div>
       </div>
 
       {/* Search and Filter */}
-      <div className="card p-4">
+      <div className="card p-6">
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
@@ -269,13 +266,13 @@ export default function PaymentsPage() {
 
       {/* Payment Form */}
       {showForm && (
-        <div className="card p-6">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
+        <div className="card-premium p-8">
+          <h2 className="mb-6 text-xl font-bold text-slate-900">
             {editingPayment ? "Edit Payment" : "New Payment"}
           </h2>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Booking ID *
               </label>
               <input
@@ -288,7 +285,7 @@ export default function PaymentsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Guest Name *
               </label>
               <input
@@ -301,7 +298,7 @@ export default function PaymentsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Amount (₹) *
               </label>
               <input
@@ -315,7 +312,7 @@ export default function PaymentsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Date *
               </label>
               <input
@@ -327,7 +324,7 @@ export default function PaymentsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Payment Method *
               </label>
               <select
@@ -343,7 +340,7 @@ export default function PaymentsPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Status *
               </label>
               <select
@@ -359,7 +356,7 @@ export default function PaymentsPage() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Notes
               </label>
               <textarea
@@ -372,9 +369,9 @@ export default function PaymentsPage() {
             </div>
 
             {error && (
-              <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                {error}
-              </p>
+              <div className="sm:col-span-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+                <p className="text-sm font-semibold text-red-700">{error}</p>
+              </div>
             )}
 
             <div className="sm:col-span-2 flex gap-3">
@@ -399,37 +396,52 @@ export default function PaymentsPage() {
 
       {/* Payments List */}
       {loading ? (
-        <p className="text-sm text-slate-500">Loading payments...</p>
+        <div className="card p-12 text-center">
+          <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading payments...</p>
+        </div>
       ) : filteredPayments.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
-          <CreditCard className="mx-auto h-12 w-12 text-slate-400" />
-          <p className="mt-4 text-slate-600">No payments found.</p>
-          <p className="mt-1 text-sm text-slate-500">
+        <div className="card p-12 text-center bg-gradient-to-br from-orange-50 to-white">
+          <div className="h-16 w-16 rounded-2xl icon-bg-orange flex items-center justify-center mx-auto mb-4">
+            <CreditCard size={32} />
+          </div>
+          <p className="text-lg font-semibold text-slate-900 mb-2">No payments found</p>
+          <p className="text-slate-600 mb-6">
             {searchTerm || statusFilter !== "all"
               ? "Try adjusting your search or filters."
               : "Add your first payment to get started."}
           </p>
+          <button
+            onClick={() => {
+              handleCancel();
+              setShowForm(true);
+            }}
+            className="btn-primary inline-flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Add Payment
+          </button>
         </div>
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-slate-500 bg-slate-50">
-                  <th className="px-6 py-3 font-medium">Booking ID</th>
-                  <th className="px-6 py-3 font-medium">Guest</th>
-                  <th className="px-6 py-3 font-medium">Amount</th>
-                  <th className="px-6 py-3 font-medium">Date</th>
-                  <th className="px-6 py-3 font-medium">Method</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium">Actions</th>
+                <tr className="table-header">
+                  <th className="px-6 py-3">Booking ID</th>
+                  <th className="px-6 py-3">Guest</th>
+                  <th className="px-6 py-3">Amount</th>
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Method</th>
+                  <th className="px-6 py-3">Status</th>
+                  <th className="px-6 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPayments.map((payment) => (
                   <tr
                     key={payment.id}
-                    className="border-b border-slate-50 last:border-0 hover:bg-slate-50"
+                    className="table-row"
                   >
                     <td className="px-6 py-3 font-medium text-orange-600">
                       #{payment.booking_id}
@@ -447,7 +459,13 @@ export default function PaymentsPage() {
                       {capitalize(payment.method)}
                     </td>
                     <td className="px-6 py-3">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(payment.status)}`}>
+                      <span className={`${
+                        payment.status === 'paid' ? 'badge-success' :
+                        payment.status === 'pending' ? 'badge-warning' :
+                        payment.status === 'partial' ? 'badge-info' :
+                        payment.status === 'refunded' ? 'badge-error' :
+                        'bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold'
+                      }`}>
                         {capitalize(payment.status)}
                       </span>
                     </td>

@@ -57,55 +57,55 @@ export default function SubscriptionPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-slate-900">Choose Your Plan</h1>
-        <p className="mt-1 text-slate-600">
+        <h1 className="text-3xl font-bold text-slate-900">Choose Your Plan</h1>
+        <p className="mt-2 text-slate-600 text-lg">
           Select the plan that fits your business needs
         </p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid gap-8 sm:grid-cols-3">
         {plans.map((plan) => {
           const Icon = plan.icon;
           return (
             <div
               key={plan.id}
-              className={`card p-6 relative ${
+              className={`card-premium p-8 relative ${
                 plan.popular
-                  ? "border-orange-500 ring-2 ring-orange-500"
-                  : "border-slate-200"
+                  ? "border-orange-500 ring-2 ring-orange-500 shadow-lg"
+                  : ""
               }`}
             >
               {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-orange-500 text-white text-xs font-medium px-3 py-1 rounded-full">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <span className="bg-orange-500 text-white text-sm font-bold px-4 py-1.5 rounded-full shadow-md">
                     Most Popular
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-center mb-4">
-                <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center">
-                  <Icon className="h-6 w-6 text-orange-600" />
+              <div className="flex items-center justify-center mb-6">
+                <div className="h-16 w-16 rounded-2xl icon-bg-orange flex items-center justify-center">
+                  <Icon size={32} />
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 text-center">
+              <h3 className="text-2xl font-bold text-slate-900 text-center">
                 {plan.name}
               </h3>
-              <div className="mt-4 text-center">
-                <span className="text-3xl font-bold text-slate-900">₹{plan.price}</span>
+              <div className="mt-6 text-center">
+                <span className="text-4xl font-bold text-slate-900">₹{plan.price}</span>
                 <span className="text-slate-500">/{plan.period}</span>
               </div>
-              <ul className="mt-6 space-y-3">
+              <ul className="mt-8 space-y-4">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-sm text-slate-600">
-                    <Check size={16} className="text-emerald-500 flex-shrink-0" />
-                    {feature}
+                  <li key={feature} className="flex items-center gap-3 text-slate-600">
+                    <Check size={20} className="text-emerald-500 flex-shrink-0" />
+                    <span className="font-medium">{feature}</span>
                   </li>
                 ))}
               </ul>
               <button
-                className={`mt-6 w-full py-2.5 rounded-lg font-medium transition-colors ${
+                className={`mt-8 w-full py-3 rounded-xl font-bold transition-all ${
                   plan.popular
-                    ? "bg-orange-600 text-white hover:bg-orange-700"
+                    ? "btn-primary shadow-md hover:shadow-lg"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
@@ -116,12 +116,12 @@ export default function SubscriptionPage() {
         })}
       </div>
 
-      <div className="card p-6 bg-slate-50 border-slate-200">
-        <h3 className="font-semibold text-slate-900 mb-2">Need a custom plan?</h3>
-        <p className="text-sm text-slate-600">
+      <div className="card p-8 bg-gradient-to-br from-slate-50 to-white border-slate-200">
+        <h3 className="text-lg font-bold text-slate-900 mb-2">Need a custom plan?</h3>
+        <p className="text-slate-600">
           Contact us for enterprise solutions with custom pricing and features tailored to your specific needs.
         </p>
-        <button className="mt-4 btn-secondary">Contact Sales</button>
+        <button className="mt-6 btn-secondary">Contact Sales</button>
       </div>
     </div>
   );
