@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <div className="gradient-orange rounded-2xl p-8 text-white shadow-lg">
+      <div className="gradient-navy rounded-2xl p-8 text-white shadow-lg">
         <h1 className="text-3xl font-bold mb-2">Welcome back, {owner.name}!</h1>
         <p className="text-white/90 text-lg">
           Here's what's happening with your properties today
@@ -59,40 +59,40 @@ export default async function DashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-orange-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-orange flex items-center justify-center">
-              <Building2 size={24} />
+            <div className="h-12 w-12 rounded-xl bg-orange-50 flex items-center justify-center">
+              <Building2 size={24} className="text-orange-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Properties</span>
           </div>
           <p className="text-3xl font-bold text-slate-900">{data.totalProperties}</p>
           <p className="mt-1 text-sm text-slate-500">Active properties</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-blue-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-blue flex items-center justify-center">
-              <BedDouble size={24} />
+            <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
+              <BedDouble size={24} className="text-blue-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Beds</span>
           </div>
           <p className="text-3xl font-bold text-slate-900">{data.totalBeds}</p>
           <p className="mt-1 text-sm text-slate-500">Across all properties</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-emerald-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-green flex items-center justify-center">
-              <Users size={24} />
+            <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <Users size={24} className="text-emerald-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Occupancy</span>
           </div>
           <p className="text-3xl font-bold text-slate-900">{data.occupancyRate}%</p>
           <p className="mt-1 text-sm text-slate-500">{data.occupiedBeds} of {data.totalBeds} beds</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-purple-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-purple flex items-center justify-center">
-              <TrendingUp size={24} />
+            <div className="h-12 w-12 rounded-xl bg-purple-50 flex items-center justify-center">
+              <TrendingUp size={24} className="text-purple-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Revenue</span>
           </div>
@@ -102,40 +102,40 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-slate-400">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-slate flex items-center justify-center">
-              <BedDouble size={24} />
+            <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center">
+              <BedDouble size={24} className="text-slate-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Available</span>
           </div>
           <p className="text-3xl font-bold text-slate-900">{data.availableBeds}</p>
           <p className="mt-1 text-sm text-slate-500">Ready for booking</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-orange-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-orange flex items-center justify-center">
-              <Calendar size={24} />
+            <div className="h-12 w-12 rounded-xl bg-orange-50 flex items-center justify-center">
+              <Calendar size={24} className="text-orange-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-ins</span>
           </div>
           <p className="text-3xl font-bold text-slate-900">{data.checkinsToday}</p>
           <p className="mt-1 text-sm text-slate-500">{data.checkoutsToday} check-outs</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-emerald-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-green flex items-center justify-center">
-              <CreditCard size={24} />
+            <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <CreditCard size={24} className="text-emerald-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monthly</span>
           </div>
           <p className="text-3xl font-bold text-slate-900">{formatINR(data.revenueMonth)}</p>
           <p className="mt-1 text-sm text-slate-500">This month</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-blue-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-blue flex items-center justify-center">
-              <Users size={24} />
+            <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
+              <Users size={24} className="text-blue-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Occupied</span>
           </div>

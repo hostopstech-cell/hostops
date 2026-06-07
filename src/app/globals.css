@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #F8FAFC;
+  --background: #F1F5F9;
   --foreground: #1E293B;
   --primary: #F97316;
   --primary-dark: #EA580C;
@@ -13,6 +13,8 @@
   --success: #10B981;
   --error: #EF4444;
   --warning: #F59E0B;
+  --navy-dark: #0F172A;
+  --navy-light: #1E3A5F;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -39,6 +41,10 @@ body {
     background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
   }
   
+  .gradient-navy {
+    background: linear-gradient(135deg, #0F172A 0%, #1E3A5F 100%);
+  }
+  
   .gradient-sidebar {
     background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
   }
@@ -61,12 +67,20 @@ body {
     @apply bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200;
   }
   
+  .card {
+    border-color: #E2E8F0;
+  }
+  
   .card-premium {
     @apply bg-white rounded-xl border border-slate-200 shadow-lg hover:shadow-xl transition-shadow duration-300;
   }
   
+  .card-premium {
+    border-color: #E2E8F0;
+  }
+  
   .input-field {
-    @apply w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200;
+    @apply w-full px-4 py-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg text-[#1E293B] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-[#F97316] transition-all duration-200;
   }
   
   .input-field:focus {
@@ -83,6 +97,10 @@ body {
   
   .stat-card {
     @apply bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 p-6;
+  }
+  
+  .stat-card {
+    border-color: #E2E8F0;
   }
   
   .badge-success {
@@ -102,7 +120,7 @@ body {
   }
   
   .table-header {
-    @apply bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider;
+    @apply bg-[#F8FAFC] text-slate-600 font-semibold text-xs uppercase tracking-wider;
   }
   
   .table-row {
