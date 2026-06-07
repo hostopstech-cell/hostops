@@ -5,7 +5,7 @@ import type { RoomType } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-const VALID_ROOM_TYPES: RoomType[] = ["dorm", "private", "deluxe", "family"];
+const VALID_ROOM_TYPES: RoomType[] = ["dorm", "private", "luxury"];
 
 export async function GET() {
   try {

@@ -12,9 +12,11 @@ export async function getDashboardStats(
   `;
 
   const totalBedsResult = await sql`
-    SELECT COALESCE(SUM(total_beds), 0)::int AS total_beds
-    FROM properties
-    WHERE owner_id = ${ownerId}
+    SELECT COALESCE(COUNT(b.id), 0)::int AS total_beds
+    FROM beds b
+    JOIN rooms r ON r.id = b.room_id
+    JOIN properties p ON p.id = r.property_id
+    WHERE p.owner_id = ${ownerId}
   `;
   const totalBeds = totalBedsResult[0]?.total_beds ?? 0;
 

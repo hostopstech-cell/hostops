@@ -66,6 +66,41 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check property bed limit
+    const roomInfo = await sql`
+      SELECT r.property_id, p.total_beds
+      FROM rooms r
+      JOIN properties p ON p.id = r.property_id
+      WHERE r.id = ${roomId}
+    `;
+
+    if (!roomInfo || roomInfo.length === 0) {
+      return NextResponse.json(
+        { error: "Room not found" },
+        { status: 404 }
+      );
+    }
+
+    const propertyId = roomInfo[0].property_id;
+    const totalBedsLimit = roomInfo[0].total_beds;
+
+    // Count existing beds for this property
+    const existingBeds = await sql`
+      SELECT COUNT(*)::int as count
+      FROM beds b
+      JOIN rooms r ON r.id = b.room_id
+      WHERE r.property_id = ${propertyId}
+    `;
+
+    const currentBedCount = existingBeds[0]?.count || 0;
+
+    if (currentBedCount >= totalBedsLimit) {
+      return NextResponse.json(
+        { error: `You have only ${totalBedsLimit - currentBedCount} beds remaining. Please increase total beds in Property Settings first.` },
+        { status: 400 }
+      );
+    }
+
     const rows = await sql`
       INSERT INTO beds (room_id, bed_number, bed_type, price_per_night, status)
       VALUES (${roomId}, ${bedNumber.trim()}, ${bedType || 'normal'}, ${price}, ${status || 'available'})

@@ -7,9 +7,8 @@ import { Plus, Edit, Trash2, BedDouble, MapPin, Building2 } from "lucide-react";
 
 const ROOM_TYPES: { value: RoomType; label: string }[] = [
   { value: "dorm", label: "Dorm" },
-  { value: "private", label: "Private" },
-  { value: "deluxe", label: "Deluxe" },
-  { value: "family", label: "Family" },
+  { value: "private", label: "Private Room" },
+  { value: "luxury", label: "Luxury Room" },
 ];
 
 const BED_TYPES: { value: BedType; label: string }[] = [
@@ -264,6 +263,14 @@ export default function RoomsPage() {
       })
     : beds;
 
+  // Calculate remaining beds for selected property
+  const selectedPropertyData = selectedProperty
+    ? properties.find((p) => p.id === selectedProperty)
+    : null;
+  const totalBedsLimit = selectedPropertyData?.total_beds || 0;
+  const currentBedCount = filteredBeds.length;
+  const remainingBeds = Math.max(totalBedsLimit - currentBedCount, 0);
+
   function getBedStatusColor(status: string) {
     switch (status) {
       case "available":
@@ -311,6 +318,38 @@ export default function RoomsPage() {
             </option>
           ))}
         </select>
+        {selectedPropertyData && (
+          <div className="mt-4 p-4 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-700">Bed Capacity</p>
+                <p className="text-xs text-slate-500">{selectedPropertyData.name}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-slate-900">
+                  {currentBedCount} / {totalBedsLimit}
+                </p>
+                <p className={`text-sm font-semibold ${
+                  remainingBeds === 0 ? 'text-red-600' :
+                  remainingBeds <= totalBedsLimit * 0.2 ? 'text-orange-600' :
+                  'text-emerald-600'
+                }`}>
+                  {remainingBeds} beds remaining
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${
+                  remainingBeds === 0 ? 'bg-red-500' :
+                  remainingBeds <= totalBedsLimit * 0.2 ? 'bg-orange-500' :
+                  'bg-emerald-500'
+                }`}
+                style={{ width: `${(currentBedCount / totalBedsLimit) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Room Form */}
