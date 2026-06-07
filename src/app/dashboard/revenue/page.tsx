@@ -20,47 +20,94 @@ export default function RevenuePage() {
   });
 
   useEffect(() => {
-    // Mock data for now - will be replaced with API calls
-    setTimeout(() => {
-      setRevenueData({
-        daily: 12500,
-        weekly: 87500,
-        monthly: 345000,
-        yearly: 4140000,
-        byProperty: [
-          { name: "Backpacker's Inn", revenue: 180000 },
-          { name: "City Hostel", revenue: 120000 },
-          { name: "Beach Guesthouse", revenue: 45000 },
-        ],
-        bySource: [
-          { name: "Direct", revenue: 150000, value: 43 },
-          { name: "Airbnb", revenue: 100000, value: 29 },
-          { name: "Walk-in", revenue: 65000, value: 19 },
-          { name: "Booking.com", revenue: 30000, value: 9 },
-        ],
-        trend: [
-          { date: "Jan 1", revenue: 12000 },
-          { date: "Jan 2", revenue: 15000 },
-          { date: "Jan 3", revenue: 11000 },
-          { date: "Jan 4", revenue: 18000 },
-          { date: "Jan 5", revenue: 14000 },
-          { date: "Jan 6", revenue: 16000 },
-          { date: "Jan 7", revenue: 13000 },
-          { date: "Jan 8", revenue: 17000 },
-          { date: "Jan 9", revenue: 19000 },
-          { date: "Jan 10", revenue: 12500 },
-        ],
-        monthlyComparison: [
-          { month: "Jan", revenue: 280000, lastYear: 220000 },
-          { month: "Feb", revenue: 310000, lastYear: 240000 },
-          { month: "Mar", revenue: 345000, lastYear: 260000 },
-          { month: "Apr", revenue: 290000, lastYear: 230000 },
-          { month: "May", revenue: 320000, lastYear: 250000 },
-          { month: "Jun", revenue: 350000, lastYear: 270000 },
-        ],
-      });
-      setLoading(false);
-    }, 1000);
+    async function fetchRevenueData() {
+      try {
+        const response = await fetch('/api/payments');
+        const data = await response.json();
+        
+        if (data.payments) {
+          const payments = data.payments;
+          const today = new Date();
+          const todayStr = today.toISOString().split('T')[0];
+          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+          const yearStart = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+          
+          // Calculate revenue by time period
+          const dailyRevenue = payments
+            .filter((p: any) => p.date === todayStr && p.status === 'paid')
+            .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+          
+          const weeklyRevenue = payments
+            .filter((p: any) => p.date >= weekAgo && p.status === 'paid')
+            .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+          
+          const monthlyRevenue = payments
+            .filter((p: any) => p.date >= monthStart && p.status === 'paid')
+            .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+          
+          const yearlyRevenue = payments
+            .filter((p: any) => p.date >= yearStart && p.status === 'paid')
+            .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+          
+          // Revenue by property (need to join with bookings)
+          const byProperty: { name: string; revenue: number }[] = [];
+          
+          // Revenue by source (need booking source data)
+          const bySource: { name: string; revenue: number; value: number }[] = [];
+          
+          // Trend data for last 30 days
+          const trend: { date: string; revenue: number }[] = [];
+          for (let i = 29; i >= 0; i--) {
+            const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const dayRevenue = payments
+              .filter((p: any) => p.date === date && p.status === 'paid')
+              .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+            trend.push({ date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), revenue: dayRevenue });
+          }
+          
+          // Monthly comparison (last 6 months)
+          const monthlyComparison: { month: string; revenue: number; lastYear: number }[] = [];
+          for (let i = 5; i >= 0; i--) {
+            const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const monthStr = month.toLocaleDateString('en-US', { month: 'short' });
+            const monthStartStr = month.toISOString().split('T')[0];
+            const monthEndStr = new Date(month.getFullYear(), month.getMonth() + 1, 0).toISOString().split('T')[0];
+            
+            const revenue = payments
+              .filter((p: any) => p.date >= monthStartStr && p.date <= monthEndStr && p.status === 'paid')
+              .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+            
+            // Last year same month
+            const lastYearMonth = new Date(month.getFullYear() - 1, month.getMonth(), 1);
+            const lastYearStart = lastYearMonth.toISOString().split('T')[0];
+            const lastYearEnd = new Date(lastYearMonth.getFullYear(), lastYearMonth.getMonth() + 1, 0).toISOString().split('T')[0];
+            const lastYearRevenue = payments
+              .filter((p: any) => p.date >= lastYearStart && p.date <= lastYearEnd && p.status === 'paid')
+              .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+            
+            monthlyComparison.push({ month: monthStr, revenue, lastYear: lastYearRevenue });
+          }
+          
+          setRevenueData({
+            daily: dailyRevenue,
+            weekly: weeklyRevenue,
+            monthly: monthlyRevenue,
+            yearly: yearlyRevenue,
+            byProperty,
+            bySource,
+            trend,
+            monthlyComparison,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching revenue data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchRevenueData();
   }, []);
 
   if (loading) {
@@ -83,10 +130,10 @@ export default function RevenuePage() {
 
       {/* Revenue Cards */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-orange-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-orange flex items-center justify-center">
-              <Calendar size={24} />
+            <div className="h-12 w-12 rounded-xl bg-orange-50 flex items-center justify-center">
+              <Calendar size={24} className="text-orange-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Daily</span>
           </div>
@@ -95,10 +142,10 @@ export default function RevenuePage() {
           </p>
           <p className="mt-1 text-sm text-slate-500">Daily revenue</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-blue-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-blue flex items-center justify-center">
-              <TrendingUp size={24} />
+            <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
+              <TrendingUp size={24} className="text-blue-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Weekly</span>
           </div>
@@ -107,10 +154,10 @@ export default function RevenuePage() {
           </p>
           <p className="mt-1 text-sm text-slate-500">Weekly revenue</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-emerald-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-green flex items-center justify-center">
-              <DollarSign size={24} />
+            <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <DollarSign size={24} className="text-emerald-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monthly</span>
           </div>
@@ -119,10 +166,10 @@ export default function RevenuePage() {
           </p>
           <p className="mt-1 text-sm text-slate-500">Monthly revenue</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card border-l-4 border-l-purple-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-xl icon-bg-purple flex items-center justify-center">
-              <Building2 size={24} />
+            <div className="h-12 w-12 rounded-xl bg-purple-50 flex items-center justify-center">
+              <Building2 size={24} className="text-purple-600" />
             </div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Yearly</span>
           </div>

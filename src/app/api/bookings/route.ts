@@ -54,9 +54,9 @@ export async function POST(request: Request) {
       specialRequests, notes, bookingCode, finalAmount
     } = body;
 
-    if (!guestName?.trim() || !guestPhone?.trim() || !propertyId || !checkIn || !checkOut || !numberOfGuests || !amount) {
+    if (!guestName?.trim() || !guestPhone?.trim() || !propertyId || !checkIn || !checkOut || !numberOfGuests || !amount || !paymentMethod || !paymentStatus) {
       return NextResponse.json(
-        { error: "Guest name, phone, property, check-in, check-out, guests, and amount are required" },
+        { error: "Guest name, phone, property, check-in, check-out, guests, amount, payment method, and payment status are required" },
         { status: 400 }
       );
     }
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (paymentMethod && !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+    if (!VALID_PAYMENT_METHODS.includes(paymentMethod)) {
       return NextResponse.json(
         { error: "Invalid payment method" },
         { status: 400 }
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
         ${propertyId}, ${roomId || null}, ${bedId || null},
         ${guestName.trim()}, ${guestPhone.trim()}, ${guestEmail?.trim() || null},
         ${checkIn}, ${checkOut}, ${guests}, ${amt}, ${disc}, ${final},
-        ${paymentMethod || null}, ${paymentStatus || 'pending'}, ${bookingSource || 'direct'},
+        ${paymentMethod}, ${paymentStatus}, ${bookingSource || 'direct'},
         ${specialRequests?.trim() || null}, ${notes?.trim() || null},
         ${bookingCode || 'BK' + Date.now()}, 'confirmed'
       )
@@ -114,7 +114,18 @@ export async function POST(request: Request) {
                payment_method, payment_status, booking_source, special_requests, notes, status, created_at
     `;
 
-    return NextResponse.json({ booking: rows[0] }, { status: 201 });
+    const booking = rows[0];
+
+    // Auto-create payment record
+    await sql`
+      INSERT INTO payments (booking_id, guest_name, amount, date, method, status, notes)
+      VALUES (
+        ${booking.id}, ${guestName.trim()}, ${final}, ${checkIn}, ${paymentMethod}, ${paymentStatus},
+        ${'Auto-created with booking ' + booking.booking_code}
+      )
+    `;
+
+    return NextResponse.json({ booking }, { status: 201 });
   } catch (error) {
     console.error("Booking create error:", error);
     return NextResponse.json(

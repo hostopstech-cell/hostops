@@ -1,22 +1,77 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Globe, TrendingUp, DollarSign } from "lucide-react";
 
 const COLORS = ["#F97316", "#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#6366F1", "#14B8A6"];
 
 export default function BookingSourcesPage() {
-  const sourceData = [
-    { name: "Direct", bookings: 145, revenue: 435000, percentage: 43 },
-    { name: "Airbnb", bookings: 89, revenue: 312000, percentage: 29 },
-    { name: "Walk-in", bookings: 67, revenue: 134000, percentage: 19 },
-    { name: "Booking.com", bookings: 34, revenue: 102000, percentage: 9 },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [sourceData, setSourceData] = useState<{
+    name: string;
+    bookings: number;
+    revenue: number;
+    percentage: number;
+  }[]>([]);
+
+  useEffect(() => {
+    async function fetchBookingSources() {
+      try {
+        const response = await fetch('/api/bookings');
+        const data = await response.json();
+        
+        if (data.bookings) {
+          const bookings = data.bookings;
+          
+          // Group bookings by source (assuming source field exists in bookings table)
+          const sourceMap = new Map<string, { bookings: number; revenue: number }>();
+          
+          bookings.forEach((booking: any) => {
+            const source = booking.source || 'Direct';
+            if (!sourceMap.has(source)) {
+              sourceMap.set(source, { bookings: 0, revenue: 0 });
+            }
+            const current = sourceMap.get(source)!;
+            current.bookings++;
+            current.revenue += parseFloat(booking.total_amount || 0);
+          });
+          
+          const totalBookings = bookings.length;
+          const totalRevenue = bookings.reduce((sum: number, b: any) => sum + parseFloat(b.total_amount || 0), 0);
+          
+          const sources = Array.from(sourceMap.entries()).map(([name, data]) => ({
+            name,
+            bookings: data.bookings,
+            revenue: data.revenue,
+            percentage: totalBookings > 0 ? Math.round((data.bookings / totalBookings) * 100) : 0,
+          }));
+          
+          setSourceData(sources);
+        }
+      } catch (error) {
+        console.error('Error fetching booking sources:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchBookingSources();
+  }, []);
 
   const pieData = sourceData.map((item) => ({
     name: item.name,
     value: item.percentage,
   }));
+
+  if (loading) {
+    return (
+      <div className="card p-12 text-center">
+        <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-slate-600">Loading booking sources...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

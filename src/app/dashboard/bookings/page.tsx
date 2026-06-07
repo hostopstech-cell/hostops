@@ -498,9 +498,10 @@ export default function BookingsPage() {
             </div>
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Payment Method
+                Payment Method *
               </label>
               <select
+                required
                 value={form.paymentMethod}
                 onChange={(e) => setForm({ ...form, paymentMethod: e.target.value as PaymentMethod })}
                 className="input-field"
@@ -514,9 +515,10 @@ export default function BookingsPage() {
             </div>
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Payment Status
+                Payment Status *
               </label>
               <select
+                required
                 value={form.paymentStatus}
                 onChange={(e) => setForm({ ...form, paymentStatus: e.target.value as "paid" | "pending" | "partial" | "refunded" })}
                 className="input-field"
