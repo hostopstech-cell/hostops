@@ -74,6 +74,39 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check property bed limit
+    const propertyInfo = await sql`
+      SELECT total_beds
+      FROM properties
+      WHERE id = ${propertyId} AND owner_id = ${owner.ownerId}
+    `;
+
+    if (!propertyInfo || propertyInfo.length === 0) {
+      return NextResponse.json(
+        { error: "Property not found" },
+        { status: 404 }
+      );
+    }
+
+    const totalBedsLimit = propertyInfo[0].total_beds;
+
+    // Calculate existing room capacity for this property
+    const existingCapacity = await sql`
+      SELECT COALESCE(SUM(capacity), 0)::int as total_capacity
+      FROM rooms
+      WHERE property_id = ${propertyId}
+    `;
+
+    const currentCapacity = existingCapacity[0]?.total_capacity || 0;
+    const newTotalCapacity = currentCapacity + cap;
+
+    if (newTotalCapacity > totalBedsLimit) {
+      return NextResponse.json(
+        { error: `Cannot add room. Total capacity (${newTotalCapacity}) would exceed property limit (${totalBedsLimit}). Please increase total beds in Property Settings first.` },
+        { status: 400 }
+      );
+    }
+
     const rows = await sql`
       INSERT INTO rooms (property_id, name, type, capacity, price_per_night, status)
       VALUES (${propertyId}, ${name.trim()}, ${type}, ${cap}, ${price}, ${status || 'available'})

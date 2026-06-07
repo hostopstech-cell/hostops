@@ -270,6 +270,11 @@ export default function RoomsPage() {
   const totalBedsLimit = selectedPropertyData?.total_beds || 0;
   const currentBedCount = filteredBeds.length;
   const remainingBeds = Math.max(totalBedsLimit - currentBedCount, 0);
+  
+  // Calculate total room capacity (sum of all room capacities)
+  const totalRoomCapacity = filteredRooms.reduce((sum, room) => sum + room.capacity, 0);
+  const roomCount = filteredRooms.length;
+  const capacityUsagePercent = totalBedsLimit > 0 ? (totalRoomCapacity / totalBedsLimit) * 100 : 0;
 
   function getBedStatusColor(status: string) {
     switch (status) {
@@ -327,26 +332,43 @@ export default function RoomsPage() {
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-slate-900">
-                  {currentBedCount} / {totalBedsLimit}
+                  {totalRoomCapacity} / {totalBedsLimit}
                 </p>
                 <p className={`text-sm font-semibold ${
-                  remainingBeds === 0 ? 'text-red-600' :
-                  remainingBeds <= totalBedsLimit * 0.2 ? 'text-orange-600' :
+                  capacityUsagePercent > 100 ? 'text-red-600' :
+                  capacityUsagePercent >= 80 ? 'text-orange-600' :
                   'text-emerald-600'
                 }`}>
-                  {remainingBeds} beds remaining
+                  {capacityUsagePercent > 100 ? 'Over limit!' :
+                   capacityUsagePercent >= 80 ? 'Near limit' :
+                   'On track'}
                 </p>
               </div>
             </div>
             <div className="mt-3 w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full ${
-                  remainingBeds === 0 ? 'bg-red-500' :
-                  remainingBeds <= totalBedsLimit * 0.2 ? 'bg-orange-500' :
+                  capacityUsagePercent > 100 ? 'bg-red-500' :
+                  capacityUsagePercent >= 80 ? 'bg-orange-500' :
                   'bg-emerald-500'
                 }`}
-                style={{ width: `${(currentBedCount / totalBedsLimit) * 100}%` }}
+                style={{ width: `${Math.min(capacityUsagePercent, 100)}%` }}
               />
+            </div>
+            {capacityUsagePercent > 100 && (
+              <p className="mt-2 text-xs font-semibold text-red-600">
+                ⚠️ Room capacity ({totalRoomCapacity}) exceeds property limit ({totalBedsLimit}). Please increase total beds in Property Settings.
+              </p>
+            )}
+            <div className="mt-3 text-xs text-slate-600 flex flex-wrap gap-2">
+              <span className="font-semibold">Summary:</span>
+              <span>Rooms: {roomCount}</span>
+              <span>|</span>
+              <span>Total Room Capacity: {totalRoomCapacity}</span>
+              <span>|</span>
+              <span>Actual Beds Added: {currentBedCount}</span>
+              <span>|</span>
+              <span>Property Limit: {totalBedsLimit}</span>
             </div>
           </div>
         )}
@@ -678,12 +700,18 @@ export default function RoomsPage() {
                     <h4 className="text-sm font-semibold text-slate-700">
                       Beds ({roomBeds.length})
                     </h4>
-                    <button
-                      onClick={() => handleAddBed(room)}
-                      className="text-sm font-semibold text-orange-600 hover:text-orange-700"
-                    >
-                      + Add Bed
-                    </button>
+                    {currentBedCount >= totalBedsLimit ? (
+                      <span className="text-sm font-semibold text-red-600">
+                        Bed limit reached ({currentBedCount}/{totalBedsLimit})
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleAddBed(room)}
+                        className="text-sm font-semibold text-orange-600 hover:text-orange-700"
+                      >
+                        + Add Bed
+                      </button>
+                    )}
                   </div>
 
                   {roomBeds.length === 0 ? (
