@@ -22,7 +22,7 @@ export async function getDashboardStats(
   const monthStart = `${today.slice(0, 8)}01`;
 
   const occupiedResult = await sql`
-    SELECT COALESCE(SUM(b.beds), 0)::int AS occupied_beds
+    SELECT COALESCE(SUM(b.number_of_guests), 0)::int AS occupied_beds
     FROM bookings b
     JOIN properties p ON p.id = b.property_id
     WHERE p.owner_id = ${ownerId}
@@ -33,7 +33,7 @@ export async function getDashboardStats(
   const occupiedBeds = occupiedResult[0]?.occupied_beds ?? 0;
 
   const revenueTodayResult = await sql`
-    SELECT COALESCE(SUM(b.amount), 0)::float AS revenue
+    SELECT COALESCE(SUM(b.final_amount), 0)::float AS revenue
     FROM bookings b
     JOIN properties p ON p.id = b.property_id
     WHERE p.owner_id = ${ownerId}
@@ -43,7 +43,7 @@ export async function getDashboardStats(
   const revenueToday = revenueTodayResult[0]?.revenue ?? 0;
 
   const revenueMonthResult = await sql`
-    SELECT COALESCE(SUM(b.amount), 0)::float AS revenue
+    SELECT COALESCE(SUM(b.final_amount), 0)::float AS revenue
     FROM bookings b
     JOIN properties p ON p.id = b.property_id
     WHERE p.owner_id = ${ownerId}
@@ -53,11 +53,30 @@ export async function getDashboardStats(
   `;
   const revenueMonth = revenueMonthResult[0]?.revenue ?? 0;
 
+  const checkinsTodayResult = await sql`
+    SELECT COUNT(*)::int AS count
+    FROM bookings b
+    JOIN properties p ON p.id = b.property_id
+    WHERE p.owner_id = ${ownerId}
+      AND b.check_in = ${today}::date
+      AND b.status != 'cancelled'
+  `;
+  const checkinsToday = checkinsTodayResult[0]?.count ?? 0;
+
+  const checkoutsTodayResult = await sql`
+    SELECT COUNT(*)::int AS count
+    FROM bookings b
+    JOIN properties p ON p.id = b.property_id
+    WHERE p.owner_id = ${ownerId}
+      AND b.check_out = ${today}::date
+      AND b.status != 'cancelled'
+  `;
+  const checkoutsToday = checkoutsTodayResult[0]?.count ?? 0;
+
   const todaysCheckins = await sql`
     SELECT
       b.id,
       b.guest_name,
-      b.beds,
       b.check_in,
       b.status,
       p.name AS property_name
@@ -69,18 +88,54 @@ export async function getDashboardStats(
     ORDER BY b.created_at ASC
   `;
 
+  const todaysCheckouts = await sql`
+    SELECT
+      b.id,
+      b.guest_name,
+      b.check_out,
+      b.status,
+      p.name AS property_name
+    FROM bookings b
+    JOIN properties p ON p.id = b.property_id
+    WHERE p.owner_id = ${ownerId}
+      AND b.check_out = ${today}::date
+      AND b.status != 'cancelled'
+    ORDER BY b.check_out ASC
+  `;
+
+  const recentBookings = await sql`
+    SELECT
+      b.id,
+      b.booking_code,
+      b.guest_name,
+      b.check_in,
+      b.check_out,
+      b.status,
+      p.name AS property_name
+    FROM bookings b
+    JOIN properties p ON p.id = b.property_id
+    WHERE p.owner_id = ${ownerId}
+    ORDER BY b.created_at DESC
+    LIMIT 10
+  `;
+
   const availableBeds = Math.max(totalBeds - occupiedBeds, 0);
   const occupancyRate =
     totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
   return {
+    totalProperties: properties.length,
     totalBeds,
     occupiedBeds,
     availableBeds,
     occupancyRate,
     revenueToday,
     revenueMonth,
+    checkinsToday,
+    checkoutsToday,
     todaysCheckins: todaysCheckins as DashboardStats["todaysCheckins"],
+    todaysCheckouts: todaysCheckouts as DashboardStats["todaysCheckouts"],
+    recentBookings: recentBookings as DashboardStats["recentBookings"],
     properties: properties as DashboardStats["properties"],
   };
 }

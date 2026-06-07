@@ -15,7 +15,9 @@ export async function GET() {
     }
 
     const properties = await sql`
-      SELECT id, owner_id, name, type, address, city, state, total_beds, created_at
+      SELECT id, owner_id, name, type, address, city, state, pincode, contact, email,
+             description, check_in_time, check_out_time, amenities, policies,
+             google_map_link, upi_id, total_beds, status, created_at
       FROM properties
       WHERE owner_id = ${owner.ownerId}
       ORDER BY created_at DESC
@@ -39,11 +41,16 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, type, address, city, state, totalBeds } = body;
+    const {
+      name, type, address, city, state, totalBeds,
+      pincode, contact, email, description,
+      checkInTime, checkOutTime, amenities, policies,
+      googleMapLink, upiId, status
+    } = body;
 
     if (!name?.trim() || !type || !address?.trim() || !city?.trim() || !state?.trim()) {
       return NextResponse.json(
-        { error: "All property fields are required" },
+        { error: "Name, type, address, city, and state are required" },
         { status: 400 }
       );
     }
@@ -64,7 +71,11 @@ export async function POST(request: Request) {
     }
 
     const rows = await sql`
-      INSERT INTO properties (owner_id, name, type, address, city, state, total_beds)
+      INSERT INTO properties (
+        owner_id, name, type, address, city, state, pincode, contact, email,
+        description, check_in_time, check_out_time, amenities, policies,
+        google_map_link, upi_id, total_beds, status
+      )
       VALUES (
         ${owner.ownerId},
         ${name.trim()},
@@ -72,9 +83,22 @@ export async function POST(request: Request) {
         ${address.trim()},
         ${city.trim()},
         ${state.trim()},
-        ${beds}
+        ${pincode?.trim() || null},
+        ${contact?.trim() || null},
+        ${email?.trim() || null},
+        ${description?.trim() || null},
+        ${checkInTime || '14:00'},
+        ${checkOutTime || '11:00'},
+        ${amenities || null},
+        ${policies?.trim() || null},
+        ${googleMapLink?.trim() || null},
+        ${upiId?.trim() || null},
+        ${beds},
+        ${status || 'active'}
       )
-      RETURNING id, owner_id, name, type, address, city, state, total_beds, created_at
+      RETURNING id, owner_id, name, type, address, city, state, pincode, contact, email,
+               description, check_in_time, check_out_time, amenities, policies,
+               google_map_link, upi_id, total_beds, status, created_at
     `;
 
     return NextResponse.json({ property: rows[0] }, { status: 201 });

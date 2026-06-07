@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAuthenticatedOwner } from "@/lib/auth";
-import DashboardNav from "@/components/DashboardNav";
+import Sidebar from "@/components/Sidebar";
 
 export default async function DashboardLayout({
   children,
@@ -14,9 +14,11 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <DashboardNav ownerName={owner.name} />
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+    <div className="min-h-screen bg-slate-50 flex">
+      <Sidebar ownerName={owner.name} />
+      <main className="flex-1 lg:ml-64 p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">{children}</div>
+      </main>
     </div>
   );
 }
