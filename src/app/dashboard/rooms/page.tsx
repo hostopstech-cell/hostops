@@ -300,7 +300,6 @@ export default function RoomsPage() {
         return "bg-slate-500";
     }
   }
-  }
 
   return (
     <div className="space-y-8">
