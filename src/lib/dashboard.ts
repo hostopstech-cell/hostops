@@ -12,10 +12,8 @@ export async function getDashboardStats(
   `;
 
   const totalBedsResult = await sql`
-    SELECT COALESCE(COUNT(b.id), 0)::int AS total_beds
-    FROM beds b
-    JOIN rooms r ON r.id = b.room_id
-    JOIN properties p ON p.id = r.property_id
+    SELECT COALESCE(SUM(p.total_beds), 0)::int AS total_beds
+    FROM properties p
     WHERE p.owner_id = ${ownerId}
   `;
   const totalBeds = totalBedsResult[0]?.total_beds ?? 0;
@@ -24,13 +22,12 @@ export async function getDashboardStats(
   const monthStart = `${today.slice(0, 8)}01`;
 
   const occupiedResult = await sql`
-    SELECT COALESCE(SUM(b.number_of_guests), 0)::int AS occupied_beds
-    FROM bookings b
-    JOIN properties p ON p.id = b.property_id
+    SELECT COALESCE(COUNT(b.id), 0)::int AS occupied_beds
+    FROM beds b
+    JOIN rooms r ON r.id = b.room_id
+    JOIN properties p ON p.id = r.property_id
     WHERE p.owner_id = ${ownerId}
-      AND b.status IN ('confirmed', 'checked_in')
-      AND b.check_in <= ${today}::date
-      AND b.check_out > ${today}::date
+      AND b.status = 'occupied'
   `;
   const occupiedBeds = occupiedResult[0]?.occupied_beds ?? 0;
 

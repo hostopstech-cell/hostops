@@ -271,10 +271,15 @@ export default function RoomsPage() {
   const currentBedCount = filteredBeds.length;
   const remainingBeds = Math.max(totalBedsLimit - currentBedCount, 0);
   
-  // Calculate total room capacity (sum of all room capacities)
+  // Calculate bed status counts
+  const bookedBeds = filteredBeds.filter((b) => b.status === 'occupied').length;
+  const availableBeds = filteredBeds.filter((b) => b.status === 'available').length;
+  const maintenanceBeds = filteredBeds.filter((b) => b.status === 'maintenance').length;
+  
+  // Calculate total room capacity (for reference only, not for limit)
   const totalRoomCapacity = filteredRooms.reduce((sum, room) => sum + room.capacity, 0);
   const roomCount = filteredRooms.length;
-  const capacityUsagePercent = totalBedsLimit > 0 ? (totalRoomCapacity / totalBedsLimit) * 100 : 0;
+  const bedUsagePercent = totalBedsLimit > 0 ? (currentBedCount / totalBedsLimit) * 100 : 0;
 
   function getBedStatusColor(status: string) {
     switch (status) {
@@ -327,20 +332,20 @@ export default function RoomsPage() {
           <div className="mt-4 p-4 bg-slate-50 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-slate-700">Bed Capacity</p>
+                <p className="text-sm font-semibold text-slate-700">Beds Added</p>
                 <p className="text-xs text-slate-500">{selectedPropertyData.name}</p>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-slate-900">
-                  {totalRoomCapacity} / {totalBedsLimit}
+                  {currentBedCount} / {totalBedsLimit}
                 </p>
                 <p className={`text-sm font-semibold ${
-                  capacityUsagePercent > 100 ? 'text-red-600' :
-                  capacityUsagePercent >= 80 ? 'text-orange-600' :
+                  bedUsagePercent >= 100 ? 'text-red-600' :
+                  bedUsagePercent >= 80 ? 'text-orange-600' :
                   'text-emerald-600'
                 }`}>
-                  {capacityUsagePercent > 100 ? 'Over limit!' :
-                   capacityUsagePercent >= 80 ? 'Near limit' :
+                  {bedUsagePercent >= 100 ? 'Limit reached!' :
+                   bedUsagePercent >= 80 ? 'Near limit' :
                    'On track'}
                 </p>
               </div>
@@ -348,25 +353,25 @@ export default function RoomsPage() {
             <div className="mt-3 w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full ${
-                  capacityUsagePercent > 100 ? 'bg-red-500' :
-                  capacityUsagePercent >= 80 ? 'bg-orange-500' :
+                  bedUsagePercent >= 100 ? 'bg-red-500' :
+                  bedUsagePercent >= 80 ? 'bg-orange-500' :
                   'bg-emerald-500'
                 }`}
-                style={{ width: `${Math.min(capacityUsagePercent, 100)}%` }}
+                style={{ width: `${Math.min(bedUsagePercent, 100)}%` }}
               />
             </div>
-            {capacityUsagePercent > 100 && (
+            {bedUsagePercent >= 100 && (
               <p className="mt-2 text-xs font-semibold text-red-600">
-                ⚠️ Room capacity ({totalRoomCapacity}) exceeds property limit ({totalBedsLimit}). Please increase total beds in Property Settings.
+                ⚠️ All {totalBedsLimit} beds are added. Cannot add more beds.
               </p>
             )}
             <div className="mt-3 text-xs text-slate-600 flex flex-wrap gap-2">
               <span className="font-semibold">Summary:</span>
-              <span>Rooms: {roomCount}</span>
+              <span>Beds Added: {currentBedCount}</span>
               <span>|</span>
-              <span>Total Room Capacity: {totalRoomCapacity}</span>
+              <span>Available: {availableBeds}</span>
               <span>|</span>
-              <span>Actual Beds Added: {currentBedCount}</span>
+              <span>Booked: {bookedBeds}</span>
               <span>|</span>
               <span>Property Limit: {totalBedsLimit}</span>
             </div>

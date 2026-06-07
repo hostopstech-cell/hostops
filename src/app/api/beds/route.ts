@@ -16,7 +16,7 @@ export async function GET() {
 
     const beds = await sql`
       SELECT b.id, b.room_id, b.bed_number, b.bed_type, b.price_per_night,
-             b.status, b.created_at, r.name as room_name, p.name as property_name
+             b.status, b.created_at, r.name as room_name, r.property_id, p.name as property_name
       FROM beds b
       JOIN rooms r ON r.id = b.room_id
       JOIN properties p ON p.id = r.property_id
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
 
     if (currentBedCount >= totalBedsLimit) {
       return NextResponse.json(
-        { error: `You have only ${totalBedsLimit - currentBedCount} beds remaining. Please increase total beds in Property Settings first.` },
+        { error: `All ${totalBedsLimit} beds are added. Cannot add more.` },
         { status: 400 }
       );
     }
