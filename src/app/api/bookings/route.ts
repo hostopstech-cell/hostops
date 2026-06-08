@@ -142,6 +142,33 @@ export async function POST(request: Request) {
         )
       `;
     }
+
+    // Auto-save guest
+    const existingGuest = await sql`
+      SELECT id, total_stays, total_spent FROM guests 
+      WHERE owner_id = ${owner.ownerId} 
+      AND phone = ${guestPhone.trim()}
+      LIMIT 1
+    `;
+    if (existingGuest.length > 0) {
+      await sql`
+        UPDATE guests 
+        SET name = ${guestName.trim()},
+            email = ${guestEmail?.trim() || null},
+            total_stays = ${(existingGuest[0].total_stays || 0) + 1},
+            total_spent = ${(parseFloat(existingGuest[0].total_spent) || 0) + final},
+            last_visit = ${checkIn}
+        WHERE id = ${existingGuest[0].id}
+      `;
+    } else {
+      await sql`
+        INSERT INTO guests (owner_id, name, phone, email, total_stays, total_spent, last_visit, created_at)
+        VALUES (
+          ${owner.ownerId}, ${guestName.trim()}, ${guestPhone.trim()},
+          ${guestEmail?.trim() || null}, 1, ${final}, ${checkIn}, NOW()
+        )
+      `;
+    }
     // Auto-create payment record
     await sql`
       INSERT INTO payments (booking_id, guest_name, amount, date, method, status, notes)
