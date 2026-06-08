@@ -188,7 +188,7 @@ export default function PropertiesPage() {
     setForm(prev => ({
       ...prev,
       amenities: prev.amenities.includes(amenity)
-        ? prev.amenities.filter(a => a !== amenity)
+        ? prev.amenities?.filter(a => a !== amenity)
         : [...prev.amenities, amenity]
     }));
   }
@@ -253,7 +253,7 @@ export default function PropertiesPage() {
                 }
                 className="input-field"
               >
-                {PROPERTY_TYPES.map((t) => (
+                {PROPERTY_TYPES?.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
                   </option>
@@ -295,7 +295,7 @@ export default function PropertiesPage() {
                 onChange={(e) => setForm({ ...form, state: e.target.value })}
                 className="input-field"
               >
-                {INDIAN_STATES.map((state) => (
+                {INDIAN_STATES?.map((state) => (
                   <option key={state} value={state}>
                     {state}
                   </option>
@@ -406,7 +406,7 @@ export default function PropertiesPage() {
                 Amenities
               </label>
               <div className="flex flex-wrap gap-2">
-                {AMENITIES_OPTIONS.map((amenity) => (
+                {AMENITIES_OPTIONS?.map((amenity) => (
                   <button
                     key={amenity}
                     type="button"
@@ -512,7 +512,7 @@ export default function PropertiesPage() {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {properties.map((property) => (
+          {properties?.map((property) => (
             <div
               key={property.id}
               className="card-premium p-6 hover:border-orange-300 transition-all duration-200"
@@ -581,7 +581,7 @@ export default function PropertiesPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-slate-900">
-                      Beds: {rooms.filter(r => r.property_id === property.id).reduce((sum, r) => sum + r.capacity, 0)} / {property.total_beds}
+                      Beds: {rooms?.filter(r => r.property_id === property.id).reduce((sum, r) => sum + r.capacity, 0)} / {property.total_beds}
                     </span>
                     {property.amenities && property.amenities.length > 0 && (
                       <span className="text-xs text-slate-500">
