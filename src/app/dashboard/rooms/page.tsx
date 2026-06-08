@@ -675,7 +675,7 @@ export default function RoomsPage() {
                             {capitalize(room.type)}
                           </span>
                           <span className="text-slate-400">•</span>
-                          <span className="font-medium">Capacity: {room.number_of_beds}</span>
+                          <span className="font-medium">Capacity: {room.capacity}</span>
                           <span className="text-slate-400">•</span>
                           <span className="font-semibold text-orange-600">₹{room.price_per_night}/night</span>
                         </div>
