@@ -8,60 +8,30 @@ const pool = new Pool({
 
 export async function GET() {
   try {
-    const properties = await pool.query('SELECT * FROM properties WHERE status = $1', ['active']).catch(() => ({ rows: [] }))
-    const beds = await pool.query('SELECT * FROM beds').catch(() => ({ rows: [] }))
+    const props = await pool.query('SELECT COUNT(*) as count FROM properties').catch(() => ({ rows: [{ count: 0 }] }))
+    const rooms = await pool.query('SELECT SUM(number_of_beds) as total FROM rooms').catch(() => ({ rows: [{ total: 0 }] }))
     const bookings = await pool.query('SELECT * FROM bookings').catch(() => ({ rows: [] }))
-    const guests = await pool.query('SELECT * FROM guests').catch(() => ({ rows: [] }))
 
-    const totalBeds = beds.rows.length || 0
-    const occupiedBeds = beds.rows.filter((b: any) => b.status === 'booked').length || 0
-    const availableBeds = totalBeds - occupiedBeds
-    const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0
-
+    const totalBeds = Number(rooms.rows[0]?.total) || 0
     const today = new Date().toISOString().split('T')[0]
-    const todayRevenue = bookings.rows
-      .filter((b: any) => b.check_in_date?.toString().startsWith(today))
-      .reduce((sum: number, b: any) => sum + (parseFloat(b.amount) || 0), 0)
-
     const thisMonth = new Date().toISOString().slice(0, 7)
-    const monthRevenue = bookings.rows
-      .filter((b: any) => b.check_in_date?.toString().startsWith(thisMonth))
-      .reduce((sum: number, b: any) => sum + (parseFloat(b.amount) || 0), 0)
 
-    const todaysCheckins = bookings.rows.filter((b: any) => b.check_in_date?.toString().startsWith(today)) || []
-    const todaysCheckouts = bookings.rows.filter((b: any) => b.check_out_date?.toString().startsWith(today)) || []
+    const todayCheckins = bookings.rows.filter((b: any) => b.check_in_date?.toString().startsWith(today)).length
+    const todayCheckouts = bookings.rows.filter((b: any) => b.check_out_date?.toString().startsWith(today)).length
+    const todayRevenue = bookings.rows.filter((b: any) => b.check_in_date?.toString().startsWith(today)).reduce((s: number, b: any) => s + Number(b.amount || 0), 0)
+    const monthRevenue = bookings.rows.filter((b: any) => b.check_in_date?.toString().startsWith(thisMonth)).reduce((s: number, b: any) => s + Number(b.amount || 0), 0)
 
     return NextResponse.json({
-      properties: properties.rows || [],
+      totalProperties: Number(props.rows[0]?.count) || 0,
       totalBeds,
-      occupiedBeds,
-      availableBeds,
-      occupancyRate,
+      availableBeds: totalBeds,
+      occupancyRate: 0,
       todayRevenue,
       monthRevenue,
-      todaysCheckins,
-      todaysCheckouts,
-      recentBookings: bookings.rows.slice(0, 5) || [],
-      bedsData: beds.rows || [],
-      propertyOccupancy: [],
-      monthlyRevenueBreakdown: []
+      todayCheckins,
+      todayCheckouts
     })
-  } catch (error: any) {
-    console.error('Dashboard error:', error)
-    return NextResponse.json({
-      properties: [],
-      totalBeds: 0,
-      occupiedBeds: 0,
-      availableBeds: 0,
-      occupancyRate: 0,
-      todayRevenue: 0,
-      monthRevenue: 0,
-      todaysCheckins: [],
-      todaysCheckouts: [],
-      recentBookings: [],
-      bedsData: [],
-      propertyOccupancy: [],
-      monthlyRevenueBreakdown: []
-    })
+  } catch (e: any) {
+    return NextResponse.json({ totalProperties: 0, totalBeds: 0, availableBeds: 0, occupancyRate: 0, todayRevenue: 0, monthRevenue: 0, todayCheckins: 0, todayCheckouts: 0 })
   }
 }
