@@ -17,7 +17,7 @@ export async function GET() {
     const properties = await sql`
       SELECT id, owner_id, name, type, address, city, state, pincode, contact, email,
              description, check_in_time, check_out_time, amenities, policies,
-             google_map_link, upi_id, total_beds, status, created_at
+             google_map_link, upi_id, total_beds, status, images, created_at
       FROM properties
       WHERE owner_id = ${owner.ownerId}
       ORDER BY created_at DESC
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       name, type, address, city, state, totalBeds,
       pincode, contact, email, description,
       checkInTime, checkOutTime, amenities, policies,
-      googleMapLink, upiId, status
+      googleMapLink, upiId, status, images
     } = body;
 
     if (!name?.trim() || !type || !address?.trim() || !city?.trim() || !state?.trim()) {
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       INSERT INTO properties (
         owner_id, name, type, address, city, state, pincode, contact, email,
         description, check_in_time, check_out_time, amenities, policies,
-        google_map_link, upi_id, total_beds, status
+        google_map_link, upi_id, total_beds, status, images
       )
       VALUES (
         ${owner.ownerId},
@@ -94,11 +94,12 @@ export async function POST(request: Request) {
         ${googleMapLink?.trim() || null},
         ${upiId?.trim() || null},
         ${beds},
-        ${status || 'active'}
+        ${status || 'active'},
+        ${images || '{}'}
       )
       RETURNING id, owner_id, name, type, address, city, state, pincode, contact, email,
                description, check_in_time, check_out_time, amenities, policies,
-               google_map_link, upi_id, total_beds, status, created_at
+               google_map_link, upi_id, total_beds, status, images, created_at
     `;
 
     return NextResponse.json({ property: rows[0] }, { status: 201 });
