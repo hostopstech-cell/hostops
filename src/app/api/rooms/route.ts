@@ -25,10 +25,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { property_id, name, type, capacity, price_per_night, status } = body
+    const { propertyId, property_id: pid, name, type, capacity, price_per_night, status } = body
     const result = await pool.query(
       'INSERT INTO rooms (property_id, name, type, number_of_beds, price_per_night, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [property_id, name, type, Number(capacity), Number(price_per_night), status || 'available']
+      [propertyId || pid, name, type, Number(capacity), Number(price_per_night), status || 'available']
     )
     return NextResponse.json(result.rows[0])
   } catch (error: any) {
