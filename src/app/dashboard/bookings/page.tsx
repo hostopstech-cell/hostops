@@ -235,7 +235,7 @@ export default function BookingsPage() {
     }
   }
 
-  const filteredBookings = bookings.filter((booking) => {
+  const filteredBookings = bookings?.filter((booking) => {
     const matchesSearch =
       booking.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.guest_phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -243,7 +243,7 @@ export default function BookingsPage() {
     const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
     const matchesSource = sourceFilter === "all" || booking.booking_source === sourceFilter;
     return matchesSearch && matchesStatus && matchesSource;
-  });
+  }) ?? [];
 
   function getStatusColor(status: BookingStatus) {
     switch (status) {
@@ -262,8 +262,8 @@ export default function BookingsPage() {
     }
   }
 
-  const filteredRooms = form.propertyId ? rooms.filter(r => r.property_id === Number(form.propertyId)) : rooms;
-  const filteredBeds = form.roomId ? beds.filter(b => b.room_id === Number(form.roomId)) : beds;
+  const filteredRooms = form.propertyId ? rooms?.filter(r => r.property_id === Number(form.propertyId)) ?? [] : rooms ?? [];
+  const filteredBeds = form.roomId ? beds?.filter(b => b.room_id === Number(form.roomId)) ?? [] : beds ?? [];
 
   return (
     <div className="space-y-8">
@@ -313,7 +313,7 @@ export default function BookingsPage() {
             className="input-field w-auto"
           >
             <option value="all">All Status</option>
-            {BOOKING_STATUSES.map((s) => (
+            {BOOKING_STATUSES?.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
               </option>
@@ -325,7 +325,7 @@ export default function BookingsPage() {
             className="input-field w-auto"
           >
             <option value="all">All Sources</option>
-            {BOOKING_SOURCES.map((s) => (
+            {BOOKING_SOURCES?.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
               </option>
@@ -390,7 +390,7 @@ export default function BookingsPage() {
                 className="input-field"
               >
                 <option value="">Select Property</option>
-                {properties.map((prop) => (
+                {properties?.map((prop) => (
                   <option key={prop.id} value={prop.id}>
                     {prop.name}
                   </option>
@@ -407,7 +407,7 @@ export default function BookingsPage() {
                 className="input-field"
               >
                 <option value="">Select Room</option>
-                {filteredRooms.map((room) => (
+                {filteredRooms?.map((room) => (
                   <option key={room.id} value={room.id}>
                     {room.name} - {capitalize(room.type)}
                   </option>
@@ -424,7 +424,7 @@ export default function BookingsPage() {
                 className="input-field"
               >
                 <option value="">Select Bed</option>
-                {filteredBeds.map((bed) => (
+                {filteredBeds?.map((bed) => (
                   <option key={bed.id} value={bed.id}>
                     {bed.bed_number} - {capitalize(bed.status)}
                   </option>
@@ -506,7 +506,7 @@ export default function BookingsPage() {
                 onChange={(e) => setForm({ ...form, paymentMethod: e.target.value as PaymentMethod })}
                 className="input-field"
               >
-                {PAYMENT_METHODS.map((m) => (
+                {PAYMENT_METHODS?.map((m) => (
                   <option key={m.value} value={m.value}>
                     {m.label}
                   </option>
@@ -538,7 +538,7 @@ export default function BookingsPage() {
                 onChange={(e) => setForm({ ...form, bookingSource: e.target.value as BookingSource })}
                 className="input-field"
               >
-                {BOOKING_SOURCES.map((s) => (
+                {BOOKING_SOURCES?.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
                   </option>
@@ -641,8 +641,8 @@ export default function BookingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredBookings.map((booking) => {
-                  const property = properties.find(p => p.id === booking.property_id);
+                {filteredBookings?.map((booking) => {
+                  const property = properties?.find(p => p.id === booking.property_id);
                   return (
                     <tr
                       key={booking.id}

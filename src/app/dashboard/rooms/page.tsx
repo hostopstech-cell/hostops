@@ -253,15 +253,15 @@ export default function RoomsPage() {
   }
 
   const filteredRooms = selectedProperty
-    ? rooms.filter((r) => r.property_id === selectedProperty)
-    : rooms;
+    ? rooms?.filter((r) => r.property_id === selectedProperty) ?? []
+    : rooms ?? [];
 
   const filteredBeds = selectedProperty
-    ? beds.filter((b) => {
-        const room = rooms.find((r) => r.id === b.room_id);
+    ? beds?.filter((b) => {
+        const room = rooms?.find((r) => r.id === b.room_id);
         return room?.property_id === selectedProperty;
-      })
-    : beds;
+      }) ?? []
+    : beds ?? [];
 
   // Calculate remaining beds for selected property
   const selectedPropertyData = selectedProperty
@@ -272,18 +272,18 @@ export default function RoomsPage() {
   const remainingBeds = Math.max(totalBedsLimit - currentBedCount, 0);
   
   // Calculate bed status counts
-  const bookedBeds = filteredBeds.filter((b) => b.status === 'occupied').length;
-  const availableBeds = filteredBeds.filter((b) => b.status === 'available').length;
-  const maintenanceBeds = filteredBeds.filter((b) => b.status === 'maintenance').length;
+  const bookedBeds = filteredBeds?.filter((b) => b.status === 'occupied').length ?? 0;
+  const availableBeds = filteredBeds?.filter((b) => b.status === 'available').length ?? 0;
+  const maintenanceBeds = filteredBeds?.filter((b) => b.status === 'maintenance').length ?? 0;
   
   // Calculate total room capacity (for reference only, not for limit)
-  const totalRoomBeds = filteredRooms.reduce((sum, room) => sum + room.capacity, 0);
+  const totalRoomBeds = filteredRooms?.reduce((sum, room) => sum + room.capacity, 0) ?? 0;
   const roomCount = filteredRooms.length;
   const bedUsagePercent = totalBedsLimit > 0 ? (totalRoomBeds / totalBedsLimit) * 100 : 0;
 
   // Calculate room sequential numbering per property
   const getRoomNumber = (roomId: number, propertyId: number) => {
-    const propertyRooms = filteredRooms.filter(r => r.property_id === propertyId);
+    const propertyRooms = filteredRooms?.filter(r => r.property_id === propertyId) ?? [];
     const index = propertyRooms.findIndex(r => r.id === roomId);
     return index + 1;
   };
@@ -329,7 +329,7 @@ export default function RoomsPage() {
           className="input-field max-w-xs"
         >
           <option value="">All Properties</option>
-          {properties.map((prop) => (
+          {properties?.map((prop) => (
             <option key={prop.id} value={prop.id}>
               {prop.name}
             </option>
@@ -402,7 +402,7 @@ export default function RoomsPage() {
                 className="input-field"
               >
                 <option value="">Select Property</option>
-                {properties.map((prop) => (
+                {properties?.map((prop) => (
                   <option key={prop.id} value={prop.id}>
                     {prop.name}
                   </option>
@@ -431,7 +431,7 @@ export default function RoomsPage() {
                 onChange={(e) => setRoomForm({ ...roomForm, type: e.target.value as RoomType })}
                 className="input-field"
               >
-                {ROOM_TYPES.map((t) => (
+                {ROOM_TYPES?.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
                   </option>
@@ -537,7 +537,7 @@ export default function RoomsPage() {
                 onChange={(e) => setBedForm({ ...bedForm, bedType: e.target.value as BedType })}
                 className="input-field"
               >
-                {BED_TYPES.map((t) => (
+                {BED_TYPES?.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
                   </option>
@@ -656,8 +656,8 @@ export default function RoomsPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {filteredRooms.map((room) => {
-            const roomBeds = filteredBeds.filter((b) => b.room_id === room.id);
+          {filteredRooms?.map((room) => {
+            const roomBeds = filteredBeds?.filter((b) => b.room_id === room.id) ?? [];
             return (
               <div key={room.id} className="card-premium p-6">
                 <div className="flex items-start justify-between mb-5">
@@ -729,7 +729,7 @@ export default function RoomsPage() {
                     <p className="text-sm text-slate-500 italic">No beds in this room yet.</p>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-                      {roomBeds.map((bed) => (
+                      {roomBeds?.map((bed) => (
                         <div
                           key={bed.id}
                           className="relative p-4 rounded-xl border border-slate-200 bg-slate-50 hover:border-orange-300 hover:shadow-md transition-all duration-200 cursor-pointer group"

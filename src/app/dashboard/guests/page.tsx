@@ -133,7 +133,7 @@ export default function GuestsPage() {
     }
   }
 
-  const filteredGuests = guests.filter((guest) => {
+  const filteredGuests = guests?.filter((guest) => {
     const matchesSearch =
       guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       guest.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -145,7 +145,7 @@ export default function GuestsPage() {
       (filter === "new" && guest.total_stays === 1);
     
     return matchesSearch && matchesFilter;
-  });
+  }) ?? [];
 
   return (
     <div className="space-y-8">
@@ -280,7 +280,7 @@ export default function GuestsPage() {
                 className="input-field"
               >
                 <option value="">Select ID Type</option>
-                {ID_TYPES.map((t) => (
+                {ID_TYPES?.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
                   </option>
@@ -382,7 +382,7 @@ export default function GuestsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredGuests.map((guest) => (
+                {filteredGuests?.map((guest) => (
                   <tr
                     key={guest.id}
                     className="table-row"

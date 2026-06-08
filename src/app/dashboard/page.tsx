@@ -12,13 +12,23 @@ export default function Dashboard() {
     todayCheckins: 0,
     todayCheckouts: 0
   })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/dashboard')
       .then(r => r.json())
       .then(data => { if (data && !data.error) setStats(data) })
       .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6">
