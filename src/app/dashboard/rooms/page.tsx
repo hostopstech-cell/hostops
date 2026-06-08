@@ -336,7 +336,7 @@ export default function RoomsPage() {
           ))}
         </select>
         {selectedPropertyData && (
-          <div className="mt-4 p-4 bg-slate-50 rounded-lg">
+          <div className="mt-4 p-4 bg-slate-50 rounded-lg hidden">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-700">Beds Used</p>
@@ -706,7 +706,7 @@ export default function RoomsPage() {
                 </div>
 
                 {/* Beds Grid */}
-                <div className="border-t border-slate-100 pt-5">
+                <div className="border-t border-slate-100 pt-5 hidden">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-sm font-semibold text-slate-700">
                       Beds ({roomBeds.length})
