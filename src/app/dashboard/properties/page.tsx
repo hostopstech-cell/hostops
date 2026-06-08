@@ -30,12 +30,14 @@ const AMENITIES_OPTIONS = [
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
+  const [beds, setBeds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -59,9 +61,10 @@ export default function PropertiesPage() {
 
   async function fetchProperties() {
     try {
-      const [propsRes, roomsRes] = await Promise.all([
+      const [propsRes, roomsRes, bedsRes] = await Promise.all([
         fetch("/api/properties"),
         fetch("/api/rooms"),
+        fetch("/api/beds"),
       ]);
       
       if (propsRes.ok) {
@@ -71,6 +74,10 @@ export default function PropertiesPage() {
       if (roomsRes.ok) {
         const roomsData = await roomsRes.json();
         setRooms(roomsData.rooms);
+      }
+      if (bedsRes.ok) {
+        const bedsData = await bedsRes.json();
+        setBeds(bedsData.beds);
       }
     } finally {
       setLoading(false);
