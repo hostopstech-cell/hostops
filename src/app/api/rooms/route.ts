@@ -1,124 +1,48 @@
-import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
-import { getAuthenticatedOwner } from "@/lib/auth";
-import type { RoomType } from "@/types";
+import { NextResponse } from 'next/server'
+import { Pool } from 'pg'
 
-export const dynamic = "force-dynamic";
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+})
 
-const VALID_ROOM_TYPES: RoomType[] = ["dorm", "private", "luxury"];
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const owner = await getAuthenticatedOwner();
-    if (!owner) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { searchParams } = new URL(request.url)
+    const propertyId = searchParams.get('property_id')
+    let result
+    if (propertyId) {
+      result = await pool.query('SELECT * FROM rooms WHERE property_id = $1 ORDER BY id', [propertyId])
+    } else {
+      result = await pool.query('SELECT * FROM rooms ORDER BY id')
     }
-
-    const rooms = await sql`
-      SELECT r.id, r.property_id, r.name, r.type, r.capacity, r.price_per_night,
-             r.status, r.created_at, p.name as property_name
-      FROM rooms r
-      JOIN properties p ON p.id = r.property_id
-      WHERE p.owner_id = ${owner.ownerId}
-      ORDER BY r.created_at DESC
-    `;
-
-    return NextResponse.json({ rooms });
-  } catch (error) {
-    console.error("Rooms fetch error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch rooms" },
-      { status: 500 }
-    );
+    return NextResponse.json(result.rows)
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const owner = await getAuthenticatedOwner();
-    if (!owner) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const body = await request.json()
+    const { property_id, name, type, capacity, price_per_night, status } = body
+    const result = await pool.query(
+      'INSERT INTO rooms (property_id, name, type, number_of_beds, price_per_night, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [property_id, name, type, Number(capacity), Number(price_per_night), status || 'available']
+    )
+    return NextResponse.json(result.rows[0])
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
 
-    const body = await request.json();
-  const { propertyId, name, type, capacity, pricePerNight, status } = body;
-
-    if (!propertyId || !name?.trim() || !type || !capacity || !pricePerNight) {
-      return NextResponse.json(
-        { error: "Property ID, name, type, capacity, and price are required" },
-        { status: 400 }
-      );
-    }
-
-    if (!VALID_ROOM_TYPES.includes(type)) {
-      return NextResponse.json(
-        { error: "Invalid room type" },
-        { status: 400 }
-      );
-    }
-
-    const cap = parseInt(capacity, 10);
-    const price = parseFloat(pricePerNight);
-
-    if (isNaN(cap) || cap <= 0) {
-      return NextResponse.json(
-        { error: "Capacity must be a positive number" },
-        { status: 400 }
-      );
-    }
-
-    if (isNaN(price) || price < 0) {
-      return NextResponse.json(
-        { error: "Price must be a non-negative number" },
-        { status: 400 }
-      );
-    }
-
-    // Check property bed limit
-    const propertyInfo = await sql`
-      SELECT total_beds
-      FROM properties
-      WHERE id = ${propertyId} AND owner_id = ${owner.ownerId}
-    `;
-
-    if (!propertyInfo || propertyInfo.length === 0) {
-      return NextResponse.json(
-        { error: "Property not found" },
-        { status: 404 }
-      );
-    }
-
-    const totalBedsLimit = propertyInfo[0].total_beds;
-
-    // Calculate existing room beds for this property
-    const existingBeds = await sql`
-      SELECT COALESCE(SUM(capacity), 0)::int as total_beds
-      FROM rooms
-      WHERE property_id = ${propertyId}
-    `;
-
-    const currentBedsCount = existingBeds[0]?.total_beds || 0;
-    const newTotalBeds = currentBedsCount + cap;
-
-    if (newTotalBeds > totalBedsLimit) {
-      return NextResponse.json(
-        { error: `Only ${totalBedsLimit - currentBedsCount} beds remaining. Cannot add room with ${cap} beds.` },
-        { status: 400 }
-      );
-    }
-
-    const rows = await sql`
-      INSERT INTO rooms (property_id, name, type, capacity, price_per_night, status)
-      VALUES (${propertyId}, ${name.trim()}, ${type}, ${cap}, ${price}, ${status || 'available'})
-      RETURNING id, property_id, name, type, capacity, price_per_night, status, created_at
-    `;
-
-    return NextResponse.json({ room: rows[0] }, { status: 201 });
-  } catch (error) {
-    console.error("Room create error:", error);
-    return NextResponse.json(
-      { error: "Failed to create room" },
-      { status: 500 }
-    );
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    await pool.query('DELETE FROM rooms WHERE id = $1', [id])
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
