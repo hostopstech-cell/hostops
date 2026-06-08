@@ -28,7 +28,7 @@ const navItems = [
   { href: "/dashboard/properties", label: "Properties", icon: Building2 },
   { href: "/dashboard/rooms", label: "Rooms & Beds", icon: BedDouble },
   { href: "/dashboard/bookings", label: "Bookings", icon: Calendar },
-  
+  { href: "/dashboard/guests", label: "Guests", icon: Users },
   { href: "/dashboard/revenue", label: "Revenue & Collections", icon: TrendingUp },
   { href: "/dashboard/reports", label: "Reports", icon: FileText },
   { href: "/dashboard/whatsapp", label: "WhatsApp", icon: MessageCircle },
