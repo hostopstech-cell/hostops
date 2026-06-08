@@ -335,7 +335,7 @@ export default function RoomsPage() {
             </option>
           ))}
         </select>
-        {selectedPropertyData && (
+        {false && selectedPropertyData && (
           <div className="mt-4 p-4 bg-slate-50 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
@@ -705,7 +705,7 @@ export default function RoomsPage() {
                   </div>
                 </div>
 
-                {/* Beds Grid */}
+                {/* Beds Grid */}{false &&
                 <div className="border-t border-slate-100 pt-5">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-sm font-semibold text-slate-700">
@@ -725,7 +725,7 @@ export default function RoomsPage() {
                     )}
                   </div>
 
-                  {roomBeds.length > 0 && (
+                  {roomBeds.length > 0 && (true) && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
                       {roomBeds?.map((bed) => (
                         <div
