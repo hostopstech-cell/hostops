@@ -8,7 +8,7 @@ import { Plus, Edit, Trash2, BedDouble, MapPin, Building2 } from "lucide-react";
 const ROOM_TYPES: { value: RoomType; label: string }[] = [
   { value: "dorm", label: "Dorm" },
   { value: "private", label: "Private Room" },
-  { value: "luxury", label: "Luxury Room" },
+  { value: "deluxe", label: "Deluxe Room" }, { value: "family", label: "Family Room" },
 ];
 
 const BED_TYPES: { value: BedType; label: string }[] = [
