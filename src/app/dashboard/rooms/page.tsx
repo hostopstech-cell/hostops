@@ -675,7 +675,7 @@ export default function RoomsPage() {
                             {capitalize(room.type)}
                           </span>
                           <span className="text-slate-400">•</span>
-                          <span className="font-medium">Capacity: {room.number_of_beds}</span>
+                          <span className="font-medium">Capacity: {room.capacity || room.number_of_beds || 0}</span>
                           <span className="text-slate-400">•</span>
                           <span className="font-semibold text-orange-600">₹{room.price_per_night}/night</span>
                         </div>
@@ -705,7 +705,8 @@ export default function RoomsPage() {
                   </div>
                 </div>
 
-                {/* Beds Grid */}
+                {/* Beds Grid - hidden */}
+                {false &&
                 <div className="border-t border-slate-100 pt-5">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-sm font-semibold text-slate-700">
