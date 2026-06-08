@@ -54,7 +54,7 @@ export default function Sidebar({ ownerName }: { ownerName: string }) {
       {/* Mobile menu button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-3 left-3 z-50 p-2 gradient-orange text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+        className="lg:hidden sticky top-3 left-3 z-50 p-2 gradient-orange text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
       >
         {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
