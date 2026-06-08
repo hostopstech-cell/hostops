@@ -706,9 +706,26 @@ export default function RoomsPage() {
                 </div>
 
                 {/* Beds Grid */}
-                {/* Beds Grid - hidden */}
+                <div className="border-t border-slate-100 pt-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-semibold text-slate-700">
+                      Beds ({roomBeds.length})
+                    </h4>
+                    {currentBedCount >= totalBedsLimit ? (
+                      <span className="text-sm font-semibold text-red-600">
+                        Bed limit reached ({currentBedCount}/{totalBedsLimit})
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleAddBed(room)}
+                        className="text-sm font-semibold text-orange-600 hover:text-orange-700"
+                      >
+                        + Add Bed
+                      </button>
+                    )}
+                  </div>
 
-                  {false && (
+                  {roomBeds.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
                       {roomBeds?.map((bed) => (
                         <div
