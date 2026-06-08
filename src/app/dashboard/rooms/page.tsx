@@ -277,7 +277,7 @@ export default function RoomsPage() {
   const maintenanceBeds = filteredBeds?.filter((b) => b.status === 'maintenance').length ?? 0;
   
   // Calculate total room capacity (for reference only, not for limit)
-  const totalRoomBeds = filteredRooms?.reduce((sum, room) => sum + room.capacity, 0) ?? 0;
+  const totalRoomBeds = filteredRooms?.reduce((sum, room) => sum + (Number(room.number_of_beds) || 0), 0) ?? 0;
   const roomCount = filteredRooms.length;
   const bedUsagePercent = totalBedsLimit > 0 ? (totalRoomBeds / totalBedsLimit) * 100 : 0;
 
