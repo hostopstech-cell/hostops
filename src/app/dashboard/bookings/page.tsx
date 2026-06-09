@@ -336,7 +336,7 @@ export default function BookingsPage() {
                           ? (b as any).guests_data
                           : [{ guestName: b.guest_name, guestPhone: b.guest_phone }];
                         return (
-                          <div className={allGuests.length > 1 ? "border border-slate-200 rounded-xl p-2 bg-slate-50" : ""}>
+                          <div className={allGuests.length > 1 ? "border border-slate-100 rounded-lg p-1.5" : ""}>
                             {allGuests.map((g: any, i: number) => (
                               <div key={i} className="flex items-center gap-2 py-0.5">
                                 <div className="h-7 w-7 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold text-xs flex-shrink-0">{(g.guestName || b.guest_name)?.[0]?.toUpperCase()}</div>
@@ -344,7 +344,7 @@ export default function BookingsPage() {
                                   <div className="font-medium text-sm text-slate-800">{g.guestName || b.guest_name}</div>
                                   <div className="text-xs text-slate-400">{g.guestPhone || b.guest_phone}</div>
                                 </div>
-                                {allGuests.length > 1 && i === 0 && <span className="text-xs bg-orange-100 text-orange-500 px-1.5 py-0.5 rounded-full ml-auto">+{allGuests.length - 1}</span>}
+                                
                               </div>
                             ))}
                           </div>
