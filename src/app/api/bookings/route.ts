@@ -99,7 +99,8 @@ export async function POST(request: Request) {
         property_id, room_id, bed_id, guest_name, guest_phone, guest_email,
         check_in, check_out, number_of_guests, amount, discount, final_amount,
         payment_method, payment_status, booking_source,
-        special_requests, notes, booking_code, status
+        special_requests, notes, booking_code, status,
+        id_proof_type, id_proof_number
       )
       VALUES (
         ${propertyId}, ${roomId || null}, ${bedId || null},
@@ -107,7 +108,8 @@ export async function POST(request: Request) {
         ${checkIn}, ${checkOut}, ${guests}, ${amt}, ${disc}, ${final},
         ${paymentMethod}, ${paymentStatus}, ${bookingSource || 'direct'},
         ${specialRequests?.trim() || null}, ${notes?.trim() || null},
-        ${bookingCode || 'BK' + Date.now()}, 'confirmed'
+        ${bookingCode || 'BK' + Date.now()}, 'confirmed',
+        ${idProofType || null}, ${idProofNumber?.trim() || null}
       )
       RETURNING id, booking_code, property_id, room_id, bed_id, guest_name, guest_phone, guest_email,
                check_in, check_out, number_of_guests, amount, discount, final_amount,
