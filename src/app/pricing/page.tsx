@@ -4,15 +4,98 @@ import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import { plans } from "@/lib/pricing-data";
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 export default function PricingPage() {
   const [yearly, setYearly] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
+
   const faqs = [
     {q:"What happens after my 7-day free trial?",a:"After your trial ends, you can choose a plan that fits your needs. Your data will be saved and you can continue seamlessly."},
     {q:"Do I need a credit card to start the trial?",a:"No! You can start your 7-day free trial without any credit card. Only when you choose a paid plan will payment be required."},
     {q:"Can I change my plan later?",a:"Yes, you can upgrade or downgrade your plan at any time from your dashboard settings."},
     {q:"Can I cancel my subscription anytime?",a:"Absolutely! You can cancel anytime. No hidden fees, no long-term contracts."},
   ];
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) return resolve(true);
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePayment = async (planName: string, amount: number) => {
+    setLoading(planName);
+    try {
+      const loaded = await loadRazorpay();
+      if (!loaded) {
+        alert("Razorpay load nahi hua. Internet check karo.");
+        setLoading(null);
+        return;
+      }
+
+      const res = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount,
+          receipt: `hostops_${planName.toLowerCase()}_${Date.now()}`,
+          notes: { plan: planName, billing: yearly ? "yearly" : "monthly" },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: data.amount,
+        currency: data.currency,
+        name: "HostOps",
+        description: `${planName} Plan - ${yearly ? "Yearly" : "Monthly"}`,
+        order_id: data.orderId,
+        handler: async (response: any) => {
+          const verify = await fetch("/api/razorpay/verify-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(response),
+          });
+          const verifyData = await verify.json();
+          if (verifyData.success) {
+            alert(`✅ Payment successful! Payment ID: ${verifyData.paymentId}`);
+            window.location.href = "/dashboard";
+          } else {
+            alert("❌ Payment verification failed. Support se contact karo.");
+          }
+        },
+        prefill: { name: "", email: "", contact: "" },
+        theme: { color: "#ea580c" },
+        modal: { ondismiss: () => setLoading(null) },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", (response: any) => {
+        alert(`Payment failed: ${response.error.description}`);
+        setLoading(null);
+      });
+      rzp.open();
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert("Payment shuru karne mein dikkat aayi. Dobara try karo.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white font-[family-name:var(--font-geist-sans)]">
       <Navbar />
@@ -70,20 +153,30 @@ export default function PricingPage() {
           </div>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <div key={plan.name} className={`border-2 rounded-2xl p-6 relative flex flex-col ${plan.color} ${plan.popular ? "shadow-xl scale-105" : ""}`}>
-              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 text-center mb-4"><p className="text-green-700 text-xs font-semibold">🎁 Includes 7-Day Free Trial</p></div>
-              {plan.popular && (<div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-semibold">Most Popular</div>)}
-              <div className="text-3xl mb-2">{plan.icon}</div>
-              <h2 className="text-xl font-bold text-slate-900">{plan.name}</h2>
-              <p className="text-slate-400 text-sm mb-4">{plan.desc}</p>
-              <div className="mb-1"><span className="text-4xl font-bold text-slate-900">₹{yearly ? plan.yearlyPrice.toLocaleString() : plan.monthlyPrice.toLocaleString()}</span><span className="text-slate-400 text-sm">/month</span></div>
-              <p className="text-green-600 text-xs mb-4">Billed {yearly ? "yearly" : "monthly"}</p>
-              <ul className="space-y-2 mb-8 flex-1">{plan.features.map((f) => (<li key={f} className="flex items-center gap-2 text-sm text-slate-600"><span className="text-green-500 font-bold">✓</span> {f}</li>))}</ul>
-              <Link href="/login" className={`block text-center py-3 rounded-xl font-semibold text-sm transition-colors ${plan.buttonStyle}`}>Start Free Trial</Link>
-              <p className="text-center text-slate-400 text-xs mt-2">7 Days Free Trial</p>
-            </div>
-          ))}
+          {plans.map((plan) => {
+            const price = yearly ? plan.yearlyPrice : plan.monthlyPrice;
+            const isLoading = loading === plan.name;
+            return (
+              <div key={plan.name} className={`border-2 rounded-2xl p-6 relative flex flex-col ${plan.color} ${plan.popular ? "shadow-xl scale-105" : ""}`}>
+                <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 text-center mb-4"><p className="text-green-700 text-xs font-semibold">🎁 Includes 7-Day Free Trial</p></div>
+                {plan.popular && (<div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-semibold">Most Popular</div>)}
+                <div className="text-3xl mb-2">{plan.icon}</div>
+                <h2 className="text-xl font-bold text-slate-900">{plan.name}</h2>
+                <p className="text-slate-400 text-sm mb-4">{plan.desc}</p>
+                <div className="mb-1"><span className="text-4xl font-bold text-slate-900">₹{price.toLocaleString()}</span><span className="text-slate-400 text-sm">/month</span></div>
+                <p className="text-green-600 text-xs mb-4">Billed {yearly ? "yearly" : "monthly"}</p>
+                <ul className="space-y-2 mb-8 flex-1">{plan.features.map((f) => (<li key={f} className="flex items-center gap-2 text-sm text-slate-600"><span className="text-green-500 font-bold">✓</span> {f}</li>))}</ul>
+                <button
+                  onClick={() => handlePayment(plan.name, price)}
+                  disabled={isLoading}
+                  className={`block w-full text-center py-3 rounded-xl font-semibold text-sm transition-colors ${plan.buttonStyle} ${isLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  {isLoading ? "Processing..." : "Subscribe Now"}
+                </button>
+                <p className="text-center text-slate-400 text-xs mt-2">7 Days Free Trial</p>
+              </div>
+            );
+          })}
         </div>
       </section>
       <section className="bg-slate-50 py-16">
