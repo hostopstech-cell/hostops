@@ -390,50 +390,8 @@ export default function PropertiesPage() {
               const occupancyPct = getOccupancyPct(property.id, totalBeds);
               const images: string[] = (property as any).images || [];
               const currentSlide = imageSlides[property.id] || 0;
-              const coverImage = images.length > 0 ? images[currentSlide] : PLACEHOLDER;
-              const hasImages = images.length > 0;
-
-              return (
-                <div key={property.id} className="card-premium overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group">
-                  {/* Image */}
-                  <div className="relative h-48 bg-slate-100 overflow-hidden">
-                    <img src={coverImage} alt={property.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                    <div className="absolute top-3 left-3">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${property.status === "active" ? "bg-emerald-500 text-white" : "bg-slate-500 text-white"}`}>
-                        {property.status === "active" ? "● Active" : "○ Inactive"}
-                      </span>
-                    </div>
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <button onClick={() => handleEdit(property)} className="h-8 w-8 rounded-lg bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-orange-600 hover:bg-white transition-all shadow-sm">
-                        <Edit size={14} />
-                      </button>
-                      <button onClick={() => handleDelete(property.id)} className="h-8 w-8 rounded-lg bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-red-600 hover:bg-white transition-all shadow-sm">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    {hasImages && images.length > 1 && (
-                      <>
-                        <button onClick={() => slidePrev(property.id, images.length)} className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-all">
-                          <ChevronLeft size={14} />
-                        </button>
-                        <button onClick={() => slideNext(property.id, images.length)} className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-all">
-                          <ChevronRight size={14} />
-                        </button>
-                        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1">
-                          {images.map((_, i) => (
-                            <div key={i} className={`h-1.5 rounded-full transition-all ${i === currentSlide ? "w-4 bg-white" : "w-1.5 bg-white/50"}`} />
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  <div className="h-40 bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center rounded-t-xl">
-                    <span className="text-6xl">🏨</span>
-                  </div>
-                    <div className="absolute bottom-3 left-3 right-16">
-                      <p className="text-white font-bold text-lg leading-tight drop-shadow-sm line-clamp-1">{property.name}</p>
-                      <p className="text-white/80 text-xs font-medium">{capitalize(property.type)}</p>
-                    </div>
+              const typeIcon = property.type === "hostel" ? "🏨" : property.type === "hotel" ? "🏩" : property.type === "guesthouse" ? "🏡" : property.type === "dormitory" ? "🛏️" : "🏠";
+              const typeBg = property.type === "hostel" ? "from-orange-50 to-orange-100" : property.type === "hotel" ? "from-blue-50 to-blue-100" : "from-slate-50 to-slate-100";
                   </div>
 
                   {/* Body */}
