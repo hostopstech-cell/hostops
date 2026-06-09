@@ -1,14 +1,16 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 
 export default function Home() {
   const router = useRouter();
+  const [checking, setChecking] = useState(true);
   useEffect(() => {
-    fetch("/api/auth/me").then(r => r.json()).then(d => { if(d.owner) router.replace("/dashboard"); }).catch(()=>{});
+    fetch("/api/auth/me").then(r=>r.json()).then(d=>{if(d.owner){router.replace("/dashboard");}else{setChecking(false);}}).catch(()=>setChecking(false));
   }, [router]);
+  if(checking)return(<div className="min-h-screen bg-white flex items-center justify-center"><div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"/></div>);
   return (
     <div className="min-h-screen bg-white font-[family-name:var(--font-geist-sans)]">
       <Navbar />
