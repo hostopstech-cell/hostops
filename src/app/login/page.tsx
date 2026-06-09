@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -15,9 +16,30 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    // Already logged in check
+    fetch("/api/auth/me")
+      .then(r => r.json())
+      .then(data => {
+        if (data.owner) {
+          router.replace("/dashboard");
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => setChecking(false));
+
+    const errorParam = searchParams.get("error");
+    if (errorParam === "not_registered") {
+      setError("Aapka Google account registered nahi hai. Pehle Register karein.");
+    }
+  }, [searchParams, router]);
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
+    setError("");
     await signIn("google", { callbackUrl: "/dashboard" });
   }
 
@@ -44,6 +66,19 @@ export default function LoginPage() {
     }
   }
 
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <span className="text-white font-bold text-sm">H</span>
+          </div>
+          <p className="text-slate-500 text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white font-[family-name:var(--font-geist-sans)]">
       <nav className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
@@ -55,10 +90,7 @@ export default function LoginPage() {
         </Link>
         <p className="hidden sm:block text-sm text-slate-500">
           {mode === "login" ? "Don't have an account? " : "Already have an account? "}
-          <button
-            onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
-            className="text-orange-600 font-semibold hover:underline"
-          >
+          <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }} className="text-orange-600 font-semibold hover:underline">
             {mode === "login" ? "Register" : "Sign In"}
           </button>
         </p>
@@ -141,6 +173,12 @@ export default function LoginPage() {
               {mode === "login" ? "Sign in to your HostOps account to continue managing your properties." : "Start your journey with HostOps today."}
             </p>
 
+            {error && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 mb-4">
+                <p className="text-sm font-semibold text-red-700">{error}</p>
+              </div>
+            )}
+
             <button
               onClick={handleGoogleSignIn}
               disabled={googleLoading}
@@ -191,11 +229,6 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
-              {error && (
-                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3">
-                  <p className="text-sm font-semibold text-red-700">{error}</p>
-                </div>
-              )}
               <button type="submit" disabled={loading} className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors disabled:opacity-60">
                 {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
               </button>
@@ -205,8 +238,7 @@ export default function LoginPage() {
               <p className="mt-3 text-center text-xs text-slate-400">
                 By creating an account, you agree to our{" "}
                 <span className="text-orange-600 cursor-pointer hover:underline">Terms of Service</span>{" "}
-                and{" "}
-                <span className="text-orange-600 cursor-pointer hover:underline">Privacy Policy</span>
+                and <span className="text-orange-600 cursor-pointer hover:underline">Privacy Policy</span>
               </p>
             )}
 
@@ -221,5 +253,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p className="text-slate-500">Loading...</p></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
