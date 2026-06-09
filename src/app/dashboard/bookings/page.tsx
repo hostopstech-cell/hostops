@@ -220,6 +220,8 @@ export default function BookingsPage() {
 
   function openEdit(booking: Booking) {
     setEditingBooking(booking);
+    setError("");
+    setIdProofFile(null);
     setForm({
       guestName: booking.guest_name,
       guestPhone: booking.guest_phone || "",
