@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { capitalize } from "@/lib/format";
 import type { Room, RoomType, Property, Bed, BedType } from "@/types";
+import ConfirmModal from "@/components/ConfirmModal";
 import {
   Plus, Edit, Trash2, BedDouble, Search, TrendingUp, CheckCircle,
   Building2, Bed as BedIcon, MoreVertical, ChevronLeft, ChevronRight, X
@@ -51,6 +52,12 @@ export default function RoomsPage() {
   const [expandedRoomId, setExpandedRoomId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Confirm modal state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState("");
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
+
   const [roomForm, setRoomForm] = useState({
     propertyId: "",
     name: "",
@@ -90,7 +97,6 @@ export default function RoomsPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Close menu on outside click
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null);
@@ -99,7 +105,6 @@ export default function RoomsPage() {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  // Auto-dismiss success
   useEffect(() => {
     if (success) { const t = setTimeout(() => setSuccess(""), 3000); return () => clearTimeout(t); }
   }, [success]);
@@ -116,20 +121,17 @@ export default function RoomsPage() {
     ).length;
   }
 
-  // Global stats
   const totalAllBeds = properties.reduce((s, p) => s + (Number(p.total_beds) || 0), 0);
   const totalSoldBeds = properties.reduce((s, p) => s + getOccupiedForProperty(p.id), 0);
   const totalAvailableBeds = Math.max(totalAllBeds - totalSoldBeds, 0);
   const totalRooms = rooms.length;
 
-  // Filtered rooms based on selected property + search
   const filteredRooms = (
     selectedProperty
       ? rooms.filter((r) => Number(r.property_id) === Number(selectedProperty))
       : rooms
   ).filter((r) => r.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  // Beds scoped to selected property
   const scopedBeds = selectedProperty
     ? beds.filter((b) => {
         const room = rooms.find((r) => r.id === b.room_id);
@@ -143,7 +145,6 @@ export default function RoomsPage() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  // ---- Handlers ----
   function openAddRoom() {
     setEditingRoom(null);
     setRoomForm({ propertyId: selectedProperty ? String(selectedProperty) : "", name: "", type: "dorm", capacity: "1", pricePerNight: "", status: "available" });
@@ -168,19 +169,29 @@ export default function RoomsPage() {
     setError(""); setShowBedModal(true);
   }
 
-  async function handleDeleteRoom(id: number) {
-    if (!confirm("Delete this room and all its beds?")) return;
-    const res = await fetch(`/api/rooms/${id}`, { method: "DELETE" });
-    if (res.ok) { setSuccess("Room deleted successfully!"); await fetchData(); }
-    else setError("Failed to delete room");
-    setOpenMenuId(null);
+  function handleDeleteRoom(id: number) {
+    setConfirmTitle("Delete Room");
+    setConfirmMessage("Are you sure you want to delete this room and all its beds? This cannot be undone.");
+    setConfirmAction(() => async () => {
+      const res = await fetch(`/api/rooms/${id}`, { method: "DELETE" });
+      setConfirmOpen(false);
+      if (res.ok) { setSuccess("Room deleted successfully!"); await fetchData(); }
+      else setError("Failed to delete room");
+      setOpenMenuId(null);
+    });
+    setConfirmOpen(true);
   }
 
-  async function handleDeleteBed(id: number) {
-    if (!confirm("Delete this bed?")) return;
-    const res = await fetch(`/api/beds/${id}`, { method: "DELETE" });
-    if (res.ok) { setSuccess("Bed deleted!"); await fetchData(); }
-    else setError("Failed to delete bed");
+  function handleDeleteBed(id: number) {
+    setConfirmTitle("Delete Bed");
+    setConfirmMessage("Are you sure you want to delete this bed?");
+    setConfirmAction(() => async () => {
+      const res = await fetch(`/api/beds/${id}`, { method: "DELETE" });
+      setConfirmOpen(false);
+      if (res.ok) { setSuccess("Bed deleted!"); await fetchData(); }
+      else setError("Failed to delete bed");
+    });
+    setConfirmOpen(true);
   }
 
   async function handleRoomSubmit(e: React.FormEvent) {
@@ -219,12 +230,18 @@ export default function RoomsPage() {
     return "bg-slate-400";
   }
 
-  const selectedPropName = properties.find(p => Number(p.id) === Number(selectedProperty))?.name;
-
   return (
     <div className="space-y-6 pb-8">
 
-      {/* ── Header ── */}
+      <ConfirmModal
+        isOpen={confirmOpen}
+        title={confirmTitle}
+        message={confirmMessage}
+        confirmLabel="Delete"
+        onConfirm={confirmAction}
+        onCancel={() => setConfirmOpen(false)}
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Rooms & Beds</h1>
@@ -235,15 +252,13 @@ export default function RoomsPage() {
         </button>
       </div>
 
-      {/* ── Stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: "Total Properties", value: properties.length,    sub: "Active properties",                               iconBg: "bg-orange-100", iconColor: "text-orange-500", dot: "bg-orange-400", Icon: Building2 },
           { label: "Total Rooms",      value: totalRooms,           sub: "Across all properties",                           iconBg: "bg-blue-100",   iconColor: "text-blue-500",   dot: "bg-blue-400",   Icon: BedDouble },
           { label: "Total Beds",       value: totalAllBeds,         sub: "Across all rooms",                                iconBg: "bg-violet-100", iconColor: "text-violet-500", dot: "bg-violet-400", Icon: BedIcon },
-          { label: "Occupied Beds",    value: totalSoldBeds,        sub: `${totalAllBeds > 0 ? Math.round((totalSoldBeds/totalAllBeds)*100) : 0}% Occupied`, iconBg: "bg-red-100",    iconColor: "text-red-500",    dot: "bg-red-400",    Icon: TrendingUp },
-          { label: "Available Beds",   value: totalAvailableBeds,   sub: `${totalAllBeds > 0 ? Math.round((totalAvailableBeds/totalAllBeds)*100) : 0}% Available`, iconBg: "bg-emerald-100",iconColor:"text-emerald-500",dot:"bg-emerald-400",Icon: CheckCircle },
-        ].slice(0, 4).map(({ label, value, sub, iconBg, iconColor, dot, Icon }) => (
+          { label: "Occupied Beds",    value: totalSoldBeds,        sub: `${totalAllBeds > 0 ? Math.round((totalSoldBeds/totalAllBeds)*100) : 0}% Occupied`, iconBg: "bg-red-100", iconColor: "text-red-500", dot: "bg-red-400", Icon: TrendingUp },
+        ].map(({ label, value, sub, iconBg, iconColor, dot, Icon }) => (
           <div key={label} className="card p-4">
             <div className="flex items-center gap-2.5 mb-3">
               <div className={`h-9 w-9 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0`}>
@@ -260,9 +275,7 @@ export default function RoomsPage() {
         ))}
       </div>
 
-      {/* ── Toolbar ── */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        {/* Property picker */}
         <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 min-w-[200px]">
           <Building2 size={15} className="text-orange-500 flex-shrink-0" />
           <select
@@ -275,7 +288,6 @@ export default function RoomsPage() {
           </select>
         </div>
 
-        {/* Search */}
         <div className="relative flex-1 max-w-xs">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -287,7 +299,6 @@ export default function RoomsPage() {
           />
         </div>
 
-        {/* Count badge */}
         {filteredRooms.length > 0 && (
           <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full font-medium">
             {filteredRooms.length} room{filteredRooms.length !== 1 ? "s" : ""}
@@ -295,7 +306,6 @@ export default function RoomsPage() {
         )}
       </div>
 
-      {/* ── Toast ── */}
       {success && (
         <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
           <CheckCircle size={16} className="text-emerald-600 flex-shrink-0" />
@@ -303,7 +313,6 @@ export default function RoomsPage() {
         </div>
       )}
 
-      {/* ── Rooms Grid ── */}
       {loading ? (
         <div className="card p-16 text-center">
           <div className="h-8 w-8 border-[3px] border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -339,9 +348,7 @@ export default function RoomsPage() {
 
               return (
                 <div key={room.id} className="card overflow-visible flex flex-col">
-                  {/* Card body */}
                   <div className="p-4 flex-1">
-                    {/* Top row */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className={`h-10 w-10 rounded-xl ${c.iconBg} flex items-center justify-center flex-shrink-0`}>
@@ -355,7 +362,6 @@ export default function RoomsPage() {
                         </div>
                       </div>
 
-                      {/* Status + 3-dot */}
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive ? "bg-emerald-100 text-emerald-700" : room.status === "maintenance" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}>
                           {isActive ? "Active" : capitalize(room.status)}
@@ -385,7 +391,6 @@ export default function RoomsPage() {
                       </div>
                     </div>
 
-                    {/* Bed counts */}
                     <div className="grid grid-cols-3 gap-2 mb-3">
                       <div className="bg-slate-50 rounded-xl p-2.5 text-center">
                         <p className="text-sm font-bold text-slate-800">{capacity}</p>
@@ -401,7 +406,6 @@ export default function RoomsPage() {
                       </div>
                     </div>
 
-                    {/* Occupancy bar */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Occupancy</span>
@@ -416,7 +420,6 @@ export default function RoomsPage() {
                     </div>
                   </div>
 
-                  {/* Footer */}
                   <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between">
                     <button
                       onClick={() => setExpandedRoomId(isExpanded ? null : room.id)}
@@ -433,7 +436,6 @@ export default function RoomsPage() {
                     </button>
                   </div>
 
-                  {/* Expanded beds */}
                   {isExpanded && (
                     <div className="border-t border-slate-100 p-4 bg-slate-50/70">
                       {roomBeds.length === 0 ? (
@@ -475,33 +477,20 @@ export default function RoomsPage() {
             })}
           </div>
 
-          {/* ── Pagination ── */}
           <div className="flex items-center justify-between pt-2">
             <p className="text-sm text-slate-500">
               Showing {filteredRooms.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredRooms.length)} of {filteredRooms.length} rooms
             </p>
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:text-orange-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:text-orange-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                 <ChevronLeft size={14} />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`h-8 w-8 rounded-lg text-sm font-semibold transition-all ${currentPage === page ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-500"}`}
-                >
+                <button key={page} onClick={() => setCurrentPage(page)} className={`h-8 w-8 rounded-lg text-sm font-semibold transition-all ${currentPage === page ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-500"}`}>
                   {page}
                 </button>
               ))}
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:text-orange-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:text-orange-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                 <ChevronRight size={14} />
               </button>
             </div>
@@ -509,9 +498,6 @@ export default function RoomsPage() {
         </>
       )}
 
-      {/* ══════════════════════════════════════
-          ROOM MODAL
-      ══════════════════════════════════════ */}
       {showRoomModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRoomModal(false)} />
@@ -572,9 +558,6 @@ export default function RoomsPage() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════
-          BED MODAL
-      ══════════════════════════════════════ */}
       {showBedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowBedModal(false)} />
