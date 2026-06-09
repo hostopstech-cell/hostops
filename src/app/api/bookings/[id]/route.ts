@@ -89,10 +89,9 @@ export async function PUT(
         status = ${status || 'confirmed'}
       WHERE id = ${id}
       RETURNING id, booking_code, property_id, room_id, bed_id, guest_name, guest_phone, guest_email,
-               check_in, check_out, number_of_guests, amount, discount, final_amount,
-               payment_method, payment_status, booking_source, special_requests, notes, status, created_at,
+              check_in, check_out, number_of_guests, amount, discount, final_amount,
+              payment_method, payment_status, booking_source, special_requests, notes, status, created_at,
               id_proof_type, id_proof_number
-		`
     `;
 
     if (rows.length === 0) {
