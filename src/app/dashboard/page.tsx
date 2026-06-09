@@ -12,8 +12,6 @@ export default function Dashboard() {
     occupancyRate: 0,
     todayRevenue: 0,
     monthRevenue: 0,
-    recentBookings: [],
-    propertyPerformance: [],
     todayCheckins: 0,
     todayCheckouts: 0
   })
@@ -41,14 +39,16 @@ export default function Dashboard() {
     ]).then(([dashData, bookingsData, propsData]) => {
       if (dashData && !dashData.error) setStats(dashData)
       if (bookingsData?.bookings) {
-        const bookings = bookingsData.bookings;
-        setRecentBookings(bookings.slice(0, 4));
-        const today = new Date().toISOString().split("T")[0];
-        const thisMonth = new Date().toISOString().slice(0, 7);
-        const todayRev = bookings.filter((b) => b.check_in?.startsWith(today)).reduce((s, b) => s + Number(b.final_amount || b.amount || 0), 0);
-        const monthRev = bookings.filter((b) => b.check_in?.startsWith(thisMonth)).reduce((s, b) => s + Number(b.final_amount || b.amount || 0), 0);
+        const bks = bookingsData.bookings;
+        setRecentBookings(bks.slice(0, 4));
+        const today = new Date().toISOString().split('T')[0];
+        const month = new Date().toISOString().slice(0, 7);
+        const todayRev = bks.filter((b) => b.check_in?.startsWith(today)).reduce((s, b) => s + Number(b.final_amount || b.amount || 0), 0);
+        const monthRev = bks.filter((b) => b.check_in?.startsWith(month)).reduce((s, b) => s + Number(b.final_amount || b.amount || 0), 0);
         setStats((prev) => ({ ...prev, todayRevenue: todayRev, monthRevenue: monthRev }));
       }
+      if (propsData?.properties) setProperties(propsData.properties)
+    }).catch(() => {}).finally(() => setLoading(false))
 
     fetch('/api/auth/me').then(r => r.json()).then(data => {
       if (data?.name) setUserName(data.name.split(' ')[0])
@@ -270,7 +270,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 text-xs hidden md:table-cell">{b.check_in ? new Date(b.check_in).toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"}) : "-"}</td>
+                      <td className="px-4 py-3 text-slate-600 text-xs hidden md:table-cell">{b.check_in}</td>
                       <td className="px-4 py-3 text-slate-900 font-medium text-xs hidden md:table-cell">₹{b.final_amount}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusStyle(b.status)}`}>
@@ -323,3 +323,5 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  )
+}
