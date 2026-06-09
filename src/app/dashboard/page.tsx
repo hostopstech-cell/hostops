@@ -262,7 +262,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 text-xs hidden md:table-cell">{b.check_in}</td>
+                      <td className="px-4 py-3 text-slate-600 text-xs hidden md:table-cell">{b.check_in ? new Date(b.check_in).toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"}) : "-"}</td>
                       <td className="px-4 py-3 text-slate-900 font-medium text-xs hidden md:table-cell">₹{b.final_amount}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusStyle(b.status)}`}>
