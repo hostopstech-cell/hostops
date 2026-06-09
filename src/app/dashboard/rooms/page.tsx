@@ -334,6 +334,120 @@ export default function RoomsPage() {
         </div>
       ) : (
         <>
+          {!selectedProperty ? (
+            <div className="space-y-8">
+              {properties.map(prop => {
+                const propRooms = filteredRooms.filter(r => Number(r.property_id) === Number(prop.id));
+                if (!propRooms.length) return null;
+                return (
+                  <div key={prop.id}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-7 w-7 rounded-lg bg-orange-100 flex items-center justify-center">
+                        <Building2 size={14} className="text-orange-500" />
+                      </div>
+                      <h2 className="text-sm font-bold text-slate-700">{prop.name}</h2>
+                      <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{propRooms.length} rooms</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {propRooms.map((room) => {
+                        const roomBeds = beds.filter((b) => b.room_id === room.id);
+                        const occupied = getOccupiedForRoom(room.id);
+                        const capacity = Number(room.number_of_beds || room.capacity || 0);
+                        const available = Math.max(capacity - occupied, 0);
+                        const pct = capacity > 0 ? Math.round((occupied / capacity) * 100) : 0;
+                        const c = ROOM_COLORS[room.type] || ROOM_COLORS.dorm;
+                        const isActive = room.status === "available";
+                        const isExpanded = expandedRoomId === room.id;
+                        return (
+                          <div key={room.id} className="card overflow-visible flex flex-col">
+                            <div className="p-4 flex-1">
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`h-10 w-10 rounded-xl ${c.iconBg} flex items-center justify-center flex-shrink-0`}>
+                                    <BedDouble size={20} className={c.iconColor} />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h3 className="text-sm font-bold text-slate-900 truncate leading-tight">{room.name}</h3>
+                                    <span className={`inline-block mt-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${c.badge}`}>
+                                      {ROOM_TYPES.find(t => t.value === room.type)?.label || capitalize(room.type)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive ? "bg-emerald-100 text-emerald-700" : room.status === "maintenance" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}>
+                                    {isActive ? "Active" : capitalize(room.status)}
+                                  </span>
+                                  <div className="relative" ref={openMenuId === room.id ? menuRef : undefined}>
+                                    <button onClick={() => setOpenMenuId(openMenuId === room.id ? null : room.id)} className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all">
+                                      <MoreVertical size={14} />
+                                    </button>
+                                    {openMenuId === room.id && (
+                                      <div className="absolute right-0 top-8 z-30 w-38 bg-white rounded-xl shadow-xl border border-slate-100 py-1 min-w-[148px]">
+                                        <button onClick={() => openEditRoom(room)} className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5"><Edit size={13} className="text-slate-400" /> Edit Room</button>
+                                        <button onClick={() => openAddBed(room)} className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5"><Plus size={13} className="text-slate-400" /> Add Bed</button>
+                                        <div className="my-1 border-t border-slate-100" />
+                                        <button onClick={() => handleDeleteRoom(room.id)} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2.5"><Trash2 size={13} /> Delete Room</button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 mb-3">
+                                <div className="bg-slate-50 rounded-xl p-2.5 text-center"><p className="text-sm font-bold text-slate-800">{capacity}</p><p className="text-[10px] text-slate-400 mt-0.5">Total Beds</p></div>
+                                <div className="bg-red-50 rounded-xl p-2.5 text-center"><p className="text-sm font-bold text-red-500">{occupied}</p><p className="text-[10px] text-slate-400 mt-0.5">Occupied</p></div>
+                                <div className="bg-emerald-50 rounded-xl p-2.5 text-center"><p className="text-sm font-bold text-emerald-500">{available}</p><p className="text-[10px] text-slate-400 mt-0.5">Available</p></div>
+                              </div>
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Occupancy</span>
+                                  <span className={`text-[10px] font-bold ${pct >= 80 ? "text-red-500" : pct >= 50 ? "text-orange-500" : "text-emerald-500"}`}>{pct}%</span>
+                                </div>
+                                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full transition-all duration-500 ${pct >= 80 ? "bg-red-400" : pct >= 50 ? "bg-orange-400" : "bg-emerald-400"}`} style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between">
+                              <button onClick={() => setExpandedRoomId(isExpanded ? null : room.id)} className="text-xs font-semibold text-slate-500 hover:text-orange-500 transition-colors flex items-center gap-1.5">
+                                <BedIcon size={12} />{isExpanded ? "Hide Beds" : `View Beds (${roomBeds.length})`}
+                              </button>
+                              <button onClick={() => openEditRoom(room)} className="text-xs font-semibold text-orange-500 hover:text-orange-600 transition-colors flex items-center gap-1"><Edit size={11} /> Edit</button>
+                            </div>
+                            {isExpanded && (
+                              <div className="border-t border-slate-100 p-4 bg-slate-50/70">
+                                {roomBeds.length === 0 ? (
+                                  <div className="text-center py-3"><p className="text-xs text-slate-400 mb-2">No beds added yet</p><button onClick={() => openAddBed(room)} className="text-xs font-semibold text-orange-500 hover:text-orange-600 flex items-center gap-1 mx-auto"><Plus size={11} /> Add first bed</button></div>
+                                ) : (
+                                  <>
+                                    <div className="grid grid-cols-3 gap-2 mb-2">
+                                      {roomBeds.map((bed) => (
+                                        <div key={bed.id} className="group/bed bg-white border border-slate-100 rounded-lg p-2 hover:border-orange-200 hover:shadow-sm transition-all">
+                                          <div className="flex items-center justify-between mb-1">
+                                            <span className="text-xs font-bold text-slate-800">{bed.bed_number}</span>
+                                            <div className="flex gap-0.5 opacity-0 group-hover/bed:opacity-100 transition-opacity">
+                                              <button onClick={() => openEditBed(bed)} className="p-0.5 text-slate-300 hover:text-orange-500 rounded"><Edit size={9} /></button>
+                                              <button onClick={() => handleDeleteBed(bed.id)} className="p-0.5 text-slate-300 hover:text-red-500 rounded"><Trash2 size={9} /></button>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1 mb-1"><div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${getBedDot(bed.status)}`} /><span className="text-[9px] text-slate-400 capitalize">{bed.status}</span></div>
+                                          <p className="text-[10px] font-bold text-orange-500">₹{bed.price_per_night}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <button onClick={() => openAddBed(room)} className="text-xs font-semibold text-orange-500 hover:text-orange-600 flex items-center gap-1"><Plus size={11} /> Add Bed</button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {paginatedRooms.map((room) => {
               const roomBeds = scopedBeds.filter((b) => b.room_id === room.id);
@@ -476,6 +590,10 @@ export default function RoomsPage() {
             })}
           </div>
 
+          </div>
+          )}
+          </div>
+          )}
           <div className="flex items-center justify-between pt-2">
             <p className="text-sm text-slate-500">
               Showing {filteredRooms.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredRooms.length)} of {filteredRooms.length} rooms
