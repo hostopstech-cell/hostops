@@ -14,7 +14,7 @@ export async function GET() {
     const thisMonth = new Date().toISOString().slice(0, 7);
 
     const [propsRes, bookingsRes] = await Promise.all([
-      sql`SELECT id, name FROM properties WHERE owner_id = ${ownerId}`,
+      sql`SELECT id, name, total_beds FROM properties WHERE owner_id = ${ownerId}`,
       sql`
         SELECT b.* FROM bookings b
         JOIN properties p ON p.id = b.property_id
@@ -25,7 +25,7 @@ export async function GET() {
     const props = propsRes;
     const bookings = bookingsRes;
 
-    const totalBeds = props.length * 10;
+    const totalBeds = props.reduce((sum: number, p: any) => sum + (Number(p.total_beds) || 0), 0);
     const soldBeds = bookings.filter((b: any) => ['confirmed','checked_in'].includes(b.status)).length;
     const availableBeds = Math.max(0, totalBeds - soldBeds);
     const occupancyRate = totalBeds > 0 ? Math.round(soldBeds / totalBeds * 100) : 0;
