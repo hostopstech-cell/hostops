@@ -34,11 +34,11 @@ export async function GET() {
     const todayCheckouts = bookings.filter((b: any) => b.check_out?.toString().startsWith(today)).length;
 
     const todayRevenue = bookings
-      .filter((b: any) => b.check_in?.toString().startsWith(today) && b.payment_status === 'paid')
+      .filter((b: any) => b.check_in?.toString().startsWith(today))
       .reduce((s: number, b: any) => s + Number(b.final_amount || b.amount || 0), 0);
 
     const monthRevenue = bookings
-      .filter((b: any) => b.check_in?.toString().startsWith(thisMonth) && b.payment_status === 'paid')
+      .filter((b: any) => b.check_in?.toString().startsWith(thisMonth))
       .reduce((s: number, b: any) => s + Number(b.final_amount || b.amount || 0), 0);
 
     const recentBookings = await sql`
