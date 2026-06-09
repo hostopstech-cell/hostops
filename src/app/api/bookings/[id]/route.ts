@@ -27,7 +27,8 @@ export async function PUT(
       guestName, guestPhone, guestEmail, propertyId, roomId, bedId,
       checkIn, checkOut, numberOfGuests, amount, discount,
       paymentMethod, paymentStatus, bookingSource,
-      specialRequests, notes, status
+      specialRequests, notes, status,
+      idProofType, idProofNumber
     } = body;
 
     if (!guestName?.trim() || !guestPhone?.trim() || !propertyId || !checkIn || !checkOut || !numberOfGuests || !amount) {
