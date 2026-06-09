@@ -422,14 +422,14 @@ export default function PropertiesPage() {
               const occupancyPct = getOccupancyPct(property.id, totalBeds);
               const images: string[] = (property as any).images || [];
               const currentSlide = imageSlides[property.id] || 0;
-              const typeIcon = {"hostel":"🏨","hotel":"🏩","guesthouse":"🏡","dormitory":"🛏️"}[property.type] || "🏠";
-              const typeBg = {"hostel":"from-orange-50 to-orange-100","hotel":"from-blue-50 to-blue-100","guesthouse":"from-green-50 to-green-100"}[property.type] || "from-slate-50 to-slate-100";
+              const coverImage = PLACEHOLDER;
+              const hasImages = false;
 
               return (
                 <div key={property.id} className="card-premium overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group">
                   {/* Image */}
                   <div className="relative h-48 bg-slate-100 overflow-hidden">
-                    <span className="text-8xl">{typeIcon}</span>
+                    <img src={coverImage} alt={property.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                     <div className="absolute top-3 left-3">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${property.status === "active" ? "bg-emerald-500 text-white" : "bg-slate-500 text-white"}`}>
