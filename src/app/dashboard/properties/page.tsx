@@ -256,18 +256,7 @@ export default function PropertiesPage() {
             {editingProperty ? "Edit Property" : "Add New Property"}
           </h2>
           {/* Image Upload */}
-                  {uploadingImages
-                    ? <div className="h-5 w-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                    : <><Upload size={18} className="text-slate-400 mb-1" /><span className="text-xs text-slate-400">Upload</span></>
-                  }
-                </button>
-              )}
-            </div>
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-              multiple className="hidden"
-              onChange={(e) => e.target.files && handleImageUpload(e.target.files)} />
-            <p className="text-xs text-slate-400">JPG, PNG or WebP • Max 5MB each • First image is cover photo</p>
-          </div>
+          
 
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 sm:grid-cols-2">
