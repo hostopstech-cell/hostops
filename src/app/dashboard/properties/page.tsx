@@ -146,13 +146,13 @@ export default function PropertiesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Properties</h1>
           <p className="text-sm text-slate-500 mt-0.5">Manage your hotels, hostels, dorms, and guesthouses</p>
         </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2">
+        <button onClick={openAdd} className="btn-primary flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap">
           <span className="text-lg">+</span> Add Property
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {([
           { label: "Total Properties", value: properties.length, sub: "Active properties",      iconBg: "bg-orange-100", iconColor: "text-orange-500", dot: "bg-orange-400" },
           { label: "Total Beds",       value: totalBeds,         sub: "Across all properties",  iconBg: "bg-violet-100", iconColor: "text-violet-500", dot: "bg-violet-400" },
