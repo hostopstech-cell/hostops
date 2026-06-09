@@ -41,11 +41,14 @@ export default function Dashboard() {
       if (bookingsData?.bookings) {
         const bks = bookingsData.bookings;
         setRecentBookings(bks.slice(0, 4));
-        const today = new Date().toISOString().split('T')[0];
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        const getD = (d: string) => d ? new Date(d).toLocaleDateString('en-CA') : '';
         const month = new Date().toISOString().slice(0, 7);
-        const todayRev = bks.filter((b) => b.check_in?.startsWith(today)).reduce((s, b) => s + Number(b.final_amount || b.amount || 0), 0);
-        const monthRev = bks.filter((b) => b.check_in?.startsWith(month)).reduce((s, b) => s + Number(b.final_amount || b.amount || 0), 0);
-        setStats((prev) => ({ ...prev, todayRevenue: todayRev, monthRevenue: monthRev }));
+        const todayRev = bks.filter((b) => getD(b.check_in) === todayStr).reduce((s: number, b: any) => s + Number(b.final_amount || b.amount || 0), 0);
+        const monthRev = bks.filter((b: any) => b.check_in?.startsWith(month)).reduce((s: number, b: any) => s + Number(b.final_amount || b.amount || 0), 0);
+        const todayCheckins = bks.filter((b: any) => getD(b.check_in) === todayStr).length;
+        const todayCheckouts = bks.filter((b: any) => getD(b.check_out) === todayStr).length;
+        setStats((prev) => ({ ...prev, todayRevenue: todayRev, monthRevenue: monthRev, todayCheckins, todayCheckouts }));
       }
       if (propsData?.properties) setProperties(propsData.properties)
     }).catch(() => {}).finally(() => setLoading(false))
