@@ -15,12 +15,15 @@ export async function GET() {
     }
 
     const properties = await sql`
-      SELECT id, owner_id, name, type, address, city, state, pincode, contact, email,
-             description, check_in_time, check_out_time, amenities, policies,
-             google_map_link, upi_id, total_beds, status, images, created_at
-      FROM properties
-      WHERE owner_id = ${owner.ownerId}
-      ORDER BY created_at DESC
+      SELECT p.id, p.owner_id, p.name, p.type, p.address, p.city, p.state, p.pincode, p.contact, p.email,
+             p.description, p.check_in_time, p.check_out_time, p.amenities, p.policies,
+             p.google_map_link, p.upi_id, p.total_beds, p.status, p.images, p.created_at,
+             COUNT(b.id) FILTER (WHERE b.status IN ('confirmed', 'checked_in')) AS occupied_beds
+      FROM properties p
+      LEFT JOIN bookings b ON b.property_id = p.id
+      WHERE p.owner_id = ${owner.ownerId}
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
     `;
 
     return NextResponse.json({ properties });
