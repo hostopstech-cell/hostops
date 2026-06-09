@@ -13,7 +13,7 @@ export default function Home() {
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm text-slate-600">
           <Link href="/" className="text-orange-600 font-semibold border-b-2 border-orange-600 pb-0.5">Features</Link>
-          <Link href="/pricing" className="hover:text-orange-600 transition-colors">Pricing</Link>
+          <Link href="/dashboard/subscription" className="hover:text-orange-600 transition-colors">Pricing</Link>
           <Link href="/solutions" className="hover:text-orange-600 transition-colors">Solutions</Link>
           <Link href="/about" className="hover:text-orange-600 transition-colors">About Us</Link>
         </div>
