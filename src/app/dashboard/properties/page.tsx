@@ -1,4 +1,5 @@
 "use client";
+import { Building2, BedDouble, TrendingUp } from "lucide-react";
 import ConfirmModal from '@/components/ConfirmModal';
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -152,14 +153,23 @@ export default function PropertiesPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { label: "Total Properties", value: properties.length, icon: "🏢" },
-          { label: "Total Beds", value: totalBeds, icon: "🛏️" },
-          { label: "Occupied", value: occupied, icon: "👥" },        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
-            <div className="text-2xl mb-1">{s.icon}</div>
-            <div className="text-2xl font-bold text-slate-800">{s.value}</div>
-            <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
+        {([
+          { label: "Total Properties", value: properties.length, sub: "Active properties",      iconBg: "bg-orange-100", iconColor: "text-orange-500", dot: "bg-orange-400" },
+          { label: "Total Beds",       value: totalBeds,         sub: "Across all properties",  iconBg: "bg-violet-100", iconColor: "text-violet-500", dot: "bg-violet-400" },
+          { label: "Occupied Beds",    value: occupied,          sub: `${totalBeds > 0 ? Math.round((occupied/totalBeds)*100) : 0}% Occupied`, iconBg: "bg-red-100", iconColor: "text-red-500", dot: "bg-red-400" },
+        ] as any[]).map(({ label, value, sub, iconBg, iconColor, dot }) => (
+          <div key={label} className="card p-4">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className={`h-9 w-9 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0`}>
+                <div className={`w-4 h-4 rounded-full ${dot}`} />
+              </div>
+              <p className="text-xs text-slate-500 font-medium leading-tight">{label}</p>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mb-1.5">{value}</p>
+            <div className="flex items-center gap-1.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+              <p className="text-xs text-slate-400">{sub}</p>
+            </div>
           </div>
         ))}
       </div>
