@@ -24,7 +24,7 @@ export async function GET() {
              p.name as property_name
       FROM bookings b
       JOIN properties p ON p.id = b.property_id
-      WHERE p.owner_id = ${owner.id}
+      WHERE p.owner_id = ${owner.ownerId}
       ORDER BY b.created_at DESC
     `;
 
