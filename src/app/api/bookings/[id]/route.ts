@@ -83,6 +83,8 @@ export async function PUT(
         booking_source = ${bookingSource || 'direct'},
         special_requests = ${specialRequests?.trim() || null},
         notes = ${notes?.trim() || null},
+        id_proof_type = ${idProofType || null},
+        id_proof_number = ${idProofNumber?.trim() || null},
         status = ${status || 'confirmed'}
       WHERE id = ${id}
       RETURNING id, booking_code, property_id, room_id, bed_id, guest_name, guest_phone, guest_email,
