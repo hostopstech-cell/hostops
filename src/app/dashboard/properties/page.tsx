@@ -151,13 +151,11 @@ export default function PropertiesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "Total Properties", value: properties.length, icon: "🏢" },
           { label: "Total Beds", value: totalBeds, icon: "🛏️" },
-          { label: "Occupied", value: occupied, icon: "👥" },
-          { label: "Available", value: totalBeds - occupied, icon: "✅" },
-        ].map(s => (
+          { label: "Occupied", value: occupied, icon: "👥" },        ].map(s => (
           <div key={s.label} className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
             <div className="text-2xl mb-1">{s.icon}</div>
             <div className="text-2xl font-bold text-slate-800">{s.value}</div>
