@@ -427,13 +427,9 @@ export default function PropertiesPage() {
                         </div>
                       </>
                     )}
-                    {!hasImages && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100">
-                        <Camera size={28} className="text-slate-300 mb-2" />
-                        <p className="text-xs text-slate-400">No photos yet</p>
-                        <button onClick={() => handleEdit(property)} className="mt-2 text-xs text-orange-500 font-semibold hover:underline">+ Add photos</button>
-                      </div>
-                    )}
+                  <div className="h-40 bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center rounded-t-xl">
+                    <span className="text-6xl">🏨</span>
+                  </div>
                     <div className="absolute bottom-3 left-3 right-16">
                       <p className="text-white font-bold text-lg leading-tight drop-shadow-sm line-clamp-1">{property.name}</p>
                       <p className="text-white/80 text-xs font-medium">{capitalize(property.type)}</p>
