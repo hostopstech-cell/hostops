@@ -4,13 +4,12 @@ import { useRouter } from "next/navigation";
 import type { Property } from "@/types";
 
 const TYPE_ICONS: Record<string, string> = {
-  hostel: "🏨", hotel: "🏩", guesthouse: "🏡", dormitory: "🛏️", default: "🏠"
+  hostel: "🏨", hotel: "🏩", guesthouse: "🏡", default: "🏠"
 };
 const TYPE_BG: Record<string, string> = {
   hostel: "from-orange-50 to-orange-100",
   hotel: "from-blue-50 to-blue-100",
   guesthouse: "from-green-50 to-green-100",
-  dormitory: "from-purple-50 to-purple-100",
   default: "from-slate-50 to-slate-100",
 };
 
@@ -217,7 +216,7 @@ export default function PropertiesPage() {
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-slate-400 border-t border-slate-50 pt-3">
-                    <span>📞 {(p as any).contact_number || "—"}</span>
+                    <span className="capitalize">🏷️ {p.type}</span>
                     <span>🕐 {(p as any).check_in_time || "14:00"} – {(p as any).check_out_time || "11:00"}</span>
                   </div>
                 </div>
@@ -247,7 +246,6 @@ export default function PropertiesPage() {
                     <option value="hostel">Hostel</option>
                     <option value="hotel">Hotel</option>
                     <option value="guesthouse">Guesthouse</option>
-                    <option value="dormitory">Dormitory</option>
                   </select>
                 </div>
                 <div>
