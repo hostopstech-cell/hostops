@@ -256,28 +256,6 @@ export default function PropertiesPage() {
             {editingProperty ? "Edit Property" : "Add New Property"}
           </h2>
           {/* Image Upload */}
-          <div className="mb-6">
-            <label className="mb-3 block text-sm font-semibold text-slate-700">
-              Property Photos <span className="text-slate-400 font-normal">(max 6)</span>
-            </label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-3">
-              {previewImages.map((url, idx) => (
-                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border-2 border-slate-200">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
-                  <button type="button" onClick={() => removeImage(idx)}
-                    className="absolute top-1 right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <X size={12} />
-                  </button>
-                  {idx === 0 && (
-                    <span className="absolute bottom-1 left-1 text-xs bg-orange-500 text-white px-1.5 py-0.5 rounded-md font-semibold">Cover</span>
-                  )}
-                </div>
-              ))}
-              {previewImages.length < 6 && (
-                <button type="button" onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingImages}
-                  className="aspect-square rounded-xl border-2 border-dashed border-slate-300 hover:border-orange-400 hover:bg-orange-50 flex flex-col items-center justify-center transition-all disabled:opacity-50">
-                  {uploadingImages
                     ? <div className="h-5 w-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
                     : <><Upload size={18} className="text-slate-400 mb-1" /><span className="text-xs text-slate-400">Upload</span></>
                   }
