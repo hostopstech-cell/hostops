@@ -13,9 +13,11 @@ export default function Dashboard() {
     todayRevenue: 0,
     monthRevenue: 0,
     todayCheckins: 0,
-    todayCheckouts: 0
+    todayCheckouts: 0,
+    weekRevenue: 0
   })
   const [recentBookings, setRecentBookings] = useState<any[]>([])
+  const [allBookings, setAllBookings] = useState<any[]>([])
   const [properties, setProperties] = useState<any[]>([])
   const [userName, setUserName] = useState("Owner")
   const [loading, setLoading] = useState(true)
@@ -41,6 +43,7 @@ export default function Dashboard() {
       if (bookingsData?.bookings) {
         const bks = bookingsData.bookings;
         setRecentBookings(bks.slice(0, 4));
+        setAllBookings(bks);
         const todayStr = new Date().toLocaleDateString('en-CA');
         const getD = (d: string) => d ? new Date(d).toLocaleDateString('en-CA') : '';
         const month = new Date().toISOString().slice(0, 7);
@@ -48,7 +51,10 @@ export default function Dashboard() {
         const monthRev = bks.filter((b: any) => b.check_in?.startsWith(month)).reduce((s: number, b: any) => s + Number(b.final_amount || b.amount || 0), 0);
         const todayCheckins = bks.filter((b: any) => getD(b.check_in) === todayStr).length;
         const todayCheckouts = bks.filter((b: any) => getD(b.check_out) === todayStr).length;
-        setStats((prev) => ({ ...prev, todayRevenue: todayRev, monthRevenue: monthRev, todayCheckins, todayCheckouts }));
+        // Week revenue: last 7 days
+        const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - 6); weekStart.setHours(0,0,0,0);
+        const weekRev = bks.filter((b: any) => b.check_in && new Date(b.check_in) >= weekStart).reduce((s: number, b: any) => s + Number(b.final_amount || b.amount || 0), 0);
+        setStats((prev) => ({ ...prev, todayRevenue: todayRev, monthRevenue: monthRev, weekRevenue: weekRev, todayCheckins, todayCheckouts }));
       }
       if (propsData?.properties) setProperties(propsData.properties)
     }).catch(() => {}).finally(() => setLoading(false))
@@ -164,34 +170,50 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-white rounded-xl p-5 shadow-sm border border-slate-100">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-slate-900">Revenue Overview</h2>
-            <span className="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">This Month</span>
+            <span className="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">This Week</span>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="bg-orange-50 rounded-xl p-4">
-              <p className="text-xs text-slate-500">Today</p>
-              <p className="text-2xl font-bold text-orange-600">₹{stats.todayRevenue.toLocaleString('en-IN')}</p>
+              <p className="text-xs text-slate-500">This Week</p>
+              <p className="text-2xl font-bold text-orange-600">₹{(stats as any).weekRevenue?.toLocaleString('en-IN') || 0}</p>
             </div>
             <div className="bg-blue-50 rounded-xl p-4">
               <p className="text-xs text-slate-500">This Month</p>
               <p className="text-2xl font-bold text-blue-600">₹{stats.monthRevenue.toLocaleString('en-IN')}</p>
             </div>
           </div>
-          {/* Simple Bar Chart */}
-          <div className="flex items-end gap-1 h-24">
-            {[40, 65, 45, 70, 55, 80, 95].map((h, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <div
-                  className={`w-full rounded-t-sm ${i === 6 ? 'bg-orange-500' : 'bg-orange-200'}`}
-                  style={{ height: `${h}%` }}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between mt-1">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-              <p key={d} className="text-xs text-slate-400 flex-1 text-center">{d}</p>
-            ))}
-          </div>
+          {/* Real 7-day bar chart */}
+          {(() => {
+            const days = Array.from({length: 7}, (_, i) => {
+              const d = new Date(); d.setDate(d.getDate() - (6 - i)); d.setHours(0,0,0,0);
+              const dStr = d.toLocaleDateString('en-CA');
+              const rev = allBookings.filter((b: any) => b.check_in && new Date(b.check_in).toLocaleDateString('en-CA') === dStr).reduce((s: number, b: any) => s + Number(b.final_amount || b.amount || 0), 0);
+              return { day: d.toLocaleDateString('en-IN', {weekday:'short'}), rev };
+            });
+            const maxRev = Math.max(...days.map(d => d.rev), 1);
+            return (
+              <>
+                <div className="flex items-end gap-1 h-24">
+                  {days.map((d, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">
+                        ₹{d.rev.toLocaleString('en-IN')}
+                      </div>
+                      <div
+                        className={`w-full rounded-t-sm ${i === 6 ? 'bg-orange-500' : 'bg-orange-200'}`}
+                        style={{ height: `${Math.max((d.rev / maxRev) * 100, d.rev > 0 ? 8 : 2)}%` }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between mt-1">
+                  {days.map((d, i) => (
+                    <p key={i} className="text-xs text-slate-400 flex-1 text-center">{d.day}</p>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {/* Today's Activity */}
@@ -298,19 +320,27 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-4">
               {properties.slice(0, 4).map((prop: any, i: number) => {
-                const occupancy = Math.floor(Math.random() * 40 + 50)
+                const totalBeds = prop.total_beds || prop.totalBeds || 0;
+                const activeBookings = allBookings.filter((b: any) =>
+                  String(b.property_id) === String(prop.id) &&
+                  ['confirmed','checked_in'].includes(b.status)
+                ).length;
+                const occupancy = totalBeds > 0 ? Math.min(Math.round((activeBookings / totalBeds) * 100), 100) : 0;
                 const colors = ['bg-orange-500', 'bg-blue-500', 'bg-green-500', 'bg-purple-500']
                 return (
                   <div key={prop.id}>
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 bg-slate-100 rounded-md flex items-center justify-center text-xs">🏠</div>
-                        <p className="text-sm font-medium text-slate-700 truncate max-w-[120px]">{prop.name}</p>
+                        <p className="text-sm font-medium text-slate-700 truncate max-w-[100px]">{prop.name}</p>
                       </div>
-                      <p className="text-sm font-bold text-slate-900">{occupancy}%</p>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-slate-900">{occupancy}%</p>
+                        <p className="text-xs text-slate-400">{activeBookings}/{totalBeds} beds</p>
+                      </div>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-1.5">
-                      <div className={`${colors[i % colors.length]} h-1.5 rounded-full`} style={{ width: `${occupancy}%` }} />
+                      <div className={`${colors[i % colors.length]} h-1.5 rounded-full transition-all`} style={{ width: `${occupancy}%` }} />
                     </div>
                   </div>
                 )
