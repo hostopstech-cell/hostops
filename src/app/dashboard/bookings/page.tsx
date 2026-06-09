@@ -77,8 +77,12 @@ export default function BookingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all"); // "all" | "checkin_today" | "checkout_today"
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+  const getDateStr = (d: string) => d ? new Date(d).toLocaleDateString("en-CA") : "";
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -247,7 +251,10 @@ export default function BookingsPage() {
     const matchSearch = !searchTerm || b.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) || b.guest_phone?.includes(searchTerm) || b.booking_code?.includes(searchTerm);
     const matchStatus = statusFilter === "all" || b.status === statusFilter;
     const matchSource = sourceFilter === "all" || b.booking_source === sourceFilter;
-    return matchSearch && matchStatus && matchSource;
+    const matchDate = dateFilter === "all"
+      || (dateFilter === "checkin_today" && getDateStr(b.check_in) === todayStr)
+      || (dateFilter === "checkout_today" && getDateStr(b.check_out) === todayStr);
+    return matchSearch && matchStatus && matchSource && matchDate;
   });
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -280,12 +287,16 @@ export default function BookingsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Bookings", value: bookings.length, icon: "📋" },
-          { label: "Today Check-ins", value: bookings.filter(b => b.check_in === new Date().toISOString().split("T")[0]).length, icon: "🏨" },
-          { label: "Today Check-outs", value: bookings.filter(b => b.check_out === new Date().toISOString().split("T")[0]).length, icon: "🚪" },
-          { label: "Confirmed", value: bookings.filter(b => b.status === "confirmed").length, icon: "✅" },
+          { label: "Total Bookings", value: bookings.length, icon: "📋", filter: "all" },
+          { label: "Today Check-ins", value: bookings.filter(b => getDateStr(b.check_in) === todayStr).length, icon: "🏨", filter: "checkin_today" },
+          { label: "Today Check-outs", value: bookings.filter(b => getDateStr(b.check_out) === todayStr).length, icon: "🚪", filter: "checkout_today" },
+          { label: "Confirmed", value: bookings.filter(b => b.status === "confirmed").length, icon: "✅", filter: "all" },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+          <div
+            key={s.label}
+            onClick={() => { setDateFilter(s.filter); setStatusFilter("all"); setSearchTerm(""); setCurrentPage(1); }}
+            className={`bg-white rounded-xl p-4 border shadow-sm cursor-pointer transition-all hover:shadow-md ${dateFilter === s.filter && s.filter !== "all" ? "border-orange-400 ring-2 ring-orange-200" : "border-slate-100"}`}
+          >
             <div className="text-2xl mb-1">{s.icon}</div>
             <div className="text-2xl font-bold text-slate-800">{s.value}</div>
             <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
