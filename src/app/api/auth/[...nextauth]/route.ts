@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { sql } from "@/lib/db";
 import { signToken, setAuthCookie } from "@/lib/auth";
+import bcrypt from "bcryptjs";
 
 const handler = NextAuth({
   providers: [
@@ -22,10 +23,18 @@ const handler = NextAuth({
           const rows = await sql`
             SELECT id, name, email FROM owners WHERE email = ${user.email!.toLowerCase()}
           `;
+          let owner;
           if (rows.length === 0) {
-            return "/login?error=not_registered";
+            const hash = await bcrypt.hash("google-" + user.email, 10);
+            const newOwner = await sql`
+              INSERT INTO owners (name, email, password_hash)
+              VALUES (${user.name || "Owner"}, ${user.email!.toLowerCase()}, ${hash})
+              RETURNING id, name, email
+            `;
+            owner = newOwner[0];
+          } else {
+            owner = rows[0];
           }
-          const owner = rows[0];
           const token = signToken({ ownerId: owner.id, email: owner.email, name: owner.name });
           await setAuthCookie(token);
           return true;
@@ -38,6 +47,9 @@ const handler = NextAuth({
     },
     async session({ session }) {
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      return baseUrl + "/dashboard";
     },
   },
 });
