@@ -40,9 +40,15 @@ export default function Dashboard() {
       fetch('/api/properties').then(r => r.json()),
     ]).then(([dashData, bookingsData, propsData]) => {
       if (dashData && !dashData.error) setStats(dashData)
-      if (bookingsData?.bookings) setRecentBookings(bookingsData.bookings.slice(0, 4))
-      if (propsData?.properties) setProperties(propsData.properties)
-    }).catch(() => {}).finally(() => setLoading(false))
+      if (bookingsData?.bookings) {
+        const bookings = bookingsData.bookings;
+        setRecentBookings(bookings.slice(0, 4));
+        const today = new Date().toISOString().split("T")[0];
+        const thisMonth = new Date().toISOString().slice(0, 7);
+        const todayRev = bookings.filter((b) => b.check_in?.startsWith(today)).reduce((s, b) => s + Number(b.final_amount || b.amount || 0), 0);
+        const monthRev = bookings.filter((b) => b.check_in?.startsWith(thisMonth)).reduce((s, b) => s + Number(b.final_amount || b.amount || 0), 0);
+        setStats((prev) => ({ ...prev, todayRevenue: todayRev, monthRevenue: monthRev }));
+      }
 
     fetch('/api/auth/me').then(r => r.json()).then(data => {
       if (data?.name) setUserName(data.name.split(' ')[0])
