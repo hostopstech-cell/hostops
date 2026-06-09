@@ -228,7 +228,6 @@ export default function RoomsPage() {
     if (status === "occupied") return "bg-red-500";
     if (status === "maintenance") return "bg-yellow-500";
     return "bg-slate-400";
-  }
 
   return (
     <div className="space-y-6 pb-8">
