@@ -12,6 +12,8 @@ export default function Dashboard() {
     occupancyRate: 0,
     todayRevenue: 0,
     monthRevenue: 0,
+    recentBookings: [],
+    propertyPerformance: [],
     todayCheckins: 0,
     todayCheckouts: 0
   })
