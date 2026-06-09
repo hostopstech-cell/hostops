@@ -1,4 +1,5 @@
 "use client";
+import ConfirmModal from '@/components/ConfirmModal';
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Property } from "@/types";
@@ -31,6 +32,8 @@ export default function PropertiesPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   async function fetchProperties() {
     const res = await fetch("/api/properties");
@@ -71,9 +74,16 @@ export default function PropertiesPage() {
     setShowModal(true);
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm("Delete this property?")) return;
-    const res = await fetch(`/api/properties/${id}`, { method: "DELETE" });
+  function handleDelete(id: number) {
+    setDeleteId(id);
+    setConfirmOpen(true);
+  }
+
+  async function doDelete() {
+    if (!deleteId) return;
+    const res = await fetch(`/api/properties/${deleteId}`, { method: "DELETE" });
+    setConfirmOpen(false);
+    setDeleteId(null);
     if (res.ok) { setSuccess("Property deleted!"); fetchProperties(); }
     else setError("Failed to delete");
   }
@@ -119,6 +129,15 @@ export default function PropertiesPage() {
 
   return (
     <div className="space-y-6 pb-8">
+      <ConfirmModal
+        isOpen={confirmOpen}
+        title="Delete Property"
+        message="Are you sure you want to delete this property? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={doDelete}
+        onCancel={() => { setConfirmOpen(false); setDeleteId(null); }}
+      />
+
       {success && <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-xl shadow-lg z-50">✓ {success}</div>}
 
       <div className="flex items-center justify-between">
@@ -166,7 +185,6 @@ export default function PropertiesPage() {
             const occ = totalB > 0 ? Math.round(occB / totalB * 100) : 0;
             return (
               <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-all">
-                {/* Icon Header */}
                 <div className={`h-36 bg-gradient-to-br ${bg} flex items-center justify-center relative`}>
                   <span className="text-6xl">{icon}</span>
                   <div className="absolute top-3 left-3">
@@ -180,7 +198,6 @@ export default function PropertiesPage() {
                   </div>
                 </div>
 
-                {/* Body */}
                 <div className="p-5">
                   <div className="flex items-start gap-3 mb-3">
                     <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center flex-shrink-0`}>
