@@ -252,10 +252,9 @@ export default function RoomsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "Total Properties", value: properties.length,    sub: "Active properties",                               iconBg: "bg-orange-100", iconColor: "text-orange-500", dot: "bg-orange-400", Icon: Building2 },
-          { label: "Total Rooms",      value: totalRooms,           sub: "Across all properties",                           iconBg: "bg-blue-100",   iconColor: "text-blue-500",   dot: "bg-blue-400",   Icon: BedDouble },
           { label: "Total Beds",       value: totalAllBeds,         sub: "Across all rooms",                                iconBg: "bg-violet-100", iconColor: "text-violet-500", dot: "bg-violet-400", Icon: BedIcon },
           { label: "Occupied Beds",    value: totalSoldBeds,        sub: `${totalAllBeds > 0 ? Math.round((totalSoldBeds/totalAllBeds)*100) : 0}% Occupied`, iconBg: "bg-red-100", iconColor: "text-red-500", dot: "bg-red-400", Icon: TrendingUp },
         ].map(({ label, value, sub, iconBg, iconColor, dot, Icon }) => (
