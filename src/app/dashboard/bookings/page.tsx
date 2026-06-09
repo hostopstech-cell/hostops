@@ -164,7 +164,7 @@ export default function BookingsPage() {
       bookingSource: booking.booking_source || "direct",
       specialRequests: (booking as any).special_requests || "",
       notes: (booking as any).notes || "",
-      guests: [{
+      guests: (booking as any).guests_data ? JSON.parse(JSON.stringify((booking as any).guests_data)) : [{
         guestName: booking.guest_name || "",
         guestPhone: booking.guest_phone || "",
         guestEmail: (booking as any).guest_email || "",
@@ -219,6 +219,7 @@ export default function BookingsPage() {
         bookingSource: form.bookingSource,
         specialRequests: form.specialRequests,
         notes: form.notes,
+        guestsData: form.guests,
       };
 
       const url = editingBooking ? `/api/bookings/${editingBooking.id}` : "/api/bookings";

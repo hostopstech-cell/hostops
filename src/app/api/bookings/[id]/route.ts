@@ -86,6 +86,7 @@ export async function PUT(
         notes = ${notes?.trim() || null},
         id_proof_type = ${idProofType || null},
         id_proof_number = ${idProofNumber?.trim() || null},
+        guests_data = ${body.guestsData ? JSON.stringify(body.guestsData) : null},
         status = ${status || 'confirmed'}
       WHERE id = ${id}
       RETURNING id, booking_code, property_id, room_id, bed_id, guest_name, guest_phone, guest_email,

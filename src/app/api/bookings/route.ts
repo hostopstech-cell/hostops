@@ -20,7 +20,7 @@ export async function GET() {
              b.number_of_guests, b.amount, b.discount, b.final_amount,
              b.payment_method, b.payment_status, b.booking_source,
              b.special_requests, b.notes, b.status, b.created_at,
-             b.id_proof_type, b.id_proof_number,
+             b.id_proof_type, b.id_proof_number, b.guests_data,
              p.name as property_name
       FROM bookings b
       JOIN properties p ON p.id = b.property_id
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
         check_in, check_out, number_of_guests, amount, discount, final_amount,
         payment_method, payment_status, booking_source,
         special_requests, notes, booking_code, status,
-        id_proof_type, id_proof_number
+        id_proof_type, id_proof_number, guests_data
       )
       VALUES (
         ${propertyId}, ${roomId || null}, ${bedId || null},
@@ -79,14 +79,14 @@ export async function POST(request: Request) {
         ${paymentMethod || 'upi'}, ${paymentStatus || 'paid'}, ${bookingSource || 'direct'},
         ${specialRequests?.trim() || null}, ${notes?.trim() || null},
         ${bookingCode || 'BK' + Date.now()}, ${status || 'confirmed'},
-        ${idProofType || null}, ${idProofNumber?.trim() || null}
+        ${idProofType || null}, ${idProofNumber?.trim() || null}, ${body.guestsData ? JSON.stringify(body.guestsData) : null}
       )
       RETURNING id, booking_code, property_id, room_id, bed_id,
                 guest_name, guest_phone, guest_email, check_in, check_out,
                 number_of_guests, amount, discount, final_amount,
                 payment_method, payment_status, booking_source,
                 special_requests, notes, status, created_at,
-                id_proof_type, id_proof_number
+                id_proof_type, id_proof_number, guests_data
     `;
 
     return NextResponse.json({ booking: rows[0] }, { status: 201 });
