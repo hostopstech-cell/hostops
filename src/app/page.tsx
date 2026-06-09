@@ -1,10 +1,15 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 
 export default function Home() {
+  const router = useRouter();
+  useEffect(() => { fetch("/api/auth/me").then(r=>r.json()).then(d=>{ if(d.owner) router.replace("/dashboard"); }).catch(()=>{}); }, [router]);
   const router = useRouter();
   useEffect(() => {
     fetch("/api/auth/me").then(r => r.json()).then(d => { if(d.owner) router.replace("/dashboard"); }).catch(()=>{});
