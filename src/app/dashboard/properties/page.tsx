@@ -256,6 +256,7 @@ export default function PropertiesPage() {
             {editingProperty ? "Edit Property" : "Add New Property"}
           </h2>
           {/* Image Upload */}
+                  {uploadingImages
                     ? <div className="h-5 w-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
                     : <><Upload size={18} className="text-slate-400 mb-1" /><span className="text-xs text-slate-400">Upload</span></>
                   }
