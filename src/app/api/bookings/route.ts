@@ -12,9 +12,7 @@ const VALID_PAYMENT_METHODS: PaymentMethod[] = ["upi", "cash", "card", "bank_tra
 export async function GET() {
   try {
     const owner = await getAuthenticatedOwner();
-    if (!owner) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const bookings = await sql`
       SELECT b.id, b.booking_code, b.property_id, b.room_id, b.bed_id,
@@ -22,77 +20,49 @@ export async function GET() {
              b.number_of_guests, b.amount, b.discount, b.final_amount,
              b.payment_method, b.payment_status, b.booking_source,
              b.special_requests, b.notes, b.status, b.created_at,
+             b.id_proof_type, b.id_proof_number,
              p.name as property_name
       FROM bookings b
       JOIN properties p ON p.id = b.property_id
-      WHERE p.owner_id = ${owner.ownerId}
+      WHERE p.owner_id = ${owner.id}
       ORDER BY b.created_at DESC
     `;
 
     return NextResponse.json({ bookings });
   } catch (error) {
     console.error("Bookings fetch error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch bookings" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const owner = await getAuthenticatedOwner();
-    if (!owner) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
     const {
-      guestName, guestPhone, guestEmail, propertyId, roomId, bedId,
-      checkIn, checkOut, numberOfGuests, amount, discount,
+      guestName, guestPhone, guestEmail,
+      idProofType, idProofNumber,
+      propertyId, roomId, bedId,
+      checkIn, checkOut, numberOfGuests,
+      amount, discount,
       paymentMethod, paymentStatus, bookingSource,
-      specialRequests, notes, bookingCode, finalAmount
+      specialRequests, notes, bookingCode, status
     } = body;
 
-    if (!guestName?.trim() || !guestPhone?.trim() || !propertyId || !checkIn || !checkOut || !numberOfGuests || !amount || !paymentMethod || !paymentStatus) {
-      return NextResponse.json(
-        { error: "Guest name, phone, property, check-in, check-out, guests, amount, payment method, and payment status are required" },
-        { status: 400 }
-      );
-    }
-
-    if (bookingSource && !VALID_SOURCES.includes(bookingSource)) {
-      return NextResponse.json(
-        { error: "Invalid booking source" },
-        { status: 400 }
-      );
-    }
-
-    if (!VALID_PAYMENT_METHODS.includes(paymentMethod)) {
-      return NextResponse.json(
-        { error: "Invalid payment method" },
-        { status: 400 }
-      );
-    }
+    if (!guestName?.trim()) return NextResponse.json({ error: "Guest name is required" }, { status: 400 });
+    if (!guestPhone?.trim()) return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
+    if (!propertyId) return NextResponse.json({ error: "Property is required" }, { status: 400 });
+    if (!checkIn) return NextResponse.json({ error: "Check-in date is required" }, { status: 400 });
+    if (!checkOut) return NextResponse.json({ error: "Check-out date is required" }, { status: 400 });
+    if (!numberOfGuests) return NextResponse.json({ error: "Number of guests is required" }, { status: 400 });
+    if (!amount) return NextResponse.json({ error: "Amount is required" }, { status: 400 });
 
     const guests = parseInt(numberOfGuests, 10);
     const amt = parseFloat(amount);
     const disc = parseFloat(discount || "0");
-    const final = parseFloat(finalAmount || (amt - disc).toString());
-
-    if (isNaN(guests) || guests <= 0) {
-      return NextResponse.json(
-        { error: "Number of guests must be a positive number" },
-        { status: 400 }
-      );
-    }
-
-    if (isNaN(amt) || amt < 0) {
-      return NextResponse.json(
-        { error: "Amount must be a non-negative number" },
-        { status: 400 }
-      );
-    }
+    const final = amt - disc;
 
     const rows = await sql`
       INSERT INTO bookings (
@@ -106,52 +76,22 @@ export async function POST(request: Request) {
         ${propertyId}, ${roomId || null}, ${bedId || null},
         ${guestName.trim()}, ${guestPhone.trim()}, ${guestEmail?.trim() || null},
         ${checkIn}, ${checkOut}, ${guests}, ${amt}, ${disc}, ${final},
-        ${paymentMethod}, ${paymentStatus}, ${bookingSource || 'direct'},
+        ${paymentMethod || 'upi'}, ${paymentStatus || 'paid'}, ${bookingSource || 'direct'},
         ${specialRequests?.trim() || null}, ${notes?.trim() || null},
-        ${bookingCode || 'BK' + Date.now()}, 'confirmed',
+        ${bookingCode || 'BK' + Date.now()}, ${status || 'confirmed'},
         ${idProofType || null}, ${idProofNumber?.trim() || null}
       )
-      RETURNING id, booking_code, property_id, room_id, bed_id, guest_name, guest_phone, guest_email,
-               check_in, check_out, number_of_guests, amount, discount, final_amount,
-               payment_method, payment_status, booking_source, special_requests, notes, status, created_at
+      RETURNING id, booking_code, property_id, room_id, bed_id,
+                guest_name, guest_phone, guest_email, check_in, check_out,
+                number_of_guests, amount, discount, final_amount,
+                payment_method, payment_status, booking_source,
+                special_requests, notes, status, created_at,
+                id_proof_type, id_proof_number
     `;
 
-    const booking = rows[0];
-
-    // Auto-create payment record
-    await sql`
-      INSERT INTO payments (booking_id, guest_name, amount, date, method, status, notes)
-      VALUES (
-        ${booking.id}, ${guestName.trim()}, ${final}, ${checkIn}, ${paymentMethod}, ${paymentStatus},
-        ${'Auto-created with booking ' + booking.booking_code}
-      )
-    `;
-
-    // Auto-create or update guest record
-    await sql`
-      INSERT INTO guests (name, phone, email, country, total_stays, total_spent, last_visit)
-      VALUES (
-        ${guestName.trim()},
-        ${guestPhone.trim()},
-        ${guestEmail?.trim() || null},
-        'India',
-        1,
-        ${final},
-        ${checkIn}
-      )
-      ON CONFLICT (phone) DO UPDATE SET
-        total_stays  = guests.total_stays + 1,
-        total_spent  = guests.total_spent + ${final},
-        last_visit   = ${checkIn},
-        email        = COALESCE(EXCLUDED.email, guests.email)
-    `;
-
-    return NextResponse.json({ booking }, { status: 201 });
+    return NextResponse.json({ booking: rows[0] }, { status: 201 });
   } catch (error) {
     console.error("Booking create error:", error);
-    return NextResponse.json(
-      { error: "Failed to create booking" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
   }
 }
