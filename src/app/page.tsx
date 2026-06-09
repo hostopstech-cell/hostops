@@ -144,7 +144,7 @@ export default function Home() {
             <h2 className="text-3xl font-bold text-slate-900 mb-4">Works Seamlessly with<br />Your <span className="text-orange-600">Favorite Tools</span></h2>
             <p className="text-slate-500 text-lg leading-relaxed">Integrate with leading platforms and services to streamline your operations even further.</p>
           </div>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {[
               {name:"Booking.com",bg:"bg-blue-600",text:"B"},
               {name:"Airbnb",bg:"bg-red-500",text:"A"},
@@ -152,7 +152,7 @@ export default function Home() {
               {name:"Razorpay",bg:"bg-indigo-600",text:"R"},
               {name:"& More",bg:"bg-slate-200",text:"···"},
             ].map((t) => (
-              <div key={t.name} className="bg-white border border-slate-200 rounded-xl p-4 text-center shadow-sm">
+              <div key={t.name} className="bg-white border border-slate-200 rounded-xl p-3 text-center shadow-sm">
                 <div className={`w-10 h-10 ${t.bg} rounded-lg flex items-center justify-center mx-auto mb-2`}>
                   <span className="text-white text-sm font-bold">{t.text}</span>
                 </div>
