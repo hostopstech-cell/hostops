@@ -1,66 +1,158 @@
 "use client";
+
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import type { Booking, Property, Room, Bed, BookingSource } from "@/types";
+import { formatDate, capitalize } from "@/lib/format";
+import type { Booking, BookingStatus, BookingSource, PaymentMethod, Property, Room, Bed } from "@/types";
+import {
+  Plus, Edit, Trash2, Search, Calendar, User,
+  X, CheckCircle, Clock, LogIn, LogOut, XCircle,
+  MoreVertical, ChevronLeft, ChevronRight, Upload, Building2,
+  BedDouble, TrendingUp, CreditCard
+} from "lucide-react";
+
+const BOOKING_STATUSES: { value: BookingStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "checked_in", label: "Checked In" },
+  { value: "checked_out", label: "Checked Out" },
+  { value: "cancelled", label: "Cancelled" },
+];
 
 const BOOKING_SOURCES: { value: BookingSource; label: string }[] = [
   { value: "direct", label: "Direct" },
+  { value: "walk_in", label: "Walk-in" },
   { value: "airbnb", label: "Airbnb" },
   { value: "booking_com", label: "Booking.com" },
-  { value: "makemytrip", label: "MakeMyTrip" },
   { value: "goibibo", label: "Goibibo" },
+  { value: "makemytrip", label: "MakeMyTrip" },
+  { value: "hostelworld", label: "Hostelworld" },
   { value: "other", label: "Other" },
 ];
 
-interface GuestForm {
-  guestName: string;
-  guestPhone: string;
-  guestEmail: string;
-  idProofType: string;
-  idProofNumber: string;
+const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
+  { value: "upi", label: "UPI" },
+  { value: "cash", label: "Cash" },
+  { value: "card", label: "Card" },
+  { value: "bank_transfer", label: "Bank Transfer" },
+];
+
+const ID_PROOF_TYPES = [
+  { value: "aadhar", label: "Aadhar Card" },
+  { value: "pan", label: "PAN Card" },
+  { value: "passport", label: "Passport" },
+  { value: "driving_license", label: "Driving License" },
+  { value: "voter_id", label: "Voter ID" },
+];
+
+const ITEMS_PER_PAGE = 10;
+
+function StatusBadge({ status }: { status: BookingStatus }) {
+  const config: Record<BookingStatus, { label: string; cls: string; Icon: any }> = {
+    pending:     { label: "Pending",     cls: "bg-amber-50 text-amber-700 border border-amber-200",       Icon: Clock },
+    confirmed:   { label: "Confirmed",   cls: "bg-blue-50 text-blue-700 border border-blue-200",          Icon: CheckCircle },
+    checked_in:  { label: "Checked In",  cls: "bg-emerald-50 text-emerald-700 border border-emerald-200", Icon: LogIn },
+    checked_out: { label: "Checked Out", cls: "bg-slate-100 text-slate-600 border border-slate-200",      Icon: LogOut },
+    cancelled:   { label: "Cancelled",   cls: "bg-red-50 text-red-600 border border-red-200",             Icon: XCircle },
+  };
+  const { label, cls, Icon } = config[status] || config.pending;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${cls}`}>
+      <Icon size={10} />
+      {label}
+    </span>
+  );
 }
 
-const emptyGuest = (): GuestForm => ({
-  guestName: "",
-  guestPhone: "",
-  guestEmail: "",
-  idProofType: "aadhar",
-  idProofNumber: "",
-});
+// ── Dropdown menu rendered via portal-like absolute positioning ──
+function ActionMenu({
+  booking,
+  onEdit,
+  onDelete,
+  onCheckIn,
+  onCheckOut,
+}: {
+  booking: Booking;
+  onEdit: () => void;
+  onDelete: () => void;
+  onCheckIn: () => void;
+  onCheckOut: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-interface BookingForm {
-  propertyId: string;
-  roomId: string;
-  bedId: string;
-  checkIn: string;
-  checkOut: string;
-  numberOfGuests: number;
-  amount: string;
-  discount: string;
-  paymentMethod: string;
-  paymentStatus: string;
-  bookingSource: BookingSource;
-  specialRequests: string;
-  notes: string;
-  guests: GuestForm[];
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  return (
+    <div className="flex items-center gap-1">
+      {booking.status === "confirmed" && (
+        <button
+          onClick={onCheckIn}
+          title="Check In"
+          className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 hover:bg-emerald-100 transition-all"
+        >
+          <LogIn size={13} />
+        </button>
+      )}
+      {booking.status === "checked_in" && (
+        <button
+          onClick={onCheckOut}
+          title="Check Out"
+          className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-all"
+        >
+          <LogOut size={13} />
+        </button>
+      )}
+      <div ref={containerRef} className="relative">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all"
+        >
+          <MoreVertical size={14} />
+        </button>
+        {open && (
+          <div className="fixed z-[9999] w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1"
+            style={{
+              top: (() => {
+                const el = containerRef.current;
+                if (!el) return 0;
+                const rect = el.getBoundingClientRect();
+                return rect.bottom + 4;
+              })(),
+              right: (() => {
+                const el = containerRef.current;
+                if (!el) return 0;
+                return window.innerWidth - el.getBoundingClientRect().right;
+              })(),
+            }}
+          >
+            <button
+              onClick={() => { setOpen(false); onEdit(); }}
+              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+            >
+              <Edit size={13} className="text-slate-400" /> Edit
+            </button>
+            <div className="my-1 border-t border-slate-100" />
+            <button
+              onClick={() => { setOpen(false); onDelete(); }}
+              className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2"
+            >
+              <Trash2 size={13} /> Delete
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
-
-const emptyForm = (): BookingForm => ({
-  propertyId: "",
-  roomId: "",
-  bedId: "",
-  checkIn: "",
-  checkOut: "",
-  numberOfGuests: 1,
-  amount: "",
-  discount: "0",
-  paymentMethod: "upi",
-  paymentStatus: "paid",
-  bookingSource: "direct",
-  specialRequests: "",
-  notes: "",
-  guests: [emptyGuest()],
-});
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -70,55 +162,47 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
-  const [form, setForm] = useState<BookingForm>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>("all"); // "all" | "checkin_today" | "checkout_today"
+  const [statusFilter, setStatusFilter] = useState<BookingStatus | "all">("all");
+  const [sourceFilter, setSourceFilter] = useState<BookingSource | "all">("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [idProofFile, setIdProofFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
-  const getDateStr = (d: string) => d ? new Date(d).toLocaleDateString("en-CA") : "";
+  const emptyForm = {
+    guestName: "", guestPhone: "", guestEmail: "",
+    idProofType: "aadhar", idProofNumber: "",
+    propertyId: "", roomId: "", bedId: "",
+    checkIn: "", checkOut: "",
+    numberOfGuests: "1", amount: "", discount: "0",
+    paymentMethod: "upi" as PaymentMethod,
+    paymentStatus: "pending" as "paid" | "pending" | "partial" | "refunded",
+    bookingSource: "direct" as BookingSource,
+    specialRequests: "", notes: "",
+  };
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const [form, setForm] = useState(emptyForm);
+  const [infoBooking, setInfoBooking] = useState<any>(null);
+
+  async function fetchData() {
     try {
-      const [bRes, pRes] = await Promise.all([
-        fetch("/api/bookings"),
-        fetch("/api/properties"),
+      const [bookingsRes, propsRes, roomsRes, bedsRes] = await Promise.all([
+        fetch("/api/bookings"), fetch("/api/properties"),
+        fetch("/api/rooms"), fetch("/api/beds"),
       ]);
-      const [bData, pData] = await Promise.all([bRes.json(), pRes.json()]);
-      setBookings(bData.bookings || []);
-      setProperties(pData.properties || []);
+      if (bookingsRes.ok) { const d = await bookingsRes.json(); setBookings(d.bookings ?? []); }
+      if (propsRes.ok)    { const d = await propsRes.json();    setProperties(d.properties ?? []); }
+      if (roomsRes.ok)    { const d = await roomsRes.json();    setRooms(d.rooms ?? []); }
+      if (bedsRes.ok)     { const d = await bedsRes.json();     setBeds(d.beds ?? []); }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  useEffect(() => {
-    if (form.propertyId) {
-      fetch(`/api/rooms?propertyId=${form.propertyId}`).then(r => r.json()).then(d => setRooms(d.rooms || []));
-    } else {
-      setRooms([]);
-    }
-    setForm(f => ({ ...f, roomId: "", bedId: "" }));
-    setBeds([]);
-  }, [form.propertyId]);
-
-  useEffect(() => {
-    if (form.roomId) {
-      fetch(`/api/beds?roomId=${form.roomId}`).then(r => r.json()).then(d => setBeds(d.beds || []));
-    } else {
-      setBeds([]);
-    }
-    setForm(f => ({ ...f, bedId: "" }));
-  }, [form.roomId]);
+  useEffect(() => { fetchData(); }, []);
 
   useEffect(() => {
     if (success) {
@@ -127,55 +211,38 @@ export default function BookingsPage() {
     }
   }, [success]);
 
-  const updateGuest = (idx: number, field: keyof GuestForm, value: string) => {
-    setForm(f => {
-      const guests = [...f.guests];
-      guests[idx] = { ...guests[idx], [field]: value };
-      return { ...f, guests };
-    });
-  };
-
-  const handleGuestCountChange = (count: number) => {
-    const n = Math.max(1, Math.min(10, count));
-    setForm(f => {
-      const guests = [...f.guests];
-      while (guests.length < n) guests.push(emptyGuest());
-      return { ...f, numberOfGuests: n, guests: guests.slice(0, n) };
-    });
-  };
-
   function openAdd() {
     setEditingBooking(null);
-    setForm(emptyForm());
+    setForm(emptyForm);
+    setIdProofFile(null);
     setError("");
     setShowModal(true);
   }
 
   function openEdit(booking: Booking) {
     setEditingBooking(booking);
-    setError("");
     setForm({
+      guestName: booking.guest_name,
+      guestPhone: booking.guest_phone || "",
+      guestEmail: booking.guest_email || "",
+      idProofType: (booking as any).id_proof_type || "aadhar",
+      idProofNumber: (booking as any).id_proof_number || "",
       propertyId: String(booking.property_id),
       roomId: booking.room_id ? String(booking.room_id) : "",
       bedId: booking.bed_id ? String(booking.bed_id) : "",
-      checkIn: booking.check_in ? String(booking.check_in).split("T")[0] : "",
-      checkOut: booking.check_out ? String(booking.check_out).split("T")[0] : "",
-      numberOfGuests: booking.number_of_guests,
+      checkIn: booking.check_in,
+      checkOut: booking.check_out,
+      numberOfGuests: String(booking.number_of_guests),
       amount: String(booking.amount),
-      discount: String(booking.discount || "0"),
-      paymentMethod: (booking as any).payment_method || "upi",
-      paymentStatus: booking.payment_status || "paid",
-      bookingSource: booking.booking_source || "direct",
-      specialRequests: (booking as any).special_requests || "",
-      notes: (booking as any).notes || "",
-      guests: (booking as any).guests_data ? JSON.parse(JSON.stringify((booking as any).guests_data)) : [{
-        guestName: booking.guest_name || "",
-        guestPhone: booking.guest_phone || "",
-        guestEmail: (booking as any).guest_email || "",
-        idProofType: (booking as any).id_proof_type || "aadhar",
-        idProofNumber: (booking as any).id_proof_number || "",
-      }],
+      discount: String(booking.discount),
+      paymentMethod: booking.payment_method || "upi",
+      paymentStatus: booking.payment_status,
+      bookingSource: booking.booking_source,
+      specialRequests: booking.special_requests || "",
+      notes: booking.notes || "",
     });
+    setIdProofFile(null);
+    setError("");
     setShowModal(true);
   }
 
@@ -203,366 +270,496 @@ export default function BookingsPage() {
     setError("");
     setSubmitting(true);
     try {
-      const primaryGuest = form.guests[0];
-      const payload = {
-        guestName: primaryGuest.guestName,
-        guestPhone: primaryGuest.guestPhone,
-        guestEmail: primaryGuest.guestEmail,
-        idProofType: primaryGuest.idProofType,
-        idProofNumber: primaryGuest.idProofNumber,
-        propertyId: form.propertyId,
-        roomId: form.roomId || null,
-        bedId: form.bedId || null,
-        checkIn: form.checkIn,
-        checkOut: form.checkOut,
-        numberOfGuests: form.numberOfGuests,
-        amount: form.amount,
-        discount: form.discount,
-        paymentMethod: form.paymentMethod,
-        paymentStatus: form.paymentStatus,
-        bookingSource: form.bookingSource,
-        specialRequests: form.specialRequests,
-        notes: form.notes,
-        guestsData: form.guests,
-      };
+      const finalAmount = Number(form.amount) - Number(form.discount);
+      const bookingCode = editingBooking
+        ? editingBooking.booking_code
+        : `BK${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`;
 
       const url = editingBooking ? `/api/bookings/${editingBooking.id}` : "/api/bookings";
       const method = editingBooking ? "PUT" : "POST";
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...form, finalAmount, bookingCode }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
+      if (!res.ok) { setError(data.error || "Failed to save booking"); return; }
       setSuccess(editingBooking ? "Booking updated!" : "Booking created!");
       setShowModal(false);
       await fetchData();
-    } catch (err: any) {
-      setError(err.message);
+    } catch {
+      setError("Network error.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  const finalAmount = (parseFloat(form.amount || "0") - parseFloat(form.discount || "0")).toFixed(2);
+  // Derived stats
+  const today = new Date().toISOString().split("T")[0];
+  const todayCheckIns    = bookings.filter(b => b.check_in?.slice(0, 10) === today).length;
+  const todayCheckOuts   = bookings.filter(b => b.check_out?.slice(0, 10) === today).length;
+  const upcomingBookings = bookings.filter(b => b.check_in?.slice(0, 10) > today && b.status !== "cancelled").length;
 
-  const filtered = bookings.filter(b => {
-    const matchSearch = !searchTerm || b.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) || b.guest_phone?.includes(searchTerm) || b.booking_code?.includes(searchTerm);
+  const filteredBookings = bookings.filter(b => {
+    const q = searchTerm.toLowerCase();
+    const matchSearch =
+      b.guest_name.toLowerCase().includes(q) ||
+      b.guest_phone?.toLowerCase().includes(q) ||
+      b.booking_code.toLowerCase().includes(q);
     const matchStatus = statusFilter === "all" || b.status === statusFilter;
     const matchSource = sourceFilter === "all" || b.booking_source === sourceFilter;
-    const matchDate = dateFilter === "all"
-      || (dateFilter === "checkin_today" && getDateStr(b.check_in) === todayStr)
-      || (dateFilter === "checkout_today" && getDateStr(b.check_out) === todayStr);
-    return matchSearch && matchStatus && matchSource && matchDate;
+    return matchSearch && matchStatus && matchSource;
   });
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filteredBookings.length / ITEMS_PER_PAGE);
+  const paginated  = filteredBookings.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const statusColor: Record<string, string> = {
-    confirmed: "bg-green-50 text-green-700 border border-green-200",
-    pending: "bg-yellow-50 text-yellow-700 border border-yellow-200",
-    checked_in: "bg-blue-50 text-blue-700 border border-blue-200",
-    checked_out: "bg-gray-50 text-gray-700 border border-gray-200",
-    cancelled: "bg-red-50 text-red-700 border border-red-200",
-  };
+  const filteredRooms = form.propertyId ? rooms.filter(r => r.property_id === Number(form.propertyId)) : rooms;
+  const filteredBeds  = form.roomId ? beds.filter(b => b.room_id === Number(form.roomId)) : [];
 
-  const formatDate = (d: string) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
+  function getRoomLabel(roomId: number) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return "";
+    const cap    = Number(room.capacity) || Number(room.number_of_beds) || 0;
+    const booked = bookings.filter(b => b.room_id === roomId && ["confirmed", "checked_in"].includes(b.status)).length;
+    return `${room.name} (${cap - booked}/${cap} avail)`;
+  }
+
+  function handleBedSelect(bedId: string) {
+    const bed = beds.find(b => b.id === Number(bedId));
+    setForm(prev => ({
+      ...prev,
+      bedId,
+      amount: bed && !prev.amount ? String(bed.price_per_night) : prev.amount,
+    }));
+  }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {success && <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2"><span>✓</span>{success}</div>}
-
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Bookings</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Manage all bookings and reservations</p>
+          <h1 className="text-2xl font-bold text-slate-900">Bookings</h1>
+          <p className="mt-0.5 text-sm text-slate-500">Manage all bookings and reservations</p>
         </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2">
-          <span className="text-lg">+</span> Add Booking
+        <button onClick={openAdd} className="btn-primary flex items-center gap-2 self-start sm:self-auto">
+          <Plus size={16} /> Add Booking
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total Bookings", value: bookings.length, icon: "📋", filter: "all" },
-          { label: "Today Check-ins", value: bookings.filter(b => getDateStr(b.check_in) === todayStr).length, icon: "🏨", filter: "checkin_today" },
-          { label: "Today Check-outs", value: bookings.filter(b => getDateStr(b.check_out) === todayStr).length, icon: "🚪", filter: "checkout_today" },
-          { label: "Confirmed", value: bookings.filter(b => b.status === "confirmed").length, icon: "✅", filter: "all" },
-        ].map(s => (
-          <div
-            key={s.label}
-            onClick={() => { setDateFilter(s.filter); setStatusFilter("all"); setSearchTerm(""); setCurrentPage(1); }}
-            className={`bg-white rounded-xl p-4 border shadow-sm cursor-pointer transition-all hover:shadow-md ${dateFilter === s.filter && s.filter !== "all" ? "border-orange-400 ring-2 ring-orange-200" : "border-slate-100"}`}
-          >
-            <div className="text-2xl mb-1">{s.icon}</div>
-            <div className="text-2xl font-bold text-slate-800">{s.value}</div>
-            <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
+          { label: "Total Bookings",     value: bookings.length, sub: "↑ 15% vs last month", iconBg: "bg-orange-100", iconColor: "text-orange-500", dot: "bg-orange-400",  Icon: Calendar },
+          { label: "Today's Check-ins",  value: todayCheckIns,   sub: "In next 7 days",       iconBg: "bg-blue-100",   iconColor: "text-blue-500",   dot: "bg-blue-400",    Icon: LogIn },
+          { label: "Today's Check-outs", value: todayCheckOuts,  sub: "vs yesterday",          iconBg: "bg-violet-100", iconColor: "text-violet-500", dot: "bg-violet-400",  Icon: LogOut },
+          { label: "Upcoming Bookings",  value: upcomingBookings,sub: "In next 7 days",        iconBg: "bg-emerald-100",iconColor: "text-emerald-500",dot: "bg-emerald-400", Icon: TrendingUp },
+        ].map(({ label, value, sub, iconBg, iconColor, dot, Icon }) => (
+          <div key={label} className="card p-4">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className={`h-9 w-9 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0`}>
+                <Icon size={17} className={iconColor} />
+              </div>
+              <p className="text-xs text-slate-500 font-medium leading-tight">{label}</p>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mb-1">{value}</p>
+            <div className="flex items-center gap-1.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+              <p className="text-xs text-slate-400">{sub}</p>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-center">
-        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search name, phone or code..." className="input-field flex-1 min-w-48 text-sm" />
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-field text-sm">
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by name, phone or code..."
+            value={searchTerm}
+            onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            className="input-field pl-9 text-sm w-full"
+          />
+        </div>
+        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as any); setCurrentPage(1); }} className="input-field text-sm w-auto">
           <option value="all">All Status</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="pending">Pending</option>
-          <option value="checked_in">Checked In</option>
-          <option value="checked_out">Checked Out</option>
-          <option value="cancelled">Cancelled</option>
+          {BOOKING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
-        <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} className="input-field text-sm">
+        <select value={sourceFilter} onChange={e => { setSourceFilter(e.target.value as any); setCurrentPage(1); }} className="input-field text-sm w-auto">
           <option value="all">All Sources</option>
           {BOOKING_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
-        <span className="text-sm text-slate-500">{filtered.length} bookings</span>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-slate-400">Loading...</div>
-        ) : paginated.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">No bookings found</div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-100">
-              <tr>
-                {["Guest", "Property/Bed", "Check-in", "Check-out", "Amount", "Source", "Status", "Actions"].map(h => (
-                  <th key={h} className="text-left text-xs font-semibold text-slate-600 px-4 py-3">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {paginated.map(b => (
-                <tr key={b.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="space-y-1">
-                      {(() => {
-                        const allGuests = (b as any).guests_data && Array.isArray((b as any).guests_data) && (b as any).guests_data.length > 1
-                          ? (b as any).guests_data
-                          : [{ guestName: b.guest_name, guestPhone: b.guest_phone }];
-                        return (
-                          <div className={allGuests.length > 1 ? "border border-slate-100 rounded-lg p-1.5" : ""}>
-                            {allGuests.map((g: any, i: number) => (
-                              <div key={i} className="flex items-center gap-2 py-0.5">
-                                <div className="h-7 w-7 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold text-xs flex-shrink-0">{(g.guestName || b.guest_name)?.[0]?.toUpperCase()}</div>
-                                <div>
-                                  <div className="font-medium text-sm text-slate-800">{g.guestName || b.guest_name}</div>
-                                  <div className="text-xs text-slate-400">{g.guestPhone || b.guest_phone}</div>
-                                </div>
-                                
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{(b as any).property_name || b.property_id}<br/><span className="text-xs text-slate-400">{(b as any).room_name || ""}</span></td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{formatDate(b.check_in)}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{formatDate(b.check_out)}</td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm font-semibold text-slate-800">₹{Number(b.amount).toLocaleString("en-IN")}</div>
-                    <div className="text-xs text-green-600">{b.payment_status === "paid" ? "Paid" : b.payment_status}</div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-500 capitalize">{b.booking_source || "direct"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor[b.status] || statusColor.pending}`}>{b.status?.replace("_", " ")}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      {b.status === "confirmed" && <button onClick={() => handleCheckIn(b.id)} title="Check In" className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 text-xs flex items-center justify-center">↓</button>}
-                      {b.status === "checked_in" && <button onClick={() => handleCheckOut(b.id)} title="Check Out" className="h-7 w-7 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs flex items-center justify-center">↑</button>}
-                      <button onClick={() => openEdit(b)} className="h-7 w-7 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs flex items-center justify-center">✏️</button>
-                      <button onClick={() => handleDelete(b.id)} className="h-7 w-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 text-xs flex items-center justify-center">🗑</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {filteredBookings.length > 0 && (
+          <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full font-medium ml-auto">
+            {filteredBookings.length} booking{filteredBookings.length !== 1 ? "s" : ""}
+          </span>
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button key={i} onClick={() => setCurrentPage(i + 1)} className={`h-8 w-8 rounded-lg text-sm ${currentPage === i + 1 ? "bg-orange-500 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}>{i + 1}</button>
-          ))}
+      {/* Success */}
+      {success && (
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
+          <CheckCircle size={15} className="text-emerald-600 flex-shrink-0" />
+          <p className="text-sm font-semibold text-emerald-700">{success}</p>
         </div>
       )}
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-              <div>
-                <h2 className="text-lg font-bold text-slate-800">{editingBooking ? "Edit Booking" : "Add Booking"}</h2>
-                <p className="text-xs text-slate-500">{editingBooking ? "Update booking details" : "Create a new booking"}</p>
+      {/* Table */}
+      {loading ? (
+        <div className="card p-16 text-center">
+          <div className="h-8 w-8 border-[3px] border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-400">Loading bookings...</p>
+        </div>
+      ) : filteredBookings.length === 0 ? (
+        <div className="card p-16 text-center">
+          <div className="h-16 w-16 rounded-2xl bg-orange-100 flex items-center justify-center mx-auto mb-4">
+            <Calendar size={32} className="text-orange-400" />
+          </div>
+          <p className="text-lg font-bold text-slate-800 mb-1">No bookings found</p>
+          <p className="text-sm text-slate-400 mb-6">
+            {searchTerm || statusFilter !== "all" || sourceFilter !== "all"
+              ? "Try adjusting your filters."
+              : "Create your first booking to get started."}
+          </p>
+          {!searchTerm && statusFilter === "all" && sourceFilter === "all" && (
+            <button onClick={openAdd} className="btn-primary inline-flex items-center gap-2">
+              <Plus size={16} /> Add Booking
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    {["Guest", "Property / Bed", "Check-in", "Check-out", "Amount", "Source", "Status", "Actions"].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {paginated.map((booking) => {
+                    const property = properties.find(p => p.id === booking.property_id);
+                    const room     = rooms.find(r => r.id === booking.room_id);
+                    const bed      = beds.find(b => b.id === booking.bed_id);
+                    const initials = booking.guest_name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+                    return (
+                      <tr key={booking.id} className="hover:bg-slate-50/60 transition-colors">
+                        {/* Guest */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-bold text-orange-600">{initials}</span>
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-900 text-sm">{booking.guest_name}</p>
+                              <p className="text-xs text-slate-400">{booking.guest_phone}</p>
+                            </div>
+                          </div>
+                        </td>
+                        {/* Property/Bed */}
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium text-slate-700">{property?.name || "—"}</p>
+                          <p className="text-xs text-slate-400">
+                            {room?.name}{bed ? ` · Bed ${bed.bed_number}` : ""}
+                          </p>
+                        </td>
+                        {/* Dates */}
+                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(booking.check_in)}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(booking.check_out)}</td>
+                        {/* Amount */}
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-bold text-slate-900">₹{booking.final_amount}</p>
+                          <p className={`text-[10px] font-semibold ${
+                            booking.payment_status === "paid" ? "text-emerald-600" :
+                            booking.payment_status === "partial" ? "text-amber-600" : "text-red-500"
+                          }`}>
+                            {capitalize(booking.payment_status)}
+                          </p>
+                        </td>
+                        {/* Source */}
+                        <td className="px-4 py-3 text-xs text-slate-500 capitalize">
+                          {booking.booking_source?.replace("_", " ")}
+                        </td>
+                        {/* Status */}
+                        <td className="px-4 py-3"><StatusBadge status={booking.status} /></td>
+                        {/* Actions — each row has its own isolated dropdown */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setInfoBooking(booking)} className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 hover:bg-blue-100" title="Payment Info">&#9432;</button>
+                            <ActionMenu
+                              booking={booking}
+                              onEdit={() => openEdit(booking)}
+                              onDelete={() => handleDelete(booking.id)}
+                              onCheckIn={() => handleCheckIn(booking.id)}
+                              onCheckOut={() => handleCheckOut(booking.id)}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-500">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredBookings.length)} of {filteredBookings.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                  className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:text-orange-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                  <ChevronLeft size={14} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                  <button key={p} onClick={() => setCurrentPage(p)}
+                    className={`h-8 w-8 rounded-lg text-sm font-semibold transition-all ${
+                      currentPage === p ? "bg-orange-500 text-white" : "border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-500"
+                    }`}>
+                    {p}
+                  </button>
+                ))}
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                  className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:text-orange-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                  <ChevronRight size={14} />
+                </button>
               </div>
-              <button onClick={() => setShowModal(false)} className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">✕</button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ══════════════════════════════════════
+          ADD / EDIT BOOKING MODAL
+      ══════════════════════════════════════ */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mb-8">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {editingBooking ? "Edit Booking" : "Add Booking"}
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {editingBooking ? "Update booking details" : "Create a new booking"}
+                </p>
+              </div>
+              <button onClick={() => setShowModal(false)}
+                className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-all">
+                <X size={16} />
+              </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
-              {/* Booking Details */}
+              {/* ── Guest Details ── */}
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center text-blue-500 text-xs">🏨</div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center">
+                    <User size={13} className="text-orange-500" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-800">Guest Details</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Guest Name *</label>
+                    <input type="text" required placeholder="Enter guest name"
+                      value={form.guestName} onChange={e => setForm({ ...form, guestName: e.target.value })}
+                      className="input-field w-full text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone *</label>
+                    <input type="tel" required placeholder="Enter phone number"
+                      value={form.guestPhone} onChange={e => setForm({ ...form, guestPhone: e.target.value })}
+                      className="input-field w-full text-sm" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email</label>
+                    <input type="email" placeholder="Enter email (optional)"
+                      value={form.guestEmail} onChange={e => setForm({ ...form, guestEmail: e.target.value })}
+                      className="input-field w-full text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Proof Type</label>
+                    <select value={form.idProofType} onChange={e => setForm({ ...form, idProofType: e.target.value })}
+                      className="input-field w-full text-sm">
+                      {ID_PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Number *</label>
+                    <input type="text" required placeholder="Enter ID number"
+                      value={form.idProofNumber} onChange={e => setForm({ ...form, idProofNumber: e.target.value })}
+                      className="input-field w-full text-sm" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Proof Photo</label>
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-all"
+                    >
+                      <Upload size={20} className="text-slate-300 mb-2" />
+                      <p className="text-xs font-medium text-slate-400">
+                        {idProofFile ? idProofFile.name : "Upload ID proof"}
+                      </p>
+                      <p className="text-[10px] text-slate-300 mt-0.5">JPG, PNG or PDF (Max. 2MB)</p>
+                      <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden"
+                        onChange={e => setIdProofFile(e.target.files?.[0] || null)} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100" />
+
+              {/* ── Booking Details ── */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <BedDouble size={13} className="text-blue-500" />
+                  </div>
                   <h3 className="text-sm font-bold text-slate-800">Booking Details</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">Property *</label>
-                    <select required value={form.propertyId} onChange={e => setForm(f => ({ ...f, propertyId: e.target.value }))} className="input-field w-full text-sm">
+                    <select required value={form.propertyId}
+                      onChange={e => setForm({ ...form, propertyId: e.target.value, roomId: "", bedId: "" })}
+                      className="input-field w-full text-sm">
                       <option value="">Select Property</option>
                       {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Room</label>
-                    <select value={form.roomId} onChange={e => setForm(f => ({ ...f, roomId: e.target.value }))} className="input-field w-full text-sm" disabled={!form.propertyId}>
-                      <option value="">Select Room</option>
-                      {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Bed</label>
-                    <select value={form.bedId} onChange={e => setForm(f => ({ ...f, bedId: e.target.value }))} className="input-field w-full text-sm" disabled={!form.roomId}>
-                      <option value="">Select Bed</option>
-                      {beds.map(b => <option key={b.id} value={b.id}>{b.name || `Bed ${b.id}`}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">No. of Guests *</label>
-                    <input type="number" min={1} max={10} required value={form.numberOfGuests} onChange={e => handleGuestCountChange(parseInt(e.target.value))} className="input-field w-full text-sm" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Room / Bed *</label>
+                    <div className="flex gap-2">
+                      <select value={form.roomId}
+                        onChange={e => setForm({ ...form, roomId: e.target.value, bedId: "" })}
+                        className="input-field text-sm flex-1">
+                        <option value="">Room</option>
+                        {filteredRooms.map(r => <option key={r.id} value={r.id}>{getRoomLabel(r.id)}</option>)}
+                      </select>
+                      <select value={form.bedId} onChange={e => handleBedSelect(e.target.value)}
+                        className="input-field text-sm flex-1">
+                        <option value="">Bed</option>
+                        {filteredBeds.map(b => <option key={b.id} value={b.id}>{b.bed_number}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">Check-in Date *</label>
-                    <input type="date" required value={form.checkIn} onChange={e => setForm(f => ({ ...f, checkIn: e.target.value }))} className="input-field w-full text-sm" />
+                    <input type="date" required value={form.checkIn}
+                      onChange={e => setForm({ ...form, checkIn: e.target.value })}
+                      className="input-field w-full text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">Check-out Date *</label>
-                    <input type="date" required value={form.checkOut} onChange={e => setForm(f => ({ ...f, checkOut: e.target.value }))} className="input-field w-full text-sm" />
+                    <input type="date" required value={form.checkOut} min={form.checkIn}
+                      onChange={e => setForm({ ...form, checkOut: e.target.value })}
+                      className="input-field w-full text-sm" />
                   </div>
-                </div>
-              </div>
-
-              {/* Guest Details */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center text-orange-500 text-xs">👤</div>
-                  <h3 className="text-sm font-bold text-slate-800">Guest Details</h3>
-                </div>
-                <div className="space-y-4">
-                  {form.guests.map((g, idx) => (
-                    <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-semibold text-slate-500">Guest {idx + 1}</span>
-                        {idx === 0 && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">Primary</span>}
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Full Name *</label>
-                          <input required value={g.guestName} onChange={e => updateGuest(idx, "guestName", e.target.value)} placeholder="Guest name" className="input-field w-full text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone *</label>
-                          <input required value={g.guestPhone} onChange={e => updateGuest(idx, "guestPhone", e.target.value)} placeholder="Phone number" className="input-field w-full text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Proof Type</label>
-                          <select value={g.idProofType} onChange={e => updateGuest(idx, "idProofType", e.target.value)} className="input-field w-full text-sm">
-                            <option value="aadhar">Aadhar Card</option>
-                            <option value="passport">Passport</option>
-                            <option value="driving_license">Driving License</option>
-                            <option value="voter_id">Voter ID</option>
-                            <option value="pan">PAN Card</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Number *</label>
-                          <input required value={g.idProofNumber} onChange={e => updateGuest(idx, "idProofNumber", e.target.value)} placeholder="ID number" className="input-field w-full text-sm" />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email</label>
-                          <input type="email" value={g.guestEmail} onChange={e => updateGuest(idx, "guestEmail", e.target.value)} placeholder="Email (optional)" className="input-field w-full text-sm" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Payment */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-6 w-6 rounded-lg bg-green-100 flex items-center justify-center text-green-500 text-xs">₹</div>
-                  <h3 className="text-sm font-bold text-slate-800">Payment Details</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">Amount (₹) *</label>
-                    <input type="number" required min={0} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" className="input-field w-full text-sm" />
+                    <input type="number" required min={0} placeholder="2000"
+                      value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })}
+                      className="input-field w-full text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">Discount (₹)</label>
-                    <input type="number" min={0} value={form.discount} onChange={e => setForm(f => ({ ...f, discount: e.target.value }))} className="input-field w-full text-sm" />
+                    <input type="number" min={0} placeholder="0"
+                      value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value })}
+                      className="input-field w-full text-sm" />
                   </div>
-                  <div className="col-span-2 bg-orange-50 rounded-xl px-4 py-3 flex justify-between items-center">
-                    <span className="text-sm text-slate-600 font-medium">Final Amount</span>
-                    <span className="text-lg font-bold text-orange-600">₹{Number(finalAmount).toLocaleString("en-IN")}</span>
-                  </div>
+                  {form.amount && (
+                    <div className="col-span-2 bg-orange-50 border border-orange-100 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Final Amount</span>
+                      <span className="text-base font-bold text-orange-600">
+                        ₹{Math.max(Number(form.amount) - Number(form.discount || 0), 0).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">Payment Method</label>
-                    <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))} className="input-field w-full text-sm">
-                      <option value="upi">UPI</option>
-                      <option value="cash">Cash</option>
-                      <option value="card">Card</option>
-                      <option value="bank_transfer">Bank Transfer</option>
+                    <select value={form.paymentMethod}
+                      onChange={e => setForm({ ...form, paymentMethod: e.target.value as PaymentMethod })}
+                      className="input-field w-full text-sm">
+                      {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">Payment Status</label>
-                    <select value={form.paymentStatus} onChange={e => setForm(f => ({ ...f, paymentStatus: e.target.value }))} className="input-field w-full text-sm">
-                      <option value="paid">Paid</option>
+                    <select value={form.paymentStatus}
+                      onChange={e => setForm({ ...form, paymentStatus: e.target.value as any })}
+                      className="input-field w-full text-sm">
                       <option value="pending">Pending</option>
+                      <option value="paid">Paid</option>
                       <option value="partial">Partial</option>
                       <option value="refunded">Refunded</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">Booking Source</label>
-                    <select value={form.bookingSource} onChange={e => setForm(f => ({ ...f, bookingSource: e.target.value as BookingSource }))} className="input-field w-full text-sm">
+                    <select value={form.bookingSource}
+                      onChange={e => setForm({ ...form, bookingSource: e.target.value as BookingSource })}
+                      className="input-field w-full text-sm">
                       {BOOKING_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Special Requests</label>
-                    <input value={form.specialRequests} onChange={e => setForm(f => ({ ...f, specialRequests: e.target.value }))} placeholder="Any special requests" className="input-field w-full text-sm" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">No. of Guests</label>
+                    <input type="number" min={1} placeholder="1"
+                      value={form.numberOfGuests} onChange={e => setForm({ ...form, numberOfGuests: e.target.value })}
+                      className="input-field w-full text-sm" />
                   </div>
                 </div>
               </div>
 
-              {error && <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3"><p className="text-sm text-red-600 font-medium">{error}</p></div>}
+              {error && (
+                <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3">
+                  <p className="text-sm text-red-600 font-medium">{error}</p>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={submitting} className="btn-primary flex-1 disabled:opacity-60">
                   {submitting ? "Saving..." : editingBooking ? "Update Booking" : "Create Booking"}
                 </button>
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary px-6">Cancel</button>
+                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary px-6">
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
+    {infoBooking && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+          <h2 className="text-lg font-bold mb-1">Payment Info</h2>
+          <p className="text-sm text-slate-500 mb-3">{infoBooking.guest_name} — {infoBooking.booking_code}</p>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Amount</span><span className="font-semibold">Rs.{infoBooking.final_amount}</span></div>
+            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Status</span><span className={infoBooking.payment_status === "paid" ? "text-green-600 font-semibold" : "text-orange-500"}>{infoBooking.payment_status || "pending"}</span></div>
+            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Sender</span><span>{infoBooking.payment_sender_name || "-"}</span></div>
+            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">UTR</span><span className="font-mono text-xs">{infoBooking.utr_number || "-"}</span></div>
+            <div className="flex justify-between py-1"><span className="text-slate-500">Pay Date</span><span>{infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "-"}</span></div>
+          </div>
+          <button onClick={() => setInfoBooking(null)} className="w-full mt-4 bg-slate-800 text-white py-2 rounded-lg text-sm">Close</button>
+        </div>
+      </div>
+    )}
     </div>
   );
 }

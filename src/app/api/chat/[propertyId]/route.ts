@@ -22,8 +22,12 @@ export async function POST(
     if (!properties.length) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
     }
+    if (!properties[0].bot_enabled) {
+      return NextResponse.json({ error: 'Bot not enabled for this property' }, { status: 403 });
+    }
 
     const property = properties[0];
+    const upiInfo = property.upi_id ? `Payment: UPI ID: ${property.upi_id} (${property.payment_name || 'Owner'})` : 'Payment: Contact property for payment details';
     const rooms = property.rooms?.filter((r: any) => r.name) || [];
 
     const systemPrompt = `You are a friendly booking assistant for "${property.name}", a ${property.type} in ${property.city}, ${property.state}.
@@ -35,6 +39,7 @@ Property Details:
 - Description: ${property.description || 'A great place to stay'}
 - Amenities: ${property.amenities?.join(', ') || 'Ask staff'}
 - Policies: ${property.policies || 'Standard policies apply'}
+- ${upiInfo}
 
 Available Rooms:
 ${rooms.map((r: any) => `- ${r.name} (${r.type}): Rs${r.price}/night, capacity: ${r.number_of_beds}`).join('\n') || 'Contact property for details'}
@@ -42,9 +47,10 @@ ${rooms.map((r: any) => `- ${r.name} (${r.type}): Rs${r.price}/night, capacity: 
 Your job:
 1. Answer questions about the property warmly
 2. Collect for booking: full name, phone, check-in date, check-out date, number of guests, room preference
-3. When you have all details say: BOOKING_READY: name=[name], phone=[phone], checkin=[YYYY-MM-DD], checkout=[YYYY-MM-DD], guests=[n], room=[room], amount=[total]
+3. When you have all details say: BOOKING_READY: name=[name], phone=[phone], checkin=[YYYY-MM-DD], checkout=[YYYY-MM-DD], guests=[n], room=[room], amount=[total], utr=[utr_number], sender=[sender_name], paydate=[YYYY-MM-DD]
 4. Reply in same language as guest (Hindi or English)
-5. Be concise`;
+6. Be concise
+7. Collect for payment confirmation: UTR number, payment sender name, payment date`;
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',

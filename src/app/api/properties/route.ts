@@ -17,7 +17,7 @@ export async function GET() {
     const properties = await sql`
       SELECT p.id, p.owner_id, p.name, p.type, p.address, p.city, p.state, p.pincode, p.contact, p.email,
              p.description, p.check_in_time, p.check_out_time, p.amenities, p.policies,
-             p.google_map_link, p.upi_id, p.total_beds, p.status, p.images, p.created_at,
+             p.google_map_link, p.upi_id, p.payment_name, p.bot_enabled, p.total_beds, p.status, p.images, p.created_at,
              COUNT(b.id) FILTER (WHERE b.status IN ('confirmed', 'checked_in')) AS occupied_beds
       FROM properties p
       LEFT JOIN bookings b ON b.property_id = p.id
