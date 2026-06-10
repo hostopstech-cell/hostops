@@ -6,7 +6,7 @@ import type { Booking, BookingStatus, BookingSource, PaymentMethod, Property, Ro
 import {
   Plus, Edit, Trash2, Search, Calendar, User,
   X, CheckCircle, Clock, LogIn, LogOut, XCircle,
-  MoreVertical, ChevronLeft, ChevronRight, Upload, Building2,
+  MoreVertical, ChevronLeft, ChevronRight, Building2,
   BedDouble, TrendingUp, CreditCard
 } from "lucide-react";
 
@@ -46,6 +46,18 @@ const ID_PROOF_TYPES = [
 
 const ITEMS_PER_PAGE = 10;
 
+interface GuestDetail {
+  name: string;
+  phone: string;
+  idProofType: string;
+  idProofNumber: string;
+  idError: string;
+}
+
+function makeGuest(): GuestDetail {
+  return { name: "", phone: "", idProofType: "aadhar", idProofNumber: "", idError: "" };
+}
+
 function validateIdProof(type: string, value: string): string {
   if (!value) return "";
   switch(type) {
@@ -53,13 +65,13 @@ function validateIdProof(type: string, value: string): string {
       if (!/^\d{12}$/.test(value)) return "Aadhaar must be exactly 12 digits";
       break;
     case "pan":
-      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) return "PAN format: ABCDE1234F (5 letters + 4 digits + 1 letter)";
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) return "PAN format: ABCDE1234F";
       break;
     case "passport":
-      if (!/^[A-Z]{1}[0-9]{7}$/.test(value)) return "Passport format: A1234567 (1 letter + 7 digits)";
+      if (!/^[A-Z]{1}[0-9]{7}$/.test(value)) return "Passport format: A1234567";
       break;
     case "voter_id":
-      if (!/^[A-Z]{3}[0-9]{7}$/.test(value)) return "Voter ID format: ABC1234567 (3 letters + 7 digits)";
+      if (!/^[A-Z]{3}[0-9]{7}$/.test(value)) return "Voter ID format: ABC1234567";
       break;
     case "driving_license":
       if (!/^[A-Z]{2}[0-9]{2}[0-9]{11}$/.test(value) && !/^[A-Z]{2}-\d{2}-\d{4}-\d{7}$/.test(value))
@@ -85,7 +97,6 @@ function sanitizeId(type: string, value: string): string {
   return value.toUpperCase().slice(0, 20);
 }
 
-
 function StatusBadge({ status }: { status: BookingStatus }) {
   const config: Record<BookingStatus, { label: string; cls: string; Icon: any }> = {
     pending:     { label: "Pending",     cls: "bg-amber-50 text-amber-700 border border-amber-200",       Icon: Clock },
@@ -103,19 +114,10 @@ function StatusBadge({ status }: { status: BookingStatus }) {
   );
 }
 
-// ── Dropdown menu rendered via portal-like absolute positioning ──
 function ActionMenu({
-  booking,
-  onEdit,
-  onDelete,
-  onCheckIn,
-  onCheckOut,
+  booking, onEdit, onDelete, onCheckIn, onCheckOut,
 }: {
-  booking: Booking;
-  onEdit: () => void;
-  onDelete: () => void;
-  onCheckIn: () => void;
-  onCheckOut: () => void;
+  booking: Booking; onEdit: () => void; onDelete: () => void; onCheckIn: () => void; onCheckOut: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -123,9 +125,7 @@ function ActionMenu({
   useEffect(() => {
     if (!open) return;
     function handle(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
@@ -134,57 +134,35 @@ function ActionMenu({
   return (
     <div className="flex items-center gap-1">
       {booking.status === "confirmed" && (
-        <button
-          onClick={onCheckIn}
-          title="Check In"
-          className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 hover:bg-emerald-100 transition-all"
-        >
+        <button onClick={onCheckIn} title="Check In"
+          className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 hover:bg-emerald-100 transition-all">
           <LogIn size={13} />
         </button>
       )}
       {booking.status === "checked_in" && (
-        <button
-          onClick={onCheckOut}
-          title="Check Out"
-          className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-all"
-        >
+        <button onClick={onCheckOut} title="Check Out"
+          className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-all">
           <LogOut size={13} />
         </button>
       )}
       <div ref={containerRef} className="relative">
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all"
-        >
+        <button onClick={() => setOpen((v) => !v)}
+          className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all">
           <MoreVertical size={14} />
         </button>
         {open && (
           <div className="fixed z-[9999] w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1"
             style={{
-              top: (() => {
-                const el = containerRef.current;
-                if (!el) return 0;
-                const rect = el.getBoundingClientRect();
-                return rect.bottom + 4;
-              })(),
-              right: (() => {
-                const el = containerRef.current;
-                if (!el) return 0;
-                return window.innerWidth - el.getBoundingClientRect().right;
-              })(),
-            }}
-          >
-            <button
-              onClick={() => { setOpen(false); onEdit(); }}
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-            >
+              top: (() => { const el = containerRef.current; if (!el) return 0; return el.getBoundingClientRect().bottom + 4; })(),
+              right: (() => { const el = containerRef.current; if (!el) return 0; return window.innerWidth - el.getBoundingClientRect().right; })(),
+            }}>
+            <button onClick={() => { setOpen(false); onEdit(); }}
+              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
               <Edit size={13} className="text-slate-400" /> Edit
             </button>
             <div className="my-1 border-t border-slate-100" />
-            <button
-              onClick={() => { setOpen(false); onDelete(); }}
-              className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2"
-            >
+            <button onClick={() => { setOpen(false); onDelete(); }}
+              className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2">
               <Trash2 size={13} /> Delete
             </button>
           </div>
@@ -209,12 +187,8 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState<BookingStatus | "all">("all");
   const [sourceFilter, setSourceFilter] = useState<BookingSource | "all">("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [idProofFile, setIdProofFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const emptyForm = {
-    guestName: "", guestPhone: "", guestEmail: "",
-    idProofType: "aadhar", idProofNumber: "",
     propertyId: "", roomId: "", bedId: "",
     checkIn: "", checkOut: "",
     numberOfGuests: "1", amount: "", discount: "0",
@@ -225,8 +199,31 @@ export default function BookingsPage() {
   };
 
   const [form, setForm] = useState(emptyForm);
-  const [idError, setIdError] = useState("");
+  const [guests, setGuests] = useState<GuestDetail[]>([makeGuest()]);
   const [infoBooking, setInfoBooking] = useState<any>(null);
+
+  // Sync guest array size when numberOfGuests changes
+  useEffect(() => {
+    const n = Math.max(1, parseInt(form.numberOfGuests) || 1);
+    setGuests(prev => {
+      if (prev.length === n) return prev;
+      if (prev.length < n) return [...prev, ...Array.from({ length: n - prev.length }, makeGuest)];
+      return prev.slice(0, n);
+    });
+  }, [form.numberOfGuests]);
+
+  function updateGuest(index: number, field: keyof GuestDetail, value: string) {
+    setGuests(prev => prev.map((g, i) => {
+      if (i !== index) return g;
+      const updated = { ...g, [field]: value };
+      if (field === "idProofNumber" || field === "idProofType") {
+        const num = field === "idProofNumber" ? sanitizeId(updated.idProofType, value) : sanitizeId(value, g.idProofNumber);
+        updated.idProofNumber = field === "idProofNumber" ? num : sanitizeId(value, g.idProofNumber);
+        updated.idError = validateIdProof(updated.idProofType, updated.idProofNumber);
+      }
+      return updated;
+    }));
+  }
 
   async function fetchData() {
     try {
@@ -255,7 +252,7 @@ export default function BookingsPage() {
   function openAdd() {
     setEditingBooking(null);
     setForm(emptyForm);
-    setIdProofFile(null);
+    setGuests([makeGuest()]);
     setError("");
     setShowModal(true);
   }
@@ -263,11 +260,6 @@ export default function BookingsPage() {
   function openEdit(booking: Booking) {
     setEditingBooking(booking);
     setForm({
-      guestName: booking.guest_name,
-      guestPhone: booking.guest_phone || "",
-      guestEmail: booking.guest_email || "",
-      idProofType: (booking as any).id_proof_type || "aadhar",
-      idProofNumber: (booking as any).id_proof_number || "",
       propertyId: String(booking.property_id),
       roomId: booking.room_id ? String(booking.room_id) : "",
       bedId: booking.bed_id ? String(booking.bed_id) : "",
@@ -282,7 +274,16 @@ export default function BookingsPage() {
       specialRequests: booking.special_requests || "",
       notes: booking.notes || "",
     });
-    setIdProofFile(null);
+    // Populate primary guest from booking data
+    const primaryGuest: GuestDetail = {
+      name: booking.guest_name,
+      phone: booking.guest_phone || "",
+      idProofType: (booking as any).id_proof_type || "aadhar",
+      idProofNumber: (booking as any).id_proof_number || "",
+      idError: "",
+    };
+    const n = Math.max(1, booking.number_of_guests || 1);
+    setGuests([primaryGuest, ...Array.from({ length: n - 1 }, makeGuest)]);
     setError("");
     setShowModal(true);
   }
@@ -309,8 +310,15 @@ export default function BookingsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const idErr = validateIdProof(form.idProofType, form.idProofNumber);
-    if (idErr) { setIdError(idErr); return; }
+    // Validate all guests
+    for (let i = 0; i < guests.length; i++) {
+      const err = validateIdProof(guests[i].idProofType, guests[i].idProofNumber);
+      if (err) {
+        setGuests(prev => prev.map((g, idx) => idx === i ? { ...g, idError: err } : g));
+        setError(`Guest ${i + 1}: ${err}`);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const finalAmount = Number(form.amount) - Number(form.discount);
@@ -321,10 +329,28 @@ export default function BookingsPage() {
       const url = editingBooking ? `/api/bookings/${editingBooking.id}` : "/api/bookings";
       const method = editingBooking ? "PUT" : "POST";
 
+      // Primary guest = first guest
+      const primaryGuest = guests[0];
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, finalAmount, bookingCode }),
+        body: JSON.stringify({
+          ...form,
+          guestName: primaryGuest.name,
+          guestPhone: primaryGuest.phone,
+          guestEmail: "",
+          idProofType: primaryGuest.idProofType,
+          idProofNumber: primaryGuest.idProofNumber,
+          additionalGuests: guests.slice(1).map(g => ({
+            name: g.name,
+            phone: g.phone,
+            idProofType: g.idProofType,
+            idProofNumber: g.idProofNumber,
+          })),
+          finalAmount,
+          bookingCode,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed to save booking"); return; }
@@ -338,7 +364,6 @@ export default function BookingsPage() {
     }
   }
 
-  // Derived stats
   const today = new Date().toISOString().split("T")[0];
   const todayCheckIns    = bookings.filter(b => b.check_in?.slice(0, 10) === today).length;
   const todayCheckOuts   = bookings.filter(b => b.check_out?.slice(0, 10) === today).length;
@@ -419,13 +444,10 @@ export default function BookingsPage() {
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by name, phone or code..."
+          <input type="text" placeholder="Search by name, phone or code..."
             value={searchTerm}
             onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-            className="input-field pl-9 text-sm w-full"
-          />
+            className="input-field pl-9 text-sm w-full" />
         </div>
         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as any); setCurrentPage(1); }} className="input-field text-sm w-auto">
           <option value="all">All Status</option>
@@ -442,7 +464,6 @@ export default function BookingsPage() {
         )}
       </div>
 
-      {/* Success */}
       {success && (
         <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
           <CheckCircle size={15} className="text-emerald-600 flex-shrink-0" />
@@ -493,7 +514,6 @@ export default function BookingsPage() {
                     const initials = booking.guest_name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
                     return (
                       <tr key={booking.id} className="hover:bg-slate-50/60 transition-colors">
-                        {/* Guest */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
@@ -505,33 +525,21 @@ export default function BookingsPage() {
                             </div>
                           </div>
                         </td>
-                        {/* Property/Bed */}
                         <td className="px-4 py-3">
                           <p className="text-sm font-medium text-slate-700">{property?.name || "—"}</p>
-                          <p className="text-xs text-slate-400">
-                            {room?.name}{bed ? ` · Bed ${bed.bed_number}` : ""}
-                          </p>
+                          <p className="text-xs text-slate-400">{room?.name}{bed ? ` · Bed ${bed.bed_number}` : ""}</p>
                         </td>
-                        {/* Dates */}
                         <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(booking.check_in)}</td>
                         <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(booking.check_out)}</td>
-                        {/* Amount */}
                         <td className="px-4 py-3">
                           <p className="text-sm font-bold text-slate-900">₹{booking.final_amount}</p>
                           <p className={`text-[10px] font-semibold ${
                             booking.payment_status === "paid" ? "text-emerald-600" :
                             booking.payment_status === "partial" ? "text-amber-600" : "text-red-500"
-                          }`}>
-                            {capitalize(booking.payment_status)}
-                          </p>
+                          }`}>{capitalize(booking.payment_status)}</p>
                         </td>
-                        {/* Source */}
-                        <td className="px-4 py-3 text-xs text-slate-500 capitalize">
-                          {booking.booking_source?.replace("_", " ")}
-                        </td>
-                        {/* Status */}
+                        <td className="px-4 py-3 text-xs text-slate-500 capitalize">{booking.booking_source?.replace("_", " ")}</td>
                         <td className="px-4 py-3"><StatusBadge status={booking.status} /></td>
-                        {/* Actions — each row has its own isolated dropdown */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             <button onClick={() => setInfoBooking(booking)} className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 hover:bg-blue-100" title="Payment Info">&#9432;</button>
@@ -552,7 +560,6 @@ export default function BookingsPage() {
             </div>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-slate-500">
@@ -567,9 +574,7 @@ export default function BookingsPage() {
                   <button key={p} onClick={() => setCurrentPage(p)}
                     className={`h-8 w-8 rounded-lg text-sm font-semibold transition-all ${
                       currentPage === p ? "bg-orange-500 text-white" : "border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-500"
-                    }`}>
-                    {p}
-                  </button>
+                    }`}>{p}</button>
                 ))}
                 <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
                   className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:text-orange-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
@@ -589,7 +594,6 @@ export default function BookingsPage() {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mb-8">
 
-            {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
@@ -607,73 +611,7 @@ export default function BookingsPage() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
-              {/* ── Guest Details ── */}
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center">
-                    <User size={13} className="text-orange-500" />
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-800">Guest Details</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Guest Name *</label>
-                    <input type="text" required placeholder="Enter guest name"
-                      value={form.guestName} onChange={e => setForm({ ...form, guestName: e.target.value })}
-                      className="input-field w-full text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone *</label>
-                    <input type="tel" required placeholder="Enter phone number"
-                      value={form.guestPhone} onChange={e => setForm({ ...form, guestPhone: e.target.value })}
-                      className="input-field w-full text-sm" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email</label>
-                    <input type="email" placeholder="Enter email (optional)"
-                      value={form.guestEmail} onChange={e => setForm({ ...form, guestEmail: e.target.value })}
-                      className="input-field w-full text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Proof Type</label>
-                    <select value={form.idProofType} onChange={e => setForm({ ...form, idProofType: e.target.value })}
-                      className="input-field w-full text-sm">
-                      {ID_PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Number *</label>
-                    <input type="text" required placeholder="Enter ID number"
-                      value={form.idProofNumber}
-                      onChange={e => {
-                        const sanitized = sanitizeId(form.idProofType, e.target.value);
-                        setForm({ ...form, idProofNumber: sanitized });
-                        setIdError(validateIdProof(form.idProofType, sanitized));
-                      }}
-                      className={`input-field w-full text-sm ${idError ? "border-red-400" : ""}`} />
-                    {idError && <p className="text-xs text-red-500 mt-1">{idError}</p>}
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Proof Photo</label>
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-all"
-                    >
-                      <Upload size={20} className="text-slate-300 mb-2" />
-                      <p className="text-xs font-medium text-slate-400">
-                        {idProofFile ? idProofFile.name : "Upload ID proof"}
-                      </p>
-                      <p className="text-[10px] text-slate-300 mt-0.5">JPG, PNG or PDF (Max. 2MB)</p>
-                      <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden"
-                        onChange={e => setIdProofFile(e.target.files?.[0] || null)} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-100" />
-
-              {/* ── Booking Details ── */}
+              {/* ── Booking Details (No. of Guests first) ── */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -768,10 +706,68 @@ export default function BookingsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">No. of Guests</label>
-                    <input type="number" min={1} placeholder="1"
-                      value={form.numberOfGuests} onChange={e => setForm({ ...form, numberOfGuests: e.target.value })}
+                    <input type="number" min={1} max={20} placeholder="1"
+                      value={form.numberOfGuests}
+                      onChange={e => setForm({ ...form, numberOfGuests: e.target.value })}
                       className="input-field w-full text-sm" />
                   </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100" />
+
+              {/* ── Dynamic Guest Details ── */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center">
+                    <User size={13} className="text-orange-500" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-800">Guest Details</h3>
+                  <span className="ml-auto text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                    {guests.length} guest{guests.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {guests.map((guest, index) => (
+                    <div key={index} className="border border-slate-100 rounded-xl p-4 bg-slate-50/40">
+                      <p className="text-xs font-bold text-slate-500 mb-3">
+                        {index === 0 ? "👤 Primary Guest" : `👤 Guest ${index + 1}`}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Name *</label>
+                          <input type="text" required placeholder="Guest name"
+                            value={guest.name}
+                            onChange={e => updateGuest(index, "name", e.target.value)}
+                            className="input-field w-full text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone *</label>
+                          <input type="tel" required placeholder="Phone number"
+                            value={guest.phone}
+                            onChange={e => updateGuest(index, "phone", e.target.value)}
+                            className="input-field w-full text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Proof Type</label>
+                          <select value={guest.idProofType}
+                            onChange={e => updateGuest(index, "idProofType", e.target.value)}
+                            className="input-field w-full text-sm">
+                            {ID_PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Number *</label>
+                          <input type="text" required placeholder="ID number"
+                            value={guest.idProofNumber}
+                            onChange={e => updateGuest(index, "idProofNumber", e.target.value)}
+                            className={`input-field w-full text-sm ${guest.idError ? "border-red-400" : ""}`} />
+                          {guest.idError && <p className="text-xs text-red-500 mt-1">{guest.idError}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -793,39 +789,40 @@ export default function BookingsPage() {
           </div>
         </div>
       )}
-    {infoBooking && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-          <h2 className="text-lg font-bold mb-1">Payment Info</h2>
-          <p className="text-sm text-slate-500 mb-3">{infoBooking.guest_name} — {infoBooking.booking_code}</p>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Amount</span><span className="font-semibold">Rs.{infoBooking.final_amount}</span></div>
-            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Status</span><span className={infoBooking.payment_status === "paid" ? "text-green-600 font-semibold" : "text-orange-500"}>{infoBooking.payment_status || "pending"}</span></div>
-            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Sender</span><span>{infoBooking.payment_sender_name || "-"}</span></div>
-            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">UTR</span>
-              <span className={`font-mono text-xs ${infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) ? "text-red-500" : ""}`}>
-                {infoBooking.utr_number || "-"}
-                {infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) && <span className="text-red-400 text-[9px] ml-1">⚠ Verify</span>}
-              </span>
+
+      {infoBooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h2 className="text-lg font-bold mb-1">Payment Info</h2>
+            <p className="text-sm text-slate-500 mb-3">{infoBooking.guest_name} — {infoBooking.booking_code}</p>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Amount</span><span className="font-semibold">Rs.{infoBooking.final_amount}</span></div>
+              <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Status</span><span className={infoBooking.payment_status === "paid" ? "text-green-600 font-semibold" : "text-orange-500"}>{infoBooking.payment_status || "pending"}</span></div>
+              <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Sender</span><span>{infoBooking.payment_sender_name || "-"}</span></div>
+              <div className="flex justify-between py-1 border-b"><span className="text-slate-500">UTR</span>
+                <span className={`font-mono text-xs ${infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) ? "text-red-500" : ""}`}>
+                  {infoBooking.utr_number || "-"}
+                  {infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) && <span className="text-red-400 text-[9px] ml-1">⚠ Verify</span>}
+                </span>
+              </div>
+              <div className="flex justify-between py-1"><span className="text-slate-500">Pay Date</span><span>{infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "-"}</span></div>
             </div>
-            <div className="flex justify-between py-1"><span className="text-slate-500">Pay Date</span><span>{infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "-"}</span></div>
-          </div>
-          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <p className="text-xs font-bold text-amber-800 mb-2">📋 Payment Cross-Check</p>
-            <div className="space-y-1 text-xs text-amber-700">
-              <p>Amount: <strong>₹{infoBooking.final_amount}</strong></p>
-              <p>Sender: <strong>{infoBooking.payment_sender_name || "Not provided"}</strong></p>
-              <p>UTR: <strong className="font-mono">{infoBooking.utr_number || "Not provided"}</strong></p>
-              <p>Date: <strong>{infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "Not provided"}</strong></p>
-              {infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) && (
-                <p className="text-red-600 font-semibold">⚠ UTR should be 12 digits — verify manually</p>
-              )}
+            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <p className="text-xs font-bold text-amber-800 mb-2">📋 Payment Cross-Check</p>
+              <div className="space-y-1 text-xs text-amber-700">
+                <p>Amount: <strong>₹{infoBooking.final_amount}</strong></p>
+                <p>Sender: <strong>{infoBooking.payment_sender_name || "Not provided"}</strong></p>
+                <p>UTR: <strong className="font-mono">{infoBooking.utr_number || "Not provided"}</strong></p>
+                <p>Date: <strong>{infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "Not provided"}</strong></p>
+                {infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) && (
+                  <p className="text-red-600 font-semibold">⚠ UTR should be 12 digits — verify manually</p>
+                )}
+              </div>
             </div>
+            <button onClick={() => setInfoBooking(null)} className="w-full mt-3 bg-slate-800 text-white py-2 rounded-lg text-sm">Close</button>
           </div>
-          <button onClick={() => setInfoBooking(null)} className="w-full mt-3 bg-slate-800 text-white py-2 rounded-lg text-sm">Close</button>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 }
