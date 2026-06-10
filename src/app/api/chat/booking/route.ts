@@ -4,7 +4,7 @@ import { neon } from '@neondatabase/serverless';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { propertyId, name, phone, checkin, checkout, guests, room, amount, idtype, idnumber, utr, sender, paydate } = body;
+    const { propertyId, name, phone, checkin, checkout, guests, room, amount, idtype, idnumber, utr, sender, paydate, guestsData } = body;
     
     console.log('BOOKING RECEIVED:', JSON.stringify(body));
     
@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
     const rooms = await sql`SELECT id FROM rooms WHERE property_id = ${propertyId} AND name ILIKE ${room || '%'} LIMIT 1`;
     const roomId = rooms[0]?.id || null;
 
+    const guestsJson = guestsData ? JSON.stringify(guestsData) : null;
+
     await sql`
       INSERT INTO bookings (
         booking_code, property_id, room_id,
@@ -22,7 +24,8 @@ export async function POST(req: NextRequest) {
         amount, final_amount,
         booking_source, status, payment_status,
         id_proof_type, id_proof_number,
-        utr_number, payment_sender_name, payment_date
+        utr_number, payment_sender_name, payment_date,
+        guests_data
       ) VALUES (
         ${code}, ${propertyId}, ${roomId},
         ${name || 'Guest'}, ${phone || ''},
@@ -30,7 +33,8 @@ export async function POST(req: NextRequest) {
         ${parseFloat(amount) || 0}, ${parseFloat(amount) || 0},
         'direct', 'confirmed', ${utr ? 'paid' : 'pending'},
         ${idtype || null}, ${idnumber || null},
-        ${utr || null}, ${sender || null}, ${paydate || null}
+        ${utr || null}, ${sender || null}, ${paydate || null},
+        ${guestsJson}
       )
     `;
 
