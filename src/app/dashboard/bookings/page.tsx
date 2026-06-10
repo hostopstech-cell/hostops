@@ -529,18 +529,8 @@ export default function BookingsPage() {
                     const room     = rooms.find(r => r.id === booking.room_id);
                     const bed      = beds.find(b => b.id === booking.bed_id);
                     const initials = booking.guest_name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
-                    const extraGuests: any[] = (() => {
-                        try {
-                          const gd = (booking as any).guests_data;
-                          const arr = typeof gd === 'string' ? JSON.parse(gd) : gd;
-                          if (Array.isArray(arr) && arr.length > 1) return arr.slice(1);
-                        } catch {}
-                        return [];
-                      })();
-                    const isGroup = extraGuests.length > 0;
                     return (
-                      <tr key={booking.id} style={{display:"none"}}></tr><React.Fragment>
-                      <tr className={`hover:bg-slate-50/60 transition-colors${isGroup ? " border-l-2 border-orange-300" : ""}`}>
+                      <tr key={booking.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
@@ -549,6 +539,25 @@ export default function BookingsPage() {
                             <div>
                               <p className="font-semibold text-slate-900 text-sm">{booking.guest_name}</p>
                               <p className="text-xs text-slate-400">{booking.guest_phone}</p>
+                              {(() => {
+                                try {
+                                  const gd = (booking as any).guests_data;
+                                  const arr = typeof gd === 'string' ? JSON.parse(gd) : gd;
+                                  if (Array.isArray(arr) && arr.length > 1) {
+                                    return (
+                                      <div className="mt-1 flex flex-wrap gap-1">
+                                        {arr.slice(1).map((g: any, i: number) => (
+                                          <span key={i} className="inline-flex items-center gap-1 text-[10px] bg-orange-50 border border-orange-100 text-orange-500 rounded-full px-2 py-0.5">
+                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="4"/><path d="M12 14c-6 0-8 2-8 4v1h16v-1c0-2-2-4-8-4z"/></svg>
+                                            {g.name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    );
+                                  }
+                                } catch {}
+                                return null;
+                              })()}
                             </div>
                           </div>
                         </td>
@@ -580,32 +589,6 @@ export default function BookingsPage() {
                           </div>
                         </td>
                       </tr>
-                      {extraGuests.map((g: any, gi: number) => {
-                        const gInit = (g.name || "?").split(" ").map((n: string) => n[0]).join("").slice(0,2).toUpperCase();
-                        return (
-                          <tr key={`${booking.id}-g${gi}`} className="border-l-2 border-orange-300 bg-orange-50/30 hover:bg-orange-50/50 transition-colors">
-                            <td className="px-4 py-2">
-                              <div className="flex items-center gap-2.5">
-                                <div className="h-7 w-7 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
-                                  <span className="text-[10px] font-bold text-orange-400">{gInit}</span>
-                                </div>
-                                <div>
-                                  <p className="font-medium text-slate-700 text-sm">{g.name}</p>
-                                  <p className="text-xs text-slate-400">{g.phone}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-2 text-xs text-slate-300">—</td>
-                            <td className="px-4 py-2 text-xs text-slate-300">—</td>
-                            <td className="px-4 py-2 text-xs text-slate-300">—</td>
-                            <td className="px-4 py-2 text-xs text-slate-300">—</td>
-                            <td className="px-4 py-2 text-xs text-slate-300">—</td>
-                            <td className="px-4 py-2 text-xs text-slate-300">—</td>
-                            <td className="px-4 py-2"></td>
-                          </tr>
-                        );
-                      })}
-                      </>
                     );
                   })}
                 </tbody>
