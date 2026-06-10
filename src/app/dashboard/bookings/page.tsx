@@ -46,6 +46,46 @@ const ID_PROOF_TYPES = [
 
 const ITEMS_PER_PAGE = 10;
 
+function validateIdProof(type: string, value: string): string {
+  if (!value) return "";
+  switch(type) {
+    case "aadhar":
+      if (!/^\d{12}$/.test(value)) return "Aadhaar must be exactly 12 digits";
+      break;
+    case "pan":
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) return "PAN format: ABCDE1234F (5 letters + 4 digits + 1 letter)";
+      break;
+    case "passport":
+      if (!/^[A-Z]{1}[0-9]{7}$/.test(value)) return "Passport format: A1234567 (1 letter + 7 digits)";
+      break;
+    case "voter_id":
+      if (!/^[A-Z]{3}[0-9]{7}$/.test(value)) return "Voter ID format: ABC1234567 (3 letters + 7 digits)";
+      break;
+    case "driving_license":
+      if (!/^[A-Z]{2}[0-9]{2}[0-9]{11}$/.test(value) && !/^[A-Z]{2}-\d{2}-\d{4}-\d{7}$/.test(value))
+        return "Invalid driving license format";
+      break;
+  }
+  return "";
+}
+
+function getIdMaxLength(type: string): number {
+  switch(type) {
+    case "aadhar": return 12;
+    case "pan": return 10;
+    case "passport": return 8;
+    case "voter_id": return 10;
+    default: return 20;
+  }
+}
+
+function sanitizeId(type: string, value: string): string {
+  if (type === "aadhar") return value.replace(/\D/g, "").slice(0, 12);
+  if (type === "pan" || type === "passport" || type === "voter_id") return value.toUpperCase().slice(0, getIdMaxLength(type));
+  return value.toUpperCase().slice(0, 20);
+}
+
+
 function StatusBadge({ status }: { status: BookingStatus }) {
   const config: Record<BookingStatus, { label: string; cls: string; Icon: any }> = {
     pending:     { label: "Pending",     cls: "bg-amber-50 text-amber-700 border border-amber-200",       Icon: Clock },
@@ -185,6 +225,7 @@ export default function BookingsPage() {
   };
 
   const [form, setForm] = useState(emptyForm);
+  const [idError, setIdError] = useState("");
   const [infoBooking, setInfoBooking] = useState<any>(null);
 
   async function fetchData() {
@@ -268,6 +309,8 @@ export default function BookingsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    const idErr = validateIdProof(form.idProofType, form.idProofNumber);
+    if (idErr) { setIdError(idErr); return; }
     setSubmitting(true);
     try {
       const finalAmount = Number(form.amount) - Number(form.discount);
@@ -601,8 +644,14 @@ export default function BookingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Number *</label>
                     <input type="text" required placeholder="Enter ID number"
-                      value={form.idProofNumber} onChange={e => setForm({ ...form, idProofNumber: e.target.value })}
-                      className="input-field w-full text-sm" />
+                      value={form.idProofNumber}
+                      onChange={e => {
+                        const sanitized = sanitizeId(form.idProofType, e.target.value);
+                        setForm({ ...form, idProofNumber: sanitized });
+                        setIdError(validateIdProof(form.idProofType, sanitized));
+                      }}
+                      className={`input-field w-full text-sm ${idError ? "border-red-400" : ""}`} />
+                    {idError && <p className="text-xs text-red-500 mt-1">{idError}</p>}
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Proof Photo</label>
