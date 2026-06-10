@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     const {
       guestName, guestPhone, guestEmail,
       idProofType, idProofNumber,
+      additionalGuests,
       propertyId, roomId, bedId,
       checkIn, checkOut, numberOfGuests,
       amount, discount,
@@ -65,6 +66,13 @@ export async function POST(request: Request) {
     const disc = parseFloat(discount || "0");
     const final = amt - disc;
 
+    // Build guests_data: primary guest + additional guests
+    const allGuests = [
+      { name: guestName.trim(), phone: guestPhone.trim(), idProofType: idProofType || null, idProofNumber: idProofNumber?.trim() || null },
+      ...(Array.isArray(additionalGuests) ? additionalGuests : [])
+    ];
+    const guestsDataJson = JSON.stringify(allGuests);
+
     const rows = await sql`
       INSERT INTO bookings (
         property_id, room_id, bed_id, guest_name, guest_phone, guest_email,
@@ -80,7 +88,7 @@ export async function POST(request: Request) {
         ${paymentMethod || 'upi'}, ${paymentStatus || 'paid'}, ${bookingSource || 'direct'},
         ${specialRequests?.trim() || null}, ${notes?.trim() || null},
         ${bookingCode || 'BK' + Date.now()}, ${status || 'confirmed'},
-        ${idProofType || null}, ${idProofNumber?.trim() || null}, ${body.guestsData ? JSON.stringify(body.guestsData) : null}
+        ${idProofType || null}, ${idProofNumber?.trim() || null}, ${guestsDataJson}
       )
       RETURNING id, booking_code, property_id, room_id, bed_id,
                 guest_name, guest_phone, guest_email, check_in, check_out,
