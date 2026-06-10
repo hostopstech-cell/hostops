@@ -36,9 +36,12 @@ STEP 2: Based on answer, show matching rooms with prices. Ask for: check-in date
 STEP 3: Ask for: full name, phone number.
 STEP 4: Ask for ID proof type (Aadhar/PAN/Passport/Voter ID/Driving License) and ID number.
 STEP 5: Show booking summary. Ask "Shall I confirm this booking?"
-STEP 6: After "yes", share payment: "Please pay Rs.[amount] to ${p.payment_name || 'owner'} at UPI: ${p.upi_id || 'N/A'}. After payment share UTR number, sender name, and payment date."
-STEP 7: After getting UTR, sender name, payment date — output EXACTLY this (on its own line):
+STEP 6: After "yes", share payment: "Please pay Rs.[amount] to ${p.payment_name || 'owner'} at UPI: ${p.upi_id || 'N/A'}. After payment share: UTR number (12 digits), sender name (account holder name), and payment date."
+STEP 7: After getting UTR+sender+date — validate UTR must be exactly 12 digits. If not 12 digits, say "UTR number should be exactly 12 digits. Please check and resend." and ask again.
+STEP 8: Once valid UTR received — output EXACTLY this (on its own line):
 BOOKING_READY: name=[name], phone=[phone], checkin=[YYYY-MM-DD], checkout=[YYYY-MM-DD], guests=[n], room=[room], amount=[price_per_night], idtype=[type], idnumber=[number], utr=[utr], sender=[sender], paydate=[YYYY-MM-DD]
+Then IMMEDIATELY after BOOKING_READY line, send this confirmation message:
+"✅ Booking Confirmed! Your booking is confirmed. You can contact the owner when you arrive at the property. Owner contact: ${p.contact || 'N/A'}. See you soon!"
 
 RULES:
 - Always respond in English
