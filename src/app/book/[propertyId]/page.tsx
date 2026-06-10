@@ -39,6 +39,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
       setMessages(prev => [...(auto ? [] : prev), ...(auto ? [userMsg] : []), { role: "assistant", content: reply }]);
 
       if (reply.includes("BOOKING_READY:")) {
+        setMessages(prev => [...prev, { role: "assistant", content: "✅ Booking Confirmed! Your booking is all set. Please contact the owner when you arrive at the property. See you soon! 🏨" }]);
         const match = reply.match(/BOOKING_READY:\s*name=\[?([^\],\n]+)\]?,\s*phone=\[?([^\],\n]+)\]?,\s*checkin=\[?([^\],\n]+)\]?,\s*checkout=\[?([^\],\n]+)\]?,\s*guests=\[?([^\],\n]+)\]?,\s*room=\[?([^\],\n]+)\]?,\s*amount=\[?([^\],\n]+)\]?(?:,\s*idtype=\[?([^\],\n]*)\]?)?(?:,\s*idnumber=\[?([^\],\n]*)\]?)?(?:,\s*utr=\[?([^\],\n]*)\]?)?(?:,\s*sender=\[?([^\],\n]*)\]?)?(?:,\s*paydate=\[?([^\],\n]*)\]?)?/);
         if (match) {
           const nights = Math.max(1, Math.round((new Date(match[4]).getTime() - new Date(match[3]).getTime()) / 86400000));
