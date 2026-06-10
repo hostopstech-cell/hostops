@@ -64,7 +64,7 @@ RULES:
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        max_tokens: 300,
+        max_tokens: 500,
         temperature: 0.5,
       }),
     });
