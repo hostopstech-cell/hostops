@@ -56,8 +56,11 @@ export default function BookingPage({ params }: { params: { propertyId: string }
       setMessages(prev => [...(auto ? [] : prev), ...(auto ? [userMsg] : []), { role: "assistant", content: reply }]);
 
       if (reply.includes("BOOKING_READY:")) {
-        const match = reply.match(/BOOKING_READY:\s*name=\[(.+?)\],\s*phone=\[(.+?)\],\s*checkin=\[(.+?)\],\s*checkout=\[(.+?)\],\s*guests=\[(.+?)\],\s*room=\[(.+?)\],\s*amount=\[(.+?)\]/);
+        const match = reply.match(/BOOKING_READY:\s*name=\[(.+?)\],\s*phone=\[(.+?)\],\s*checkin=\[(.+?)\],\s*checkout=\[(.+?)\],\s*guests=\[(.+?)\],\s*room=\[(.+?)\],\s*amount=\[(.+?)\](?:,\s*idtype=\[(.+?)\])?(?:,\s*idnumber=\[(.+?)\])?(?:,\s*utr=\[(.+?)\])?(?:,\s*sender=\[(.+?)\])?(?:,\s*paydate=\[(.+?)\])?/);
         if (match) {
+          const nights = Math.max(1, Math.round((new Date(match[4]).getTime() - new Date(match[3]).getTime()) / 86400000));
+          const pricePerNight = parseFloat(match[7]) || 0;
+          const totalAmount = pricePerNight * parseInt(match[5]) * nights;
           const bookRes = await fetch("/api/chat/booking", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -65,7 +68,9 @@ export default function BookingPage({ params }: { params: { propertyId: string }
               propertyId: params.propertyId,
               name: match[1], phone: match[2], checkin: match[3],
               checkout: match[4], guests: parseInt(match[5]),
-              room: match[6], amount: parseFloat(match[7]),
+              room: match[6], amount: totalAmount || pricePerNight,
+              idtype: match[8] || null, idnumber: match[9] || null,
+              utr: match[10] || null, sender: match[11] || null, paydate: match[12] || null,
             }),
           });
           const bookData = await bookRes.json();
