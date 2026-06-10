@@ -112,7 +112,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !loading && input.trim() && sendMessage(input.trim())}
               placeholder="Type your message..."
-              className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400"
+              className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400" style={{color: "#000", background: "#fff"}}
             />
             <button
               onClick={() => !loading && input.trim() && sendMessage(input.trim())}
