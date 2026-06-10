@@ -539,7 +539,7 @@ export default function BookingsPage() {
                       })();
                     const isGroup = extraGuests.length > 0;
                     return (
-                      <React.Fragment key={booking.id}>
+                      <tr key={booking.id} style={{display:"none"}}></tr><React.Fragment>
                       <tr className={`hover:bg-slate-50/60 transition-colors${isGroup ? " border-l-2 border-orange-300" : ""}`}>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
@@ -605,7 +605,7 @@ export default function BookingsPage() {
                           </tr>
                         );
                       })}
-                      </React.Fragment>
+                      </>
                     );
                   })}
                 </tbody>
