@@ -802,10 +802,27 @@ export default function BookingsPage() {
             <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Amount</span><span className="font-semibold">Rs.{infoBooking.final_amount}</span></div>
             <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Status</span><span className={infoBooking.payment_status === "paid" ? "text-green-600 font-semibold" : "text-orange-500"}>{infoBooking.payment_status || "pending"}</span></div>
             <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Sender</span><span>{infoBooking.payment_sender_name || "-"}</span></div>
-            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">UTR</span><span className="font-mono text-xs">{infoBooking.utr_number || "-"}</span></div>
+            <div className="flex justify-between py-1 border-b"><span className="text-slate-500">UTR</span>
+              <span className={`font-mono text-xs ${infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) ? "text-red-500" : ""}`}>
+                {infoBooking.utr_number || "-"}
+                {infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) && <span className="text-red-400 text-[9px] ml-1">⚠ Verify</span>}
+              </span>
+            </div>
             <div className="flex justify-between py-1"><span className="text-slate-500">Pay Date</span><span>{infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "-"}</span></div>
           </div>
-          <button onClick={() => setInfoBooking(null)} className="w-full mt-4 bg-slate-800 text-white py-2 rounded-lg text-sm">Close</button>
+          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <p className="text-xs font-bold text-amber-800 mb-2">📋 Payment Cross-Check</p>
+            <div className="space-y-1 text-xs text-amber-700">
+              <p>Amount: <strong>₹{infoBooking.final_amount}</strong></p>
+              <p>Sender: <strong>{infoBooking.payment_sender_name || "Not provided"}</strong></p>
+              <p>UTR: <strong className="font-mono">{infoBooking.utr_number || "Not provided"}</strong></p>
+              <p>Date: <strong>{infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "Not provided"}</strong></p>
+              {infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) && (
+                <p className="text-red-600 font-semibold">⚠ UTR should be 12 digits — verify manually</p>
+              )}
+            </div>
+          </div>
+          <button onClick={() => setInfoBooking(null)} className="w-full mt-3 bg-slate-800 text-white py-2 rounded-lg text-sm">Close</button>
         </div>
       </div>
     )}
