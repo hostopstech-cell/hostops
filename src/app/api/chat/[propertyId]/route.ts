@@ -50,7 +50,7 @@ STEP 4 - Collect payment confirmation:
   Ask for: UTR/reference number, sender name, payment date
 
 STEP 5 - Once you have UTR, sender name, and payment date, output EXACTLY this line (nothing else on that line):
-BOOKING_READY: name=[name], phone=[phone], checkin=[YYYY-MM-DD], checkout=[YYYY-MM-DD], guests=[n], room=[room name], amount=[amount], idtype=[aadhar/pan/passport], idnumber=[id number], utr=[utr], sender=[sender name], paydate=[YYYY-MM-DD]
+BOOKING_READY: name=[full name], phone=[phone], checkin=[YYYY-MM-DD], checkout=[YYYY-MM-DD], guests=[number of guests], room=[room name], amount=[price_per_night only, NOT multiplied by guests], idtype=[aadhar/pan/passport], idnumber=[id number], utr=[utr], sender=[sender name], paydate=[YYYY-MM-DD]
 
 Rules:
 - Reply in same language as guest (Hindi or English)

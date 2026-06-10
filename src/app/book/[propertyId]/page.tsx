@@ -56,7 +56,7 @@ export default function BookingPage({ params }: { params: { propertyId: string }
       setMessages(prev => [...(auto ? [] : prev), ...(auto ? [userMsg] : []), { role: "assistant", content: reply }]);
 
       if (reply.includes("BOOKING_READY:")) {
-        const match = reply.match(/BOOKING_READY:\s*name=\[(.+?)\],\s*phone=\[(.+?)\],\s*checkin=\[(.+?)\],\s*checkout=\[(.+?)\],\s*guests=\[(.+?)\],\s*room=\[(.+?)\],\s*amount=\[(.+?)\](?:,\s*idtype=\[(.+?)\])?(?:,\s*idnumber=\[(.+?)\])?(?:,\s*utr=\[(.+?)\])?(?:,\s*sender=\[(.+?)\])?(?:,\s*paydate=\[(.+?)\])?/);
+        const match = reply.match(/BOOKING_READY:\s*name=\[?([^\],]+)\]?,\s*phone=\[?([^\],]+)\]?,\s*checkin=\[?([^\],]+)\]?,\s*checkout=\[?([^\],]+)\]?,\s*guests=\[?([^\],]+)\]?,\s*room=\[?([^\],]+)\]?,\s*amount=\[?([^\],]+)\]?(?:,\s*idtype=\[?([^\],]*)\]?)?(?:,\s*idnumber=\[?([^\],]*)\]?)?(?:,\s*utr=\[?([^\],]*)\]?)?(?:,\s*sender=\[?([^\],]*)\]?)?(?:,\s*paydate=\[?([^\],]*)\]?)?/);
         if (match) {
           const nights = Math.max(1, Math.round((new Date(match[4]).getTime() - new Date(match[3]).getTime()) / 86400000));
           const pricePerNight = parseFloat(match[7]) || 0;
