@@ -36,10 +36,19 @@ export default function BookPage({ params }: { params: { propertyId: string } })
       }
       if (data.property) setProperty(data.property);
       const reply = data.reply || "";
-      setMessages(prev => [...(auto ? [] : prev), ...(auto ? [userMsg] : []), { role: "assistant", content: reply }]);
+      const contact = data.property?.contact || property?.contact || "N/A";
+
+      // Show reply but hide the BOOKING_READY line
+      const displayReply = reply.replace(/BOOKING_READY:.*(\n|$)/g, "").trim();
+      setMessages(prev => [...(auto ? [] : prev), ...(auto ? [userMsg] : []), { role: "assistant", content: displayReply }]);
 
       if (reply.includes("BOOKING_READY:")) {
-        setMessages(prev => [...prev, { role: "assistant", content: "✅ Booking Confirmed! Your booking is all set. Please contact the owner when you arrive at the property. See you soon! 🏨" }]);
+        // Add confirmation message with contact
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: `✅ Booking Confirmed!\n\nYour booking at ${data.property?.name || property?.name || "the property"} is confirmed.\n\n📞 Owner Contact: ${contact}\n🏨 You can contact the property owner directly when you arrive.\n\nSee you soon!`
+        }]);
+
         const match = reply.match(/BOOKING_READY:\s*name=\[?([^\],\n]+)\]?,\s*phone=\[?([^\],\n]+)\]?,\s*checkin=\[?([^\],\n]+)\]?,\s*checkout=\[?([^\],\n]+)\]?,\s*guests=\[?([^\],\n]+)\]?,\s*room=\[?([^\],\n]+)\]?,\s*amount=\[?([^\],\n]+)\]?(?:,\s*idtype=\[?([^\],\n]*)\]?)?(?:,\s*idnumber=\[?([^\],\n]*)\]?)?(?:,\s*utr=\[?([^\],\n]*)\]?)?(?:,\s*sender=\[?([^\],\n]*)\]?)?(?:,\s*paydate=\[?([^\],\n]*)\]?)?/);
         if (match) {
           const nights = Math.max(1, Math.round((new Date(match[4]).getTime() - new Date(match[3]).getTime()) / 86400000));
@@ -81,7 +90,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {messages.filter(m => !m.content.includes("BOOKING_READY:")).map((msg, i) => (
+          {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
                 msg.role === "user"
