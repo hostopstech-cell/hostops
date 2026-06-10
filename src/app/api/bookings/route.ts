@@ -21,6 +21,7 @@ export async function GET() {
              b.payment_method, b.payment_status, b.booking_source,
              b.special_requests, b.notes, b.status, b.created_at,
              b.id_proof_type, b.id_proof_number, b.guests_data,
+             b.utr_number, b.payment_sender_name, b.payment_date,
              p.name as property_name
       FROM bookings b
       JOIN properties p ON p.id = b.property_id
