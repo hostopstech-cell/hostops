@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
   if (!isProtectedDashboard) return NextResponse.next();
 
   // Auth cookie check
-  const token = request.cookies.get("auth-token")?.value;
+  const token = request.cookies.get("hostops_token")?.value;
   if (!token) return NextResponse.redirect(new URL("/login", request.url));
 
   // Subscription check API call
