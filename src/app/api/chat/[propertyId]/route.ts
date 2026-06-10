@@ -50,7 +50,7 @@ RULES:
 - Today's date is ${new Date().toISOString().split('T')[0]}
 - For "today/tomorrow", convert to actual dates
 - ID VALIDATION (reject if invalid, ask again):
-  * Aadhar: exactly 12 digits only. Error: "Aadhar must be exactly 12 digits."
+  * Aadhar: extract only digits from user input, then check if exactly 12 digits. Example: "aadhar 909078785656" → extract "909078785656" → 12 digits → valid. Error only if digit count != 12: "Aadhar must be exactly 12 digits."
   * PAN: format ABCDE1234F (5 letters + 4 digits + 1 letter). Error: "PAN must be like ABCDE1234F."
   * Passport: 1 capital letter + 7 digits e.g. A1234567. Error: "Passport format must be like A1234567."
   * Voter ID: 3 capital letters + 7 digits e.g. ABC1234567. Error: "Voter ID must be like ABC1234567."
