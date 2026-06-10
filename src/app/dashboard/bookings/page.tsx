@@ -539,6 +539,25 @@ export default function BookingsPage() {
                             <div>
                               <p className="font-semibold text-slate-900 text-sm">{booking.guest_name}</p>
                               <p className="text-xs text-slate-400">{booking.guest_phone}</p>
+                              {(() => {
+                                try {
+                                  const gd = (booking as any).guests_data;
+                                  const arr = typeof gd === 'string' ? JSON.parse(gd) : gd;
+                                  if (Array.isArray(arr) && arr.length > 1) {
+                                    return (
+                                      <div className="mt-1 flex flex-wrap gap-1">
+                                        {arr.slice(1).map((g: any, i: number) => (
+                                          <span key={i} className="inline-flex items-center gap-1 text-[10px] bg-orange-50 border border-orange-100 text-orange-500 rounded-full px-2 py-0.5">
+                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="4"/><path d="M12 14c-6 0-8 2-8 4v1h16v-1c0-2-2-4-8-4z"/></svg>
+                                            {g.name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    );
+                                  }
+                                } catch {}
+                                return null;
+                              })()}
                             </div>
                           </div>
                         </td>
