@@ -283,7 +283,24 @@ export default function BookingsPage() {
       idError: "",
     };
     const n = Math.max(1, booking.number_of_guests || 1);
-    setGuests([primaryGuest, ...Array.from({ length: n - 1 }, makeGuest)]);
+    let savedGuests: GuestDetail[] = [];
+    try {
+      const gd = (booking as any).guests_data;
+      const parsed = typeof gd === 'string' ? JSON.parse(gd) : gd;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        savedGuests = parsed.map((g: any) => ({
+          name: g.name || '',
+          phone: g.phone || '',
+          idProofType: g.idProofType || 'aadhar',
+          idProofNumber: g.idProofNumber || '',
+          idError: '',
+        }));
+      }
+    } catch {}
+    const allGuests = savedGuests.length >= n
+      ? savedGuests.slice(0, n)
+      : [primaryGuest, ...savedGuests.slice(1), ...Array.from({ length: n - savedGuests.length }, makeGuest)];
+    setGuests(allGuests.length > 0 ? allGuests : [primaryGuest]);
     setError("");
     setShowModal(true);
   }
