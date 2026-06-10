@@ -48,7 +48,15 @@ RULES:
 - Be short and friendly
 - Ask ONE thing at a time
 - Today's date is ${new Date().toISOString().split('T')[0]}
-- For "today/tomorrow", convert to actual dates`;
+- For "today/tomorrow", convert to actual dates
+- ID VALIDATION (reject if invalid, ask again):
+  * Aadhar: exactly 12 digits only. Error: "Aadhar must be exactly 12 digits."
+  * PAN: format ABCDE1234F (5 letters + 4 digits + 1 letter). Error: "PAN must be like ABCDE1234F."
+  * Passport: 1 capital letter + 7 digits e.g. A1234567. Error: "Passport format must be like A1234567."
+  * Voter ID: 3 capital letters + 7 digits e.g. ABC1234567. Error: "Voter ID must be like ABC1234567."
+  * Driving License: 2 letters + 2 digits + 4 digits + 7 digits e.g. MH0120231234567. Error: "Invalid driving license format."
+- If guests > 1, collect ID proof for EACH guest separately before showing summary
+- After sending BOOKING_READY line, ALWAYS send confirmation: "✅ Booking Confirmed! Your booking is all set. Please contact the owner on arrival. Owner contact: ${p.contact || 'N/A'}. See you soon! 🏨"`;
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
