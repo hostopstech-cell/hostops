@@ -14,7 +14,22 @@ export async function POST(req: NextRequest) {
     const rooms = await sql`SELECT id FROM rooms WHERE property_id = ${propertyId} AND name ILIKE ${room || '%'} LIMIT 1`;
     const roomId = rooms[0]?.id || null;
 
-    const guestsJson = guestsData ? JSON.stringify(guestsData) : null;
+    let guestsArray = null;
+    if (guestsData) {
+      const arr = Array.isArray(guestsData) ? guestsData : (guestsData.guests || []);
+      if (arr.length > 0) {
+        guestsArray = JSON.stringify(arr.map((g: any) => ({
+          name: g.name || '',
+          phone: g.phone || '',
+          idProofType: g.idtype || g.idProofType || null,
+          idProofNumber: g.idnumber || g.idProofNumber || null,
+        })));
+      }
+    }
+    if (guestsArray === null) {
+      guestsArray = JSON.stringify([{ name: name || 'Guest', phone: phone || '', idProofType: idtype || null, idProofNumber: idnumber || null }]);
+    }
+    const guestsJson = guestsArray;
 
     await sql`
       INSERT INTO bookings (
