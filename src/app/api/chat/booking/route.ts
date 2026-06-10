@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         ${name || 'Guest'}, ${phone || ''},
         ${checkin}, ${checkout}, ${parseInt(guests) || 1},
         ${parseFloat(amount) || 0}, ${parseFloat(amount) || 0},
-        'bot', 'confirmed', ${utr ? 'paid' : 'pending'},
+        'direct', 'confirmed', ${utr ? 'paid' : 'pending'},
         ${idtype || null}, ${idnumber || null},
         ${utr || null}, ${sender || null}, ${paydate || null}
       )
