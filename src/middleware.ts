@@ -1,24 +1,40 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
 
 export async function middleware(request: NextRequest) {
-  const token = request.cookies.get("hostops_token")?.value;
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/") {
-    if (token) {
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET ?? "");
-        await jwtVerify(token, secret);
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      } catch {}
+  // Only dashboard routes check karo (subscription aur trial-expired ko bypass karo)
+  const isProtectedDashboard =
+    pathname.startsWith("/dashboard") &&
+    !pathname.startsWith("/dashboard/subscription") &&
+    !pathname.startsWith("/dashboard/trial-expired");
+
+  if (!isProtectedDashboard) return NextResponse.next();
+
+  // Auth cookie check
+  const token = request.cookies.get("auth-token")?.value;
+  if (!token) return NextResponse.redirect(new URL("/login", request.url));
+
+  // Subscription check API call
+  try {
+    const subRes = await fetch(new URL("/api/subscription", request.url), {
+      headers: { cookie: request.headers.get("cookie") || "" },
+    });
+
+    if (subRes.ok) {
+      const sub = await subRes.json();
+      if (sub.trialExpired && !sub.subscriptionActive) {
+        return NextResponse.redirect(new URL("/dashboard/trial-expired", request.url));
+      }
     }
+  } catch (e) {
+    // Error pe block mat karo — graceful degradation
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/"],
+  matcher: ["/dashboard/:path*"],
 };

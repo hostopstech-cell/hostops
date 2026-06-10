@@ -1,0 +1,8 @@
+f = open('src/app/api/chat/[propertyId]/route.ts', 'r')
+c = f.read()
+f.close()
+c = c.replace('r.capacity', 'r.number_of_beds')
+f = open('src/app/api/chat/[propertyId]/route.ts', 'w')
+f.write(c)
+f.close()
+print('Fixed!')

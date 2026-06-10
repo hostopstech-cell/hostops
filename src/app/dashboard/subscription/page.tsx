@@ -3,27 +3,7 @@
 import { useState, useEffect } from "react";
 import { Check, Zap, Crown, Sparkles, Phone, Info, Timer } from "lucide-react";
 
-declare global {
-  interface Window { Razorpay: any; }
-}
-
-const TRIAL_DAYS = 7;
-const TRIAL_START = new Date("2026-06-08T00:00:00");
-
-function getTimeLeft() {
-  const trialEnd = new Date(TRIAL_START);
-  trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
-  const now = new Date();
-  const diff = trialEnd.getTime() - now.getTime();
-  if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
-  return {
-    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-    minutes: Math.floor((diff / (1000 * 60)) % 60),
-    seconds: Math.floor((diff / 1000) % 60),
-    expired: false,
-  };
-}
+declare global { interface Window { Razorpay: any; } }
 
 const plans = [
   { id: "starter", name: "Starter", subtitle: "Perfect for small properties", icon: Sparkles, monthlyPrice: 999, yearlyPrice: 799, features: ["1 Property","50 Beds","Basic Dashboard","Email Support","Standard Reports"], cta: "Get Started", popular: false, highlight: false },
@@ -41,14 +21,31 @@ function CountdownBox({ value, label }: { value: number; label: string }) {
 }
 
 export default function SubscriptionPage() {
-  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
-  const [timeLeft, setTimeLeft] = useState(getTimeLeft());
-  const [loading, setLoading] = useState<string | null>(null);
+  const [billing, setBilling] = useState<"monthly"|"yearly">("monthly");
+  const [loading, setLoading] = useState<string|null>(null);
+  const [subData, setSubData] = useState<any>(null);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
-    const interval = setInterval(() => setTimeLeft(getTimeLeft()), 1000);
-    return () => clearInterval(interval);
+    fetch("/api/subscription").then(r => r.json()).then(setSubData).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!subData?.trialEndsAt) return;
+    const calc = () => {
+      const diff = new Date(subData.trialEndsAt).getTime() - Date.now();
+      if (diff <= 0) return setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      setTimeLeft({
+        days: Math.floor(diff / (1000*60*60*24)),
+        hours: Math.floor((diff / (1000*60*60)) % 24),
+        minutes: Math.floor((diff / (1000*60)) % 60),
+        seconds: Math.floor((diff / 1000) % 60),
+      });
+    };
+    calc();
+    const interval = setInterval(calc, 1000);
+    return () => clearInterval(interval);
+  }, [subData]);
 
   const loadRazorpay = () => new Promise((resolve) => {
     if (window.Razorpay) return resolve(true);
@@ -75,8 +72,7 @@ export default function SubscriptionPage() {
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: data.amount,
-        currency: data.currency,
+        amount: data.amount, currency: data.currency,
         name: "HostOps",
         description: `${planName} Plan - ${billing === "yearly" ? "Yearly" : "Monthly"}`,
         order_id: data.orderId,
@@ -84,14 +80,14 @@ export default function SubscriptionPage() {
           const verify = await fetch("/api/razorpay/verify-payment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(response),
+            body: JSON.stringify({ ...response, plan: planName, billing }),
           });
           const verifyData = await verify.json();
           if (verifyData.success) {
-            alert(`✅ Payment successful! ID: ${verifyData.paymentId}`);
-            window.location.reload();
+            alert(`✅ Subscription active! Welcome to ${planName} plan.`);
+            window.location.href = "/dashboard";
           } else {
-            alert("❌ Payment verification failed.");
+            alert("Payment verification failed.");
           }
         },
         prefill: { name: "", email: "", contact: "" },
@@ -103,38 +99,53 @@ export default function SubscriptionPage() {
       rzp.on("payment.failed", (r: any) => { alert(`Payment failed: ${r.error.description}`); setLoading(null); });
       rzp.open();
     } catch (error) {
-      alert("Payment shuru karne mein dikkat aayi. Dobara try karo.");
+      alert("Payment shuru karne mein dikkat aayi.");
       setLoading(null);
     }
   };
 
+  const isActivePlan = subData && subData.plan !== "trial" && subData.subscriptionActive;
+
   return (
     <div className="min-h-screen bg-white p-6 md:p-8">
-      <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4 flex flex-col md:flex-row items-center gap-4 justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center shrink-0"><Timer className="w-5 h-5 text-orange-500" /></div>
-          <div><p className="font-semibold text-gray-900 text-sm">7 Days Free Trial</p><p className="text-xs text-gray-500">Your free trial will expire in</p></div>
+      {/* Trial or Active Banner */}
+      {isActivePlan ? (
+        <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 flex items-center gap-4">
+          <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0">✅</div>
+          <div>
+            <p className="font-semibold text-gray-900 text-sm">Active Subscription — {subData.plan.charAt(0).toUpperCase() + subData.plan.slice(1)} Plan</p>
+            <p className="text-xs text-gray-500">Valid until: {new Date(subData.subscriptionEndsAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <CountdownBox value={timeLeft.days} label="Days" />
-          <span className="text-gray-300 text-xl font-light mb-3">:</span>
-          <CountdownBox value={timeLeft.hours} label="Hours" />
-          <span className="text-gray-300 text-xl font-light mb-3">:</span>
-          <CountdownBox value={timeLeft.minutes} label="Minutes" />
-          <span className="text-gray-300 text-xl font-light mb-3">:</span>
-          <CountdownBox value={timeLeft.seconds} label="Seconds" />
+      ) : (
+        <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4 flex flex-col md:flex-row items-center gap-4 justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center shrink-0"><Timer className="w-5 h-5 text-orange-500" /></div>
+            <div><p className="font-semibold text-gray-900 text-sm">7 Days Free Trial</p><p className="text-xs text-gray-500">Your free trial will expire in</p></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <CountdownBox value={timeLeft.days} label="Days" />
+            <span className="text-gray-300 text-xl font-light mb-3">:</span>
+            <CountdownBox value={timeLeft.hours} label="Hours" />
+            <span className="text-gray-300 text-xl font-light mb-3">:</span>
+            <CountdownBox value={timeLeft.minutes} label="Minutes" />
+            <span className="text-gray-300 text-xl font-light mb-3">:</span>
+            <CountdownBox value={timeLeft.seconds} label="Seconds" />
+          </div>
+          <p className="text-xs text-gray-500 max-w-xs text-center md:text-right">After the trial ends, your account will be paused.</p>
+          <button className="shrink-0 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors">Choose Plan Now</button>
         </div>
-        <p className="text-xs text-gray-500 max-w-xs text-center md:text-right">After the trial ends, your account will be paused.</p>
-        <button className="shrink-0 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors">Choose Plan Now</button>
-      </div>
+      )}
 
-      <div className="mb-8 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 flex items-center gap-2">
-        <Info className="w-4 h-4 text-blue-400 shrink-0" />
-        <p className="text-sm text-blue-600">No active plan found. After your trial ends, your account will be paused.</p>
-      </div>
+      {!isActivePlan && (
+        <div className="mb-8 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 flex items-center gap-2">
+          <Info className="w-4 h-4 text-blue-400 shrink-0" />
+          <p className="text-sm text-blue-600">No active plan found. After your trial ends, your account will be paused.</p>
+        </div>
+      )}
 
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Choose Your Plan</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{isActivePlan ? "Manage Your Plan" : "Choose Your Plan"}</h1>
         <p className="text-gray-500 mt-1">Select the plan that fits your business needs</p>
         <div className="inline-flex items-center gap-2 mt-5 bg-gray-100 rounded-xl p-1">
           <button onClick={() => setBilling("monthly")} className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${billing === "monthly" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Monthly</button>
@@ -147,9 +158,11 @@ export default function SubscriptionPage() {
           const Icon = plan.icon;
           const price = billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
           const isLoading = loading === plan.name;
+          const isCurrent = subData?.plan === plan.id;
           return (
-            <div key={plan.id} className={`relative rounded-2xl border p-6 flex flex-col ${plan.highlight ? "border-orange-400 border-2" : "border-gray-200"}`}>
-              {plan.popular && (<div className="absolute -top-3.5 left-1/2 -translate-x-1/2"><span className="bg-orange-500 text-white text-xs font-semibold px-4 py-1 rounded-full">Most Popular</span></div>)}
+            <div key={plan.id} className={`relative rounded-2xl border p-6 flex flex-col ${plan.highlight ? "border-orange-400 border-2" : "border-gray-200"} ${isCurrent ? "ring-2 ring-green-400" : ""}`}>
+              {plan.popular && !isCurrent && (<div className="absolute -top-3.5 left-1/2 -translate-x-1/2"><span className="bg-orange-500 text-white text-xs font-semibold px-4 py-1 rounded-full">Most Popular</span></div>)}
+              {isCurrent && (<div className="absolute -top-3.5 left-1/2 -translate-x-1/2"><span className="bg-green-500 text-white text-xs font-semibold px-4 py-1 rounded-full">Current Plan</span></div>)}
               <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><Icon className="w-6 h-6 text-orange-500" /></div>
               <h2 className="text-xl font-bold text-gray-900">{plan.name}</h2>
               <p className="text-sm text-gray-400 mt-0.5 mb-4">{plan.subtitle}</p>
@@ -157,10 +170,10 @@ export default function SubscriptionPage() {
               <ul className="space-y-2.5 mb-8 flex-1">{plan.features.map((f) => (<li key={f} className="flex items-center gap-2 text-sm text-gray-600"><Check className="w-4 h-4 text-orange-500 shrink-0" />{f}</li>))}</ul>
               <button
                 onClick={() => handlePayment(plan.name, price)}
-                disabled={isLoading}
-                className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${plan.highlight ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-700"} ${isLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+                disabled={!!isLoading || isCurrent}
+                className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${isCurrent ? "bg-green-100 text-green-700 cursor-default" : plan.highlight ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-700"} ${isLoading ? "opacity-60 cursor-not-allowed" : ""}`}
               >
-                {isLoading ? "Processing..." : plan.cta}
+                {isCurrent ? "Active Plan" : isLoading ? "Processing..." : plan.cta}
               </button>
             </div>
           );
