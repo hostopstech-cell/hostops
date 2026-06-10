@@ -20,22 +20,30 @@ export async function POST(req: NextRequest) {
         guest_name, guest_phone,
         check_in, check_out, number_of_guests,
         amount, final_amount,
-        booking_source, status, payment_status,
-        id_proof_type, id_proof_number,
-        utr_number, payment_sender_name, payment_date
+        booking_source, status, payment_status
       ) VALUES (
         ${code}, ${propertyId}, ${roomId},
         ${name || 'Guest'}, ${phone || ''},
         ${checkin}, ${checkout}, ${parseInt(guests) || 1},
         ${parseFloat(amount) || 0}, ${parseFloat(amount) || 0},
-        'bot', 'confirmed', ${utr ? 'paid' : 'pending'},
-        ${idtype || null}, ${idnumber || null},
-        ${utr || null}, ${sender || null}, ${paydate || null}
+        'bot', 'pending', 'pending'
       )
     `;
 
     const saved = await sql`SELECT id FROM bookings WHERE booking_code = ${code}`;
     const bookingId = saved[0]?.id;
+
+    if (bookingId && (utr || idtype)) {
+      await sql`
+        UPDATE bookings SET
+          id_proof_type = ${idtype || null},
+          id_proof_number = ${idnumber || null},
+          utr_number = ${utr || null},
+          payment_sender_name = ${sender || null},
+          payment_date = ${paydate || null}
+        WHERE id = ${bookingId}
+      `;
+    }
 
     console.log('BOOKING SAVED:', code, 'ID:', bookingId);
     return NextResponse.json({ success: true, booking_code: code });
