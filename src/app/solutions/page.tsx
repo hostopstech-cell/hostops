@@ -7,7 +7,7 @@ export default function SolutionsPage() {
       <Navbar />
 
       {/* ── HERO ── */}
-      <section className="max-w-7xl mx-auto px-6 py-16 md:py-24">
+      <section className="max-w-7xl mx-auto px-6 py-16 md:py-20">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
             <p className="text-orange-600 text-sm font-semibold uppercase tracking-widest mb-4">One AI. Every Property.</p>
@@ -15,22 +15,16 @@ export default function SolutionsPage() {
               One Platform.<br />
               <span className="text-orange-600">Every</span> Property.
             </h1>
-            <p className="text-slate-600 text-lg mb-8 leading-relaxed">
+            <p className="text-slate-600 text-lg leading-relaxed">
               Whether you run a hotel, hostel, villa, or guest house — HostOps adapts to your property and automates the rest.
             </p>
-            <Link href="/login" className="inline-flex items-center gap-2 bg-orange-600 text-white px-7 py-3 rounded-xl font-semibold hover:bg-orange-700 transition-colors shadow-lg shadow-orange-200">
-              Get Started Free →
-            </Link>
           </div>
 
           {/* Orbital diagram */}
-          <div className="relative flex items-center justify-center" style={{height:"420px"}}>
-            {/* Outer dashed ring */}
+          <div className="relative flex items-center justify-center" style={{height:"380px"}}>
             <div className="absolute w-80 h-80 rounded-full border-2 border-dashed border-orange-100" />
-            {/* Inner ring */}
             <div className="absolute w-52 h-52 rounded-full border border-orange-200/50" />
 
-            {/* Centre */}
             <div className="relative z-10 flex flex-col items-center bg-white rounded-2xl shadow-xl px-5 py-4 border border-orange-100">
               <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center mb-2 shadow-lg shadow-orange-200">
                 <span className="text-white text-xl font-black">H</span>
@@ -39,37 +33,27 @@ export default function SolutionsPage() {
               <p className="text-slate-400 text-xs">One AI. Every Property.</p>
             </div>
 
-            {/* Top — Hotels */}
             <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-md text-center w-28">
               <div className="text-2xl mb-1">🏨</div>
               <p className="text-slate-700 text-xs font-semibold">Hotels</p>
             </div>
-
-            {/* Top-right — Hostels */}
             <div className="absolute top-12 right-4 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-md text-center w-28">
               <div className="text-2xl mb-1">🛏️</div>
               <p className="text-slate-700 text-xs font-semibold">Hostels</p>
             </div>
-
-            {/* Bottom-right — Villas */}
             <div className="absolute bottom-12 right-4 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-md text-center w-28">
               <div className="text-2xl mb-1">🏡</div>
               <p className="text-slate-700 text-xs font-semibold">Villas & Homestays</p>
             </div>
-
-            {/* Bottom — Serviced */}
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-md text-center w-32">
               <div className="text-2xl mb-1">🏢</div>
               <p className="text-slate-700 text-xs font-semibold">Serviced Apts</p>
             </div>
-
-            {/* Left — Guest Houses */}
             <div className="absolute top-1/2 -translate-y-1/2 left-2 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-md text-center w-28">
               <div className="text-2xl mb-1">🏠</div>
               <p className="text-slate-700 text-xs font-semibold">Guest Houses</p>
             </div>
 
-            {/* Connector dots */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{zIndex:1}}>
               <circle cx="50%" cy="13%" r="3" fill="#f97316" opacity="0.5" />
               <circle cx="80%" cy="30%" r="3" fill="#f97316" opacity="0.5" />
