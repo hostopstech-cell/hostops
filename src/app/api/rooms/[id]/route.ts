@@ -5,7 +5,7 @@ import type { RoomType } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-const VALID_ROOM_TYPES: RoomType[] = ["dorm", "private", "deluxe", "family"];
+const VALID_ROOM_TYPES: RoomType[] = ["dorm", "female_dorm", "male_dorm", "private", "ac_room", "non_ac_room", "deluxe", "family"];
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -13,17 +13,58 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const id = parseInt(params.id, 10);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid room ID" }, { status: 400 });
+
     const body = await request.json();
     const { propertyId, name, type, capacity, pricePerNight, status } = body;
+
     if (!propertyId || !name?.trim() || !type || !capacity || !pricePerNight) {
       return NextResponse.json({ error: "All fields required" }, { status: 400 });
     }
-    if (!VALID_ROOM_TYPES.includes(type)) return NextResponse.json({ error: "Invalid room type" }, { status: 400 });
+    if (!VALID_ROOM_TYPES.includes(type)) {
+      return NextResponse.json({ error: "Invalid room type" }, { status: 400 });
+    }
+
     const cap = parseInt(capacity, 10);
     const price = parseFloat(pricePerNight);
-    const ownerCheck = await sql`SELECT r.id FROM rooms r INNER JOIN properties p ON p.id = r.property_id WHERE r.id = ${id} AND p.owner_id = ${owner.ownerId}`;
+
+    // Verify ownership
+    const ownerCheck = await sql`
+      SELECT r.id FROM rooms r
+      INNER JOIN properties p ON p.id = r.property_id
+      WHERE r.id = ${id} AND p.owner_id = ${owner.ownerId}
+    `;
     if (ownerCheck.length === 0) return NextResponse.json({ error: "Room not found" }, { status: 404 });
-    const rows = await sql`UPDATE rooms SET property_id = ${parseInt(propertyId, 10)}, name = ${name.trim()}, type = ${type}, number_of_beds = ${cap}, price_per_night = ${price}, status = ${status || "available"} WHERE id = ${id} RETURNING *`;
+
+    // Capacity validation: total_beds of property - sum of other rooms' number_of_beds
+    const propRows = await sql`SELECT total_beds FROM properties WHERE id = ${parseInt(propertyId, 10)} AND owner_id = ${owner.ownerId}`;
+    if (propRows.length === 0) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+
+    const totalAllowed = Number(propRows[0].total_beds);
+    const usedRows = await sql`
+      SELECT COALESCE(SUM(number_of_beds), 0)::int AS used
+      FROM rooms
+      WHERE property_id = ${parseInt(propertyId, 10)} AND id != ${id}
+    `;
+    const usedByOthers = Number(usedRows[0].used);
+    const available = totalAllowed - usedByOthers;
+
+    if (cap > available) {
+      return NextResponse.json({
+        error: `Only ${available} capacity remaining for this property (Total: ${totalAllowed}, Used by other rooms: ${usedByOthers}). Increase total rooms in Property settings.`
+      }, { status: 400 });
+    }
+
+    const rows = await sql`
+      UPDATE rooms
+      SET property_id = ${parseInt(propertyId, 10)},
+          name = ${name.trim()},
+          type = ${type},
+          number_of_beds = ${cap},
+          price_per_night = ${price},
+          status = ${status || "available"}
+      WHERE id = ${id}
+      RETURNING *
+    `;
     return NextResponse.json({ room: rows[0] });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update room" }, { status: 500 });
@@ -36,8 +77,14 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const id = parseInt(params.id, 10);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid room ID" }, { status: 400 });
-    const ownerCheck = await sql`SELECT r.id FROM rooms r INNER JOIN properties p ON p.id = r.property_id WHERE r.id = ${id} AND p.owner_id = ${owner.ownerId}`;
+
+    const ownerCheck = await sql`
+      SELECT r.id FROM rooms r
+      INNER JOIN properties p ON p.id = r.property_id
+      WHERE r.id = ${id} AND p.owner_id = ${owner.ownerId}
+    `;
     if (ownerCheck.length === 0) return NextResponse.json({ error: "Room not found" }, { status: 404 });
+
     await sql`DELETE FROM bookings WHERE room_id = ${id}`;
     await sql`DELETE FROM beds WHERE room_id = ${id}`;
     await sql`DELETE FROM rooms WHERE id = ${id}`;

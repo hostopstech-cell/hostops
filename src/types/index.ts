@@ -1,5 +1,5 @@
 export type PropertyType = "hotel" | "hostel" | "dorm" | "guesthouse";
-export type RoomType = "dorm" | "private" | "luxury";
+export type RoomType = "dorm" | "female_dorm" | "male_dorm" | "private" | "ac_room" | "non_ac_room" | "deluxe" | "family";
 export type BedType = "upper" | "lower" | "normal";
 export type BookingStatus = "pending" | "confirmed" | "checked_in" | "checked_out" | "cancelled";
 export type PaymentStatus = "paid" | "pending" | "partial" | "refunded";
