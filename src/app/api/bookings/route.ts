@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         ${propertyId}, ${roomId || null}, ${bedId || null},
         ${guestName.trim()}, ${guestPhone.trim()}, ${guestEmail?.trim() || null},
         ${checkIn}, ${checkOut}, ${guests}, ${amt}, ${disc}, ${final},
-        ${paymentMethod || 'upi'}, ${paymentStatus || 'paid'}, ${bookingSource || 'direct'},
+        ${paymentMethod || 'upi'}, ${paymentStatus || 'pending'}, ${bookingSource || 'direct'},
         ${specialRequests?.trim() || null}, ${notes?.trim() || null},
         ${bookingCode || 'BK' + Date.now()}, ${status || 'confirmed'},
         ${idProofType || null}, ${idProofNumber?.trim() || null}, ${guestsDataJson}
