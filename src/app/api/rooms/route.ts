@@ -44,23 +44,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Property, name, type, capacity, and price are required" }, { status: 400 });
     }
 
-    const propRows = await sql`SELECT id, total_beds FROM properties WHERE id = ${parseInt(propertyId, 10)} AND owner_id = ${owner.ownerId}`;
+    // Check property ownership and get max rooms allowed
+    const propRows = await sql`
+      SELECT id, total_beds FROM properties
+      WHERE id = ${parseInt(propertyId, 10)} AND owner_id = ${owner.ownerId}
+    `;
     if (propRows.length === 0) return NextResponse.json({ error: "Property not found" }, { status: 404 });
 
-    const totalAllowed = Number(propRows[0].total_beds);
+    const maxRoomsAllowed = Number(propRows[0].total_beds);
+
+    // Count how many ROOMS already exist (not beds — rooms count matters here)
     const usedRows = await sql`
-      SELECT COALESCE(SUM(number_of_beds), 0)::int AS used
+      SELECT COUNT(*)::int AS used
       FROM rooms WHERE property_id = ${parseInt(propertyId, 10)}
     `;
-    const usedBeds = Number(usedRows[0].used);
-    const available = totalAllowed - usedBeds;
+    const usedRooms = Number(usedRows[0].used);
+    const remainingRoomSlots = maxRoomsAllowed - usedRooms;
 
-    if (Number(capacity) > available) {
+    if (remainingRoomSlots <= 0) {
       return NextResponse.json({
-        error: `Only ${available} capacity remaining (Total: ${totalAllowed}, Used: ${usedBeds}). Increase total rooms in Property settings first.`
+        error: `Room limit reached. This property allows max ${maxRoomsAllowed} rooms. Go to Property settings to increase the limit.`
       }, { status: 400 });
     }
 
+    // number_of_beds per room has NO limit — dorm can have 100 beds, that's fine
     const rows = await sql`
       INSERT INTO rooms (property_id, name, type, number_of_beds, price_per_night, status)
       VALUES (${parseInt(propertyId, 10)}, ${name.trim()}, ${type}, ${Number(capacity)}, ${Number(pricePerNight)}, ${status || "available"})

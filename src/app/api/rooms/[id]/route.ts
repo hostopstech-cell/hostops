@@ -35,25 +35,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     `;
     if (ownerCheck.length === 0) return NextResponse.json({ error: "Room not found" }, { status: 404 });
 
-    // Capacity validation: total_beds of property - sum of other rooms' number_of_beds
-    const propRows = await sql`SELECT total_beds FROM properties WHERE id = ${parseInt(propertyId, 10)} AND owner_id = ${owner.ownerId}`;
-    if (propRows.length === 0) return NextResponse.json({ error: "Property not found" }, { status: 404 });
-
-    const totalAllowed = Number(propRows[0].total_beds);
-    const usedRows = await sql`
-      SELECT COALESCE(SUM(number_of_beds), 0)::int AS used
-      FROM rooms
-      WHERE property_id = ${parseInt(propertyId, 10)} AND id != ${id}
-    `;
-    const usedByOthers = Number(usedRows[0].used);
-    const available = totalAllowed - usedByOthers;
-
-    if (cap > available) {
-      return NextResponse.json({
-        error: `Only ${available} capacity remaining for this property (Total: ${totalAllowed}, Used by other rooms: ${usedByOthers}). Increase total rooms in Property settings.`
-      }, { status: 400 });
-    }
-
     const rows = await sql`
       UPDATE rooms
       SET property_id = ${parseInt(propertyId, 10)},
