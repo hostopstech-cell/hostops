@@ -182,7 +182,7 @@ export default function PropertiesPage() {
         {([
           { label: "Total Properties", value: properties.length, sub: "Active properties", icon: "🏨", bg: "bg-orange-50", iconBg: "bg-orange-100", val: "text-orange-600" },
           { label: "Active Properties", value: activeProps, sub: `${properties.length > 0 ? Math.round((activeProps/properties.length)*100) : 0}% of total`, icon: "✅", bg: "bg-green-50", iconBg: "bg-green-100", val: "text-green-600" },
-          { label: "Total Beds", value: totalBeds, sub: "Across all properties", icon: "🛏️", bg: "bg-violet-50", iconBg: "bg-violet-100", val: "text-violet-600" },
+          { label: "Total Rooms", value: totalBeds, sub: "Across all properties", icon: "🛏️", bg: "bg-violet-50", iconBg: "bg-violet-100", val: "text-violet-600" },
           { label: "Avg Occupancy", value: `${avgOcc}%`, sub: `${occupied} of ${totalBeds} beds`, icon: "📊", bg: "bg-blue-50", iconBg: "bg-blue-100", val: "text-blue-600" },
         ] as any[]).map(({ label, value, sub, icon, bg, iconBg, val }) => (
           <div key={label} className={`rounded-2xl p-4 border border-white shadow-sm ${bg}`}>
@@ -205,7 +205,7 @@ export default function PropertiesPage() {
           className="input-field text-sm w-auto">
           <option value="name">Sort: Name</option>
           <option value="occupancy">Sort: Occupancy</option>
-          <option value="beds">Sort: Total Beds</option>
+          <option value="beds">Sort: Total Rooms</option>
         </select>
       </div>
 
@@ -354,7 +354,7 @@ export default function PropertiesPage() {
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500">Property</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500">Location</th>
                   <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500">Occupancy</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500">Total Beds</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500">Total Rooms</th>
                   <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500">Occupied</th>
                   <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500">Available</th>
                 </tr>
@@ -414,7 +414,7 @@ export default function PropertiesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Total Beds *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Total Rooms *</label>
                   <input required type="number" min={1} value={form.totalBeds} onChange={e => setForm(f => ({ ...f, totalBeds: e.target.value }))} placeholder="" autoComplete="off" className="input-field w-full text-sm" />
                 </div>
                 <div className="col-span-2">
