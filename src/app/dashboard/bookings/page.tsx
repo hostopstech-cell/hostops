@@ -7,7 +7,8 @@ import {
   Plus, Edit, Trash2, Search, Calendar, User,
   X, CheckCircle, Clock, LogIn, LogOut, XCircle,
   MoreVertical, ChevronLeft, ChevronRight, Building2,
-  BedDouble, TrendingUp, CreditCard
+  BedDouble, TrendingUp, CreditCard, Download, Filter,
+  Eye
 } from "lucide-react";
 
 const BOOKING_STATUSES: { value: BookingStatus; label: string }[] = [
@@ -60,7 +61,7 @@ function makeGuest(): GuestDetail {
 
 function validateIdProof(type: string, value: string): string {
   if (!value) return "";
-  switch(type) {
+  switch (type) {
     case "aadhar":
       if (!/^\d{12}$/.test(value)) return "Aadhaar must be exactly 12 digits";
       break;
@@ -82,7 +83,7 @@ function validateIdProof(type: string, value: string): string {
 }
 
 function getIdMaxLength(type: string): number {
-  switch(type) {
+  switch (type) {
     case "aadhar": return 12;
     case "pan": return 10;
     case "passport": return 8;
@@ -97,17 +98,34 @@ function sanitizeId(type: string, value: string): string {
   return value.toUpperCase().slice(0, 20);
 }
 
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+}
+
+const AVATAR_COLORS = [
+  "bg-orange-100 text-orange-600",
+  "bg-blue-100 text-blue-600",
+  "bg-emerald-100 text-emerald-600",
+  "bg-violet-100 text-violet-600",
+  "bg-pink-100 text-pink-600",
+];
+
+function getAvatarColor(name: string) {
+  const idx = name.charCodeAt(0) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[idx];
+}
+
 function StatusBadge({ status }: { status: BookingStatus }) {
   const config: Record<BookingStatus, { label: string; cls: string; Icon: any }> = {
-    pending:     { label: "Pending",     cls: "bg-amber-50 text-amber-700 border border-amber-200",       Icon: Clock },
-    confirmed:   { label: "Confirmed",   cls: "bg-blue-50 text-blue-700 border border-blue-200",          Icon: CheckCircle },
-    checked_in:  { label: "Checked In",  cls: "bg-emerald-50 text-emerald-700 border border-emerald-200", Icon: LogIn },
-    checked_out: { label: "Checked Out", cls: "bg-slate-100 text-slate-600 border border-slate-200",      Icon: LogOut },
-    cancelled:   { label: "Cancelled",   cls: "bg-red-50 text-red-600 border border-red-200",             Icon: XCircle },
+    pending: { label: "Pending", cls: "bg-amber-50 text-amber-700 border border-amber-200", Icon: Clock },
+    confirmed: { label: "Confirmed", cls: "bg-blue-50 text-blue-700 border border-blue-200", Icon: CheckCircle },
+    checked_in: { label: "Checked In", cls: "bg-emerald-50 text-emerald-700 border border-emerald-200", Icon: LogIn },
+    checked_out: { label: "Checked Out", cls: "bg-slate-100 text-slate-600 border border-slate-200", Icon: LogOut },
+    cancelled: { label: "Cancelled", cls: "bg-red-50 text-red-600 border border-red-200", Icon: XCircle },
   };
   const { label, cls, Icon } = config[status] || config.pending;
   return (
-    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${cls}`}>
+    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full ${cls}`}>
       <Icon size={10} />
       {label}
     </span>
@@ -172,6 +190,72 @@ function ActionMenu({
   );
 }
 
+// ── Group Guest Cell: timeline style like reference image ──
+function GuestCell({ booking }: { booking: Booking }) {
+  let allGuests: { name: string; phone: string }[] = [];
+  try {
+    const gd = (booking as any).guests_data;
+    const parsed = typeof gd === "string" ? JSON.parse(gd) : gd;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      allGuests = parsed.map((g: any) => ({ name: g.name || "", phone: g.phone || "" }));
+    }
+  } catch {}
+  if (allGuests.length === 0) {
+    allGuests = [{ name: booking.guest_name, phone: booking.guest_phone || "" }];
+  }
+
+  const isGroup = allGuests.length > 1;
+
+  if (!isGroup) {
+    const color = getAvatarColor(booking.guest_name);
+    return (
+      <div className="flex items-center gap-2.5">
+        <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${color}`}>
+          {getInitials(booking.guest_name)}
+        </div>
+        <div>
+          <p className="font-semibold text-slate-900 text-sm leading-tight">{booking.guest_name}</p>
+          <p className="text-xs text-slate-400">{booking.guest_phone}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Group: timeline layout
+  return (
+    <div className="flex gap-2">
+      {/* Orange vertical line with dots */}
+      <div className="flex flex-col items-center flex-shrink-0" style={{ width: 16 }}>
+        {allGuests.map((_, i) => (
+          <div key={i} className="flex flex-col items-center">
+            <div className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0 mt-1" />
+            {i < allGuests.length - 1 && (
+              <div className="w-0.5 bg-orange-200 flex-grow" style={{ minHeight: 20 }} />
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Guest list */}
+      <div className="flex flex-col gap-1 min-w-0">
+        {allGuests.map((g, i) => {
+          const color = getAvatarColor(g.name || "G");
+          return (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${color}`}>
+                {getInitials(g.name || "G")}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 leading-tight">{g.name}</p>
+                <p className="text-[11px] text-slate-400">{g.phone}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -186,7 +270,9 @@ export default function BookingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<BookingStatus | "all">("all");
   const [sourceFilter, setSourceFilter] = useState<BookingSource | "all">("all");
+  const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [infoBooking, setInfoBooking] = useState<any>(null);
 
   const emptyForm = {
     propertyId: "", roomId: "", bedId: "",
@@ -200,9 +286,7 @@ export default function BookingsPage() {
 
   const [form, setForm] = useState(emptyForm);
   const [guests, setGuests] = useState<GuestDetail[]>([makeGuest()]);
-  const [infoBooking, setInfoBooking] = useState<any>(null);
 
-  // Sync guest array size when numberOfGuests changes
   useEffect(() => {
     const n = Math.max(1, parseInt(form.numberOfGuests) || 1);
     setGuests(prev => {
@@ -217,8 +301,7 @@ export default function BookingsPage() {
       if (i !== index) return g;
       const updated = { ...g, [field]: value };
       if (field === "idProofNumber" || field === "idProofType") {
-        const num = field === "idProofNumber" ? sanitizeId(updated.idProofType, value) : sanitizeId(value, g.idProofNumber);
-        updated.idProofNumber = field === "idProofNumber" ? num : sanitizeId(value, g.idProofNumber);
+        updated.idProofNumber = field === "idProofNumber" ? sanitizeId(updated.idProofType, value) : sanitizeId(value, g.idProofNumber);
         updated.idError = validateIdProof(updated.idProofType, updated.idProofNumber);
       }
       return updated;
@@ -232,9 +315,9 @@ export default function BookingsPage() {
         fetch("/api/rooms"), fetch("/api/beds"),
       ]);
       if (bookingsRes.ok) { const d = await bookingsRes.json(); setBookings(d.bookings ?? []); }
-      if (propsRes.ok)    { const d = await propsRes.json();    setProperties(d.properties ?? []); }
-      if (roomsRes.ok)    { const d = await roomsRes.json();    setRooms(d.rooms ?? []); }
-      if (bedsRes.ok)     { const d = await bedsRes.json();     setBeds(d.beds ?? []); }
+      if (propsRes.ok) { const d = await propsRes.json(); setProperties(d.properties ?? []); }
+      if (roomsRes.ok) { const d = await roomsRes.json(); setRooms(d.rooms ?? []); }
+      if (bedsRes.ok) { const d = await bedsRes.json(); setBeds(d.beds ?? []); }
     } finally {
       setLoading(false);
     }
@@ -274,7 +357,6 @@ export default function BookingsPage() {
       specialRequests: booking.special_requests || "",
       notes: booking.notes || "",
     });
-    // Populate primary guest from booking data
     const primaryGuest: GuestDetail = {
       name: booking.guest_name,
       phone: booking.guest_phone || "",
@@ -286,14 +368,11 @@ export default function BookingsPage() {
     let savedGuests: GuestDetail[] = [];
     try {
       const gd = (booking as any).guests_data;
-      const parsed = typeof gd === 'string' ? JSON.parse(gd) : gd;
+      const parsed = typeof gd === "string" ? JSON.parse(gd) : gd;
       if (Array.isArray(parsed) && parsed.length > 0) {
         savedGuests = parsed.map((g: any) => ({
-          name: g.name || '',
-          phone: g.phone || '',
-          idProofType: g.idProofType || 'aadhar',
-          idProofNumber: g.idProofNumber || '',
-          idError: '',
+          name: g.name || "", phone: g.phone || "",
+          idProofType: g.idProofType || "aadhar", idProofNumber: g.idProofNumber || "", idError: "",
         }));
       }
     } catch {}
@@ -327,7 +406,6 @@ export default function BookingsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    // Validate all guests
     for (let i = 0; i < guests.length; i++) {
       const err = validateIdProof(guests[i].idProofType, guests[i].idProofNumber);
       if (err) {
@@ -342,13 +420,9 @@ export default function BookingsPage() {
       const bookingCode = editingBooking
         ? editingBooking.booking_code
         : `BK${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`;
-
       const url = editingBooking ? `/api/bookings/${editingBooking.id}` : "/api/bookings";
       const method = editingBooking ? "PUT" : "POST";
-
-      // Primary guest = first guest
       const primaryGuest = guests[0];
-
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -360,13 +434,9 @@ export default function BookingsPage() {
           idProofType: primaryGuest.idProofType,
           idProofNumber: primaryGuest.idProofNumber,
           additionalGuests: guests.slice(1).map(g => ({
-            name: g.name,
-            phone: g.phone,
-            idProofType: g.idProofType,
-            idProofNumber: g.idProofNumber,
+            name: g.name, phone: g.phone, idProofType: g.idProofType, idProofNumber: g.idProofNumber,
           })),
-          finalAmount,
-          bookingCode,
+          finalAmount, bookingCode,
         }),
       });
       const data = await res.json();
@@ -381,87 +451,109 @@ export default function BookingsPage() {
     }
   }
 
+  // Export CSV
+  function handleExport() {
+    const headers = ["Booking Code", "Guest", "Phone", "Property", "Room", "Check-in", "Check-out", "Amount", "Payment", "Source", "Status"];
+    const rows = filteredBookings.map(b => {
+      const property = properties.find(p => p.id === b.property_id);
+      const room = rooms.find(r => r.id === b.room_id);
+      return [
+        b.booking_code, b.guest_name, b.guest_phone || "",
+        property?.name || "", room?.name || "",
+        b.check_in?.slice(0, 10) || "", b.check_out?.slice(0, 10) || "",
+        b.final_amount, b.payment_status, b.booking_source, b.status,
+      ].join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "bookings.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const today = new Date().toISOString().split("T")[0];
-  const todayCheckIns    = bookings.filter(b => b.check_in?.slice(0, 10) === today).length;
-  const todayCheckOuts   = bookings.filter(b => b.check_out?.slice(0, 10) === today).length;
+  const todayCheckIns = bookings.filter(b => b.check_in?.slice(0, 10) === today).length;
+  const todayCheckOuts = bookings.filter(b => b.check_out?.slice(0, 10) === today).length;
   const upcomingBookings = bookings.filter(b => b.check_in?.slice(0, 10) > today && b.status !== "cancelled").length;
 
   const filteredBookings = bookings.filter(b => {
     const q = searchTerm.toLowerCase();
     const matchSearch =
       b.guest_name.toLowerCase().includes(q) ||
-      b.guest_phone?.toLowerCase().includes(q) ||
+      (b.guest_phone?.toLowerCase() || "").includes(q) ||
       b.booking_code.toLowerCase().includes(q);
     const matchStatus = statusFilter === "all" || b.status === statusFilter;
     const matchSource = sourceFilter === "all" || b.booking_source === sourceFilter;
-    return matchSearch && matchStatus && matchSource;
+    const matchProperty = propertyFilter === "all" || String(b.property_id) === propertyFilter;
+    return matchSearch && matchStatus && matchSource && matchProperty;
   });
 
   const totalPages = Math.ceil(filteredBookings.length / ITEMS_PER_PAGE);
-  const paginated  = filteredBookings.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const paginated = filteredBookings.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const filteredRooms = form.propertyId ? rooms.filter(r => r.property_id === Number(form.propertyId)) : rooms;
-  const filteredBeds  = form.roomId ? beds.filter(b => b.room_id === Number(form.roomId)) : [];
+  const filteredBeds = form.roomId ? beds.filter(b => b.room_id === Number(form.roomId)) : [];
 
   function getRoomLabel(roomId: number) {
     const room = rooms.find(r => r.id === roomId);
     if (!room) return "";
-    const cap    = Number(room.capacity) || Number(room.number_of_beds) || 0;
+    const cap = Number(room.capacity) || Number((room as any).number_of_beds) || 0;
     const booked = bookings.filter(b => b.room_id === roomId && ["confirmed", "checked_in"].includes(b.status)).length;
     return `${room.name} (${cap - booked}/${cap} avail)`;
   }
 
   function handleBedSelect(bedId: string) {
     const bed = beds.find(b => b.id === Number(bedId));
-    setForm(prev => ({
-      ...prev,
-      bedId,
-      amount: bed && !prev.amount ? String(bed.price_per_night) : prev.amount,
-    }));
+    setForm(prev => ({ ...prev, bedId, amount: bed && !prev.amount ? String(bed.price_per_night) : prev.amount }));
   }
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Bookings</h1>
           <p className="mt-0.5 text-sm text-slate-500">Manage all bookings and reservations</p>
         </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2 self-start sm:self-auto">
-          <Plus size={16} /> Add Booking
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all">
+            <Download size={15} /> Export
+          </button>
+          <button onClick={openAdd}
+            className="btn-primary flex items-center gap-2">
+            <Plus size={16} /> Add Booking
+          </button>
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* ── Stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total Bookings",     value: bookings.length, sub: "↑ 15% vs last month", iconBg: "bg-orange-100", iconColor: "text-orange-500", dot: "bg-orange-400",  Icon: Calendar },
-          { label: "Today's Check-ins",  value: todayCheckIns,   sub: "In next 7 days",       iconBg: "bg-blue-100",   iconColor: "text-blue-500",   dot: "bg-blue-400",    Icon: LogIn },
-          { label: "Today's Check-outs", value: todayCheckOuts,  sub: "vs yesterday",          iconBg: "bg-violet-100", iconColor: "text-violet-500", dot: "bg-violet-400",  Icon: LogOut },
-          { label: "Upcoming Bookings",  value: upcomingBookings,sub: "In next 7 days",        iconBg: "bg-emerald-100",iconColor: "text-emerald-500",dot: "bg-emerald-400", Icon: TrendingUp },
-        ].map(({ label, value, sub, iconBg, iconColor, dot, Icon }) => (
-          <div key={label} className="card p-4">
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className={`h-9 w-9 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0`}>
-                <Icon size={17} className={iconColor} />
+          { label: "Total Bookings", value: bookings.length, sub: "↑ 18% vs last month", iconBg: "bg-orange-100", iconColor: "text-orange-500", Icon: Calendar },
+          { label: "Today's Check-ins", value: todayCheckIns, sub: "In next 7 days", iconBg: "bg-blue-100", iconColor: "text-blue-500", Icon: LogIn },
+          { label: "Today's Check-outs", value: todayCheckOuts, sub: "vs yesterday", iconBg: "bg-violet-100", iconColor: "text-violet-500", Icon: LogOut },
+          { label: "Upcoming Bookings", value: upcomingBookings, sub: "In next 7 days", iconBg: "bg-emerald-100", iconColor: "text-emerald-500", Icon: TrendingUp },
+        ].map(({ label, value, sub, iconBg, iconColor, Icon }) => (
+          <div key={label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className={`h-10 w-10 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0`}>
+                <Icon size={18} className={iconColor} />
               </div>
-              <p className="text-xs text-slate-500 font-medium leading-tight">{label}</p>
             </div>
+            <p className="text-xs text-slate-500 font-medium mb-1">{label}</p>
             <p className="text-2xl font-bold text-slate-900 mb-1">{value}</p>
-            <div className="flex items-center gap-1.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-              <p className="text-xs text-slate-400">{sub}</p>
-            </div>
+            <p className="text-xs text-slate-400">{sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
+      {/* ── Filters ── */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input type="text" placeholder="Search by name, phone or code..."
+          <input type="text" placeholder="Search by guest name, phone or booking ID..."
             value={searchTerm}
             onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             className="input-field pl-9 text-sm w-full" />
@@ -470,12 +562,16 @@ export default function BookingsPage() {
           <option value="all">All Status</option>
           {BOOKING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
+        <select value={propertyFilter} onChange={e => { setPropertyFilter(e.target.value); setCurrentPage(1); }} className="input-field text-sm w-auto">
+          <option value="all">All Properties</option>
+          {properties.map(p => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+        </select>
         <select value={sourceFilter} onChange={e => { setSourceFilter(e.target.value as any); setCurrentPage(1); }} className="input-field text-sm w-auto">
           <option value="all">All Sources</option>
           {BOOKING_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
         {filteredBookings.length > 0 && (
-          <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full font-medium ml-auto">
+          <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-full font-medium ml-auto">
             {filteredBookings.length} booking{filteredBookings.length !== 1 ? "s" : ""}
           </span>
         )}
@@ -488,24 +584,23 @@ export default function BookingsPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* ── Table ── */}
       {loading ? (
-        <div className="card p-16 text-center">
+        <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
           <div className="h-8 w-8 border-[3px] border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm text-slate-400">Loading bookings...</p>
         </div>
       ) : filteredBookings.length === 0 ? (
-        <div className="card p-16 text-center">
+        <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
           <div className="h-16 w-16 rounded-2xl bg-orange-100 flex items-center justify-center mx-auto mb-4">
             <Calendar size={32} className="text-orange-400" />
           </div>
           <p className="text-lg font-bold text-slate-800 mb-1">No bookings found</p>
           <p className="text-sm text-slate-400 mb-6">
-            {searchTerm || statusFilter !== "all" || sourceFilter !== "all"
-              ? "Try adjusting your filters."
-              : "Create your first booking to get started."}
+            {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || propertyFilter !== "all"
+              ? "Try adjusting your filters." : "Create your first booking to get started."}
           </p>
-          {!searchTerm && statusFilter === "all" && sourceFilter === "all" && (
+          {!searchTerm && statusFilter === "all" && sourceFilter === "all" && propertyFilter === "all" && (
             <button onClick={openAdd} className="btn-primary inline-flex items-center gap-2">
               <Plus size={16} /> Add Booking
             </button>
@@ -513,72 +608,60 @@ export default function BookingsPage() {
         </div>
       ) : (
         <>
-          <div className="card overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     {["Guest", "Property / Bed", "Check-in", "Check-out", "Amount", "Source", "Status", "Actions"].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
+                      <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {paginated.map((booking) => {
                     const property = properties.find(p => p.id === booking.property_id);
-                    const room     = rooms.find(r => r.id === booking.room_id);
-                    const bed      = beds.find(b => b.id === booking.bed_id);
-                    const initials = booking.guest_name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+                    const room = rooms.find(r => r.id === booking.room_id);
+                    const bed = beds.find(b => b.id === booking.bed_id);
                     return (
-                      <tr key={booking.id} className="hover:bg-slate-50/60 transition-colors">
+                      <tr key={booking.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-bold text-orange-600">{initials}</span>
-                            </div>
-                            <div>
-                              <p className="font-semibold text-slate-900 text-sm">{booking.guest_name}</p>
-                              <p className="text-xs text-slate-400">{booking.guest_phone}</p>
-                              {(() => {
-                                try {
-                                  const gd = (booking as any).guests_data;
-                                  const arr = typeof gd === 'string' ? JSON.parse(gd) : gd;
-                                  if (Array.isArray(arr) && arr.length > 1) {
-                                    return (
-                                      <div className="mt-1 flex flex-wrap gap-1">
-                                        {arr.slice(1).map((g: any, i: number) => (
-                                          <span key={i} className="inline-flex items-center gap-1 text-[10px] bg-orange-50 border border-orange-100 text-orange-500 rounded-full px-2 py-0.5">
-                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="4"/><path d="M12 14c-6 0-8 2-8 4v1h16v-1c0-2-2-4-8-4z"/></svg>
-                                            {g.name}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    );
-                                  }
-                                } catch {}
-                                return null;
-                              })()}
-                            </div>
-                          </div>
+                          <GuestCell booking={booking} />
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-sm font-medium text-slate-700">{property?.name || "—"}</p>
-                          <p className="text-xs text-slate-400">{room?.name}{bed ? ` · Bed ${bed.bed_number}` : ""}</p>
+                          <p className="text-sm font-semibold text-slate-800">{property?.name || "—"}</p>
+                          <p className="text-xs text-slate-400">
+                            {room?.name}{bed ? ` · Bed ${bed.bed_number}` : ""}
+                          </p>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(booking.check_in)}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(booking.check_out)}</td>
                         <td className="px-4 py-3">
-                          <p className="text-sm font-bold text-slate-900">₹{booking.final_amount}</p>
-                          <p className={`text-[10px] font-semibold ${
+                          <p className="text-sm text-slate-700 font-medium whitespace-nowrap">{formatDate(booking.check_in)}</p>
+                          <p className="text-[11px] text-slate-400">{new Date(booking.check_in).toLocaleDateString("en-IN", { weekday: "short" })}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-slate-700 font-medium whitespace-nowrap">{formatDate(booking.check_out)}</p>
+                          <p className="text-[11px] text-slate-400">{new Date(booking.check_out).toLocaleDateString("en-IN", { weekday: "short" })}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-bold text-slate-900">₹{Number(booking.final_amount).toLocaleString("en-IN")}</p>
+                          <p className={`text-[11px] font-semibold ${
                             booking.payment_status === "paid" ? "text-emerald-600" :
                             booking.payment_status === "partial" ? "text-amber-600" : "text-red-500"
                           }`}>{capitalize(booking.payment_status)}</p>
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-500 capitalize">{booking.booking_source?.replace("_", " ")}</td>
-                        <td className="px-4 py-3"><StatusBadge status={booking.status} /></td>
+                        <td className="px-4 py-3 text-xs text-slate-500 capitalize">
+                          {booking.booking_source?.replace(/_/g, " ")}
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={booking.status} />
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
-                            <button onClick={() => setInfoBooking(booking)} className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 hover:bg-blue-100" title="Payment Info">&#9432;</button>
+                            <button onClick={() => setInfoBooking(booking)}
+                              className="h-7 w-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-500 hover:border-blue-200 transition-all"
+                              title="View Payment Info">
+                              <Eye size={13} />
+                            </button>
                             <ActionMenu
                               booking={booking}
                               onEdit={() => openEdit(booking)}
@@ -596,10 +679,11 @@ export default function BookingsPage() {
             </div>
           </div>
 
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-slate-500">
-                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredBookings.length)} of {filteredBookings.length}
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredBookings.length)} of {filteredBookings.length} bookings
               </p>
               <div className="flex items-center gap-1">
                 <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
@@ -623,7 +707,7 @@ export default function BookingsPage() {
       )}
 
       {/* ══════════════════════════════════════
-          ADD / EDIT BOOKING MODAL
+          ADD / EDIT MODAL
       ══════════════════════════════════════ */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto">
@@ -647,7 +731,7 @@ export default function BookingsPage() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
-              {/* ── Booking Details (No. of Guests first) ── */}
+              {/* Booking Details */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -666,7 +750,7 @@ export default function BookingsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Room / Bed *</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Room / Bed</label>
                     <div className="flex gap-2">
                       <select value={form.roomId}
                         onChange={e => setForm({ ...form, roomId: e.target.value, bedId: "" })}
@@ -709,7 +793,7 @@ export default function BookingsPage() {
                     <div className="col-span-2 bg-orange-50 border border-orange-100 rounded-xl px-4 py-2.5 flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-600">Final Amount</span>
                       <span className="text-base font-bold text-orange-600">
-                        ₹{Math.max(Number(form.amount) - Number(form.discount || 0), 0).toLocaleString()}
+                        ₹{Math.max(Number(form.amount) - Number(form.discount || 0), 0).toLocaleString("en-IN")}
                       </span>
                     </div>
                   )}
@@ -752,7 +836,7 @@ export default function BookingsPage() {
 
               <div className="border-t border-slate-100" />
 
-              {/* ── Dynamic Guest Details ── */}
+              {/* Guest Details */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center">
@@ -763,7 +847,6 @@ export default function BookingsPage() {
                     {guests.length} guest{guests.length !== 1 ? "s" : ""}
                   </span>
                 </div>
-
                 <div className="space-y-4">
                   {guests.map((guest, index) => (
                     <div key={index} className="border border-slate-100 rounded-xl p-4 bg-slate-50/40">
@@ -817,45 +900,64 @@ export default function BookingsPage() {
                 <button type="submit" disabled={submitting} className="btn-primary flex-1 disabled:opacity-60">
                   {submitting ? "Saving..." : editingBooking ? "Update Booking" : "Create Booking"}
                 </button>
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary px-6">
-                  Cancel
-                </button>
+                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary px-6">Cancel</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* ── Payment Info Modal ── */}
       {infoBooking && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <h2 className="text-lg font-bold mb-1">Payment Info</h2>
-            <p className="text-sm text-slate-500 mb-3">{infoBooking.guest_name} — {infoBooking.booking_code}</p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Payment Info</h2>
+                <p className="text-sm text-slate-500">{infoBooking.guest_name} — {infoBooking.booking_code}</p>
+              </div>
+              <button onClick={() => setInfoBooking(null)}
+                className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200">
+                <X size={16} />
+              </button>
+            </div>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Amount</span><span className="font-semibold">Rs.{infoBooking.final_amount}</span></div>
-              <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Status</span><span className={infoBooking.payment_status === "paid" ? "text-green-600 font-semibold" : "text-orange-500"}>{infoBooking.payment_status || "pending"}</span></div>
-              <div className="flex justify-between py-1 border-b"><span className="text-slate-500">Sender</span><span>{infoBooking.payment_sender_name || "-"}</span></div>
-              <div className="flex justify-between py-1 border-b"><span className="text-slate-500">UTR</span>
-                <span className={`font-mono text-xs ${infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) ? "text-red-500" : ""}`}>
-                  {infoBooking.utr_number || "-"}
-                  {infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) && <span className="text-red-400 text-[9px] ml-1">⚠ Verify</span>}
+              <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500">Amount</span>
+                <span className="font-bold text-slate-900">₹{Number(infoBooking.final_amount).toLocaleString("en-IN")}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500">Status</span>
+                <span className={`font-semibold ${infoBooking.payment_status === "paid" ? "text-emerald-600" : "text-orange-500"}`}>
+                  {infoBooking.payment_status === "pending" ? "⚠ Pending" : capitalize(infoBooking.payment_status)}
                 </span>
               </div>
-              <div className="flex justify-between py-1"><span className="text-slate-500">Pay Date</span><span>{infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "-"}</span></div>
-            </div>
-            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
-              <p className="text-xs font-bold text-amber-800 mb-2">📋 Payment Cross-Check</p>
-              <div className="space-y-1 text-xs text-amber-700">
-                <p>Amount: <strong>₹{infoBooking.final_amount}</strong></p>
-                <p>Sender: <strong>{infoBooking.payment_sender_name || "Not provided"}</strong></p>
-                <p>UTR: <strong className="font-mono">{infoBooking.utr_number || "Not provided"}</strong></p>
-                <p>Date: <strong>{infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "Not provided"}</strong></p>
-                {infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) && (
-                  <p className="text-red-600 font-semibold">⚠ UTR should be 12 digits — verify manually</p>
-                )}
+              <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500">Sender</span>
+                <span className="text-slate-800 font-medium">{infoBooking.payment_sender_name || "—"}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500">UTR</span>
+                <span className={`font-mono text-xs font-semibold ${infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) ? "text-red-500" : "text-slate-800"}`}>
+                  {infoBooking.utr_number || "—"}
+                  {infoBooking.utr_number && !/^\d{12}$/.test(infoBooking.utr_number) && (
+                    <span className="text-red-400 text-[9px] ml-1">⚠ Verify</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-slate-500">Pay Date</span>
+                <span className="text-slate-800 font-medium">
+                  {infoBooking.payment_date ? new Date(infoBooking.payment_date).toLocaleDateString("en-IN") : "—"}
+                </span>
               </div>
             </div>
-            <button onClick={() => setInfoBooking(null)} className="w-full mt-3 bg-slate-800 text-white py-2 rounded-lg text-sm">Close</button>
+            {infoBooking.payment_status === "pending" && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-xs font-bold text-amber-800 mb-1">⚠ Pending Payment</p>
+                <p className="text-xs text-amber-700">Not counted in revenue until checked in after payment verified.</p>
+              </div>
+            )}
           </div>
         </div>
       )}

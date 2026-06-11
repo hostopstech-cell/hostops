@@ -26,19 +26,34 @@ export async function GET() {
     const bookings = bookingsRes;
 
     const totalBeds = props.reduce((sum: number, p: any) => sum + (Number(p.total_beds) || 0), 0);
-    const soldBeds = bookings.filter((b: any) => ['confirmed','checked_in'].includes(b.status)).length;
+
+    // KEY FIX: Occupancy sirf payment_status = 'paid' wali bookings se
+    const soldBeds = bookings.filter((b: any) =>
+      ['confirmed', 'checked_in'].includes(b.status) && b.payment_status === 'paid'
+    ).length;
+
     const availableBeds = Math.max(0, totalBeds - soldBeds);
     const occupancyRate = totalBeds > 0 ? Math.round(soldBeds / totalBeds * 100) : 0;
 
-    const todayCheckins = bookings.filter((b: any) => b.check_in?.toString().startsWith(today)).length;
-    const todayCheckouts = bookings.filter((b: any) => b.check_out?.toString().startsWith(today)).length;
+    const todayCheckins = bookings.filter((b: any) =>
+      b.check_in?.toString().startsWith(today) && b.payment_status === 'paid'
+    ).length;
 
+    const todayCheckouts = bookings.filter((b: any) =>
+      b.check_out?.toString().startsWith(today) && b.payment_status === 'paid'
+    ).length;
+
+    // KEY FIX: Revenue sirf payment_status = 'paid' wali bookings se
     const todayRevenue = bookings
-      .filter((b: any) => b.check_in?.toString().startsWith(today))
+      .filter((b: any) =>
+        b.check_in?.toString().startsWith(today) && b.payment_status === 'paid'
+      )
       .reduce((s: number, b: any) => s + Number(b.final_amount || b.amount || 0), 0);
 
     const monthRevenue = bookings
-      .filter((b: any) => b.check_in?.toString().startsWith(thisMonth))
+      .filter((b: any) =>
+        b.check_in?.toString().startsWith(thisMonth) && b.payment_status === 'paid'
+      )
       .reduce((s: number, b: any) => s + Number(b.final_amount || b.amount || 0), 0);
 
     const recentBookings = await sql`
@@ -77,6 +92,10 @@ export async function GET() {
     });
   } catch (e: any) {
     console.error("Dashboard error:", e);
-    return NextResponse.json({ totalProperties: 0, totalBeds: 0, soldBeds: 0, availableBeds: 0, occupancyRate: 0, todayRevenue: 0, monthRevenue: 0, todayCheckins: 0, todayCheckouts: 0, recentBookings: [], propertyPerformance: [] });
+    return NextResponse.json({
+      totalProperties: 0, totalBeds: 0, soldBeds: 0, availableBeds: 0,
+      occupancyRate: 0, todayRevenue: 0, monthRevenue: 0,
+      todayCheckins: 0, todayCheckouts: 0, recentBookings: [], propertyPerformance: []
+    });
   }
 }

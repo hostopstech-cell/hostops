@@ -19,15 +19,23 @@ export async function POST(
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
+    // Check-in karte waqt:
+    // 1. status = 'checked_in'
+    // 2. payment_status = 'paid'  ← KEY FIX: ab se revenue + occupancy mein count hoga
     const rows = await sql`
       UPDATE bookings
-      SET status = 'checked_in'
+      SET 
+        status = 'checked_in',
+        payment_status = 'paid'
       WHERE id = ${id} AND status = 'confirmed'
-      RETURNING id, status
+      RETURNING id, status, payment_status
     `;
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: "Booking not found or not in confirmed status" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Booking not found or not in confirmed status" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ success: true, booking: rows[0] });
