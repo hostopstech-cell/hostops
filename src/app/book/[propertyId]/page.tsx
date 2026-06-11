@@ -25,44 +25,68 @@ export default function BookPage({ params }: { params: { propertyId: string } })
       });
       const data = await res.json();
       if (data.error) {
-        setMessages(prev => [...(auto ? [] : prev), ...(auto ? [userMsg] : []), { role: "assistant", content: "Sorry, booking bot is not available right now." }]);
+        setMessages(prev => [
+          ...(auto ? [] : prev),
+          ...(auto ? [userMsg] : []),
+          { role: "assistant", content: data.error === "rate_limit" ? "⏳ Bot is temporarily busy due to high usage. Please try again in a few minutes." : "Sorry, booking bot is not available right now. Please contact the property directly." }
+        ]);
         setLoading(false);
         return;
       }
       if (data.property) setProperty(data.property);
-      const reply = data.reply || "";
+      const reply: string = data.reply || "";
       const contact = data.property?.contact || property?.contact || "N/A";
       const propName = data.property?.name || property?.name || "the property";
 
-      const displayReply = reply.replace(/BOOKING_READY:.*$/ms, "").trim();
-      setMessages(prev => [...(auto ? [] : prev), ...(auto ? [userMsg] : []), { role: "assistant", content: displayReply }]);
+      // Hide BOOKING_READY line from display
+      const displayReply = reply.replace(/BOOKING_READY:[\s\S]*$/m, "").trim();
+      setMessages(prev => [
+        ...(auto ? [] : prev),
+        ...(auto ? [userMsg] : []),
+        { role: "assistant", content: displayReply }
+      ]);
 
       if (reply.includes("BOOKING_READY:")) {
+        // Show confirmation message
         setMessages(prev => [...prev, {
           role: "assistant",
-          content: `✅ Booking Confirmed!\n\nYour booking at ${propName} is confirmed.\n\n📞 Owner Contact: ${contact}\n🏨 Contact the property owner when you arrive.\n\nSee you soon!`
+          content: `✅ Booking Confirmed!\nYour booking at ${propName} is confirmed. Booking ID will be sent shortly.\n📞 Contact: ${contact}\nSee you soon! 🙏`
         }]);
 
-        const bookingLine = reply.match(/BOOKING_READY:(.*?)(?:\n|$)/s)?.[1] || "";
-        const get = (key: string) => bookingLine.match(new RegExp(`${key}=\\[?([^\\],\\n]+?)\\]?(?:,|$)`))?.[1]?.trim();
+        // Parse BOOKING_READY line
+        const bookingLine = reply.match(/BOOKING_READY:(.*?)(?:\n\n|\n✅|$)/s)?.[1] || "";
+        const get = (key: string) => {
+          const match = bookingLine.match(new RegExp(`${key}=\\[?([^\\],\\n]+?)\\]?(?:,\\s*\\w+=|$)`));
+          return match?.[1]?.trim();
+        };
 
-        const name = get("name"), phone = get("phone");
-        const checkin = get("checkin"), checkout = get("checkout");
-        const guestsN = get("guests"), room = get("room"), amount = get("amount");
-        const idtype = get("idtype"), idnumber = get("idnumber");
-        const utr = get("utr"), sender = get("sender"), paydate = get("paydate");
+        const name = get("name");
+        const phone = get("phone");
+        const checkin = get("checkin");
+        const checkout = get("checkout");
+        const guestsN = get("guests");
+        const room = get("room");
+        const pricePerNight = parseFloat(get("amount") || "0") || 0;
+        const nights = parseInt(get("nights") || "0") || Math.max(1, Math.round(
+          (new Date(checkout || "").getTime() - new Date(checkin || "").getTime()) / 86400000
+        ));
+        // Use total from AI if available, else calculate
+        const totalFromAI = parseFloat(get("total") || "0");
+        const totalAmount = totalFromAI > 0 ? totalFromAI : pricePerNight * nights;
+
+        const idtype = get("idtype");
+        const idnumber = get("idnumber");
+        const utr = get("utr");
+        const sender = get("sender");
+        const paydate = get("paydate");
 
         let guestsData = null;
-        const gjMatch = bookingLine.match(/guests_json=(\{.*\})/s);
+        const gjMatch = bookingLine.match(/guests_json=(\{[\s\S]*\})/);
         if (gjMatch) {
           try { guestsData = JSON.parse(gjMatch[1]); } catch {}
         }
 
         if (name && checkin && checkout) {
-          const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
-          const pricePerNight = parseFloat(amount || "0") || 0;
-          const totalAmount = pricePerNight * nights;
-
           await fetch("/api/chat/booking", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -70,9 +94,13 @@ export default function BookPage({ params }: { params: { propertyId: string } })
               propertyId: params.propertyId,
               name, phone, checkin, checkout,
               guests: parseInt(guestsN || "1") || 1,
-              room, amount: totalAmount || pricePerNight,
-              idtype: idtype || null, idnumber: idnumber || null,
-              utr: utr || null, sender: sender || null, paydate: paydate || null,
+              room,
+              amount: totalAmount,
+              idtype: idtype || null,
+              idnumber: idnumber || null,
+              utr: utr || null,
+              sender: sender || null,
+              paydate: paydate || null,
               guestsData,
             }),
           });
@@ -97,10 +125,12 @@ export default function BookPage({ params }: { params: { propertyId: string } })
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {messages.filter(m => !m.content.startsWith("BOOKING_READY:")).map((msg, i) => (
+          {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
-                msg.role === "user" ? "bg-indigo-500 text-white rounded-br-sm" : "bg-slate-100 text-slate-800 rounded-bl-sm"
+                msg.role === "user"
+                  ? "bg-indigo-500 text-white rounded-br-sm"
+                  : "bg-slate-100 text-slate-800 rounded-bl-sm"
               }`}>{msg.content}</div>
             </div>
           ))}
@@ -119,14 +149,19 @@ export default function BookPage({ params }: { params: { propertyId: string } })
         </div>
         <div className="p-4 border-t border-slate-100">
           <div className="flex gap-2">
-            <input value={input} onChange={e => setInput(e.target.value)}
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !loading && input.trim() && sendMessage(input.trim())}
               placeholder="Type your message..."
-              className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400" style={{color: "#000", background: "#fff"}}
+              className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400"
+              style={{ color: "#000", background: "#fff" }}
             />
-            <button onClick={() => !loading && input.trim() && sendMessage(input.trim())}
+            <button
+              onClick={() => !loading && input.trim() && sendMessage(input.trim())}
               disabled={loading || !input.trim()}
-              className="h-10 w-10 rounded-xl bg-indigo-500 flex items-center justify-center text-white disabled:opacity-50">➤</button>
+              className="h-10 w-10 rounded-xl bg-indigo-500 flex items-center justify-center text-white disabled:opacity-50"
+            >➤</button>
           </div>
           <p className="text-center text-[10px] text-slate-300 mt-2">Powered by HostOps</p>
         </div>

@@ -26,10 +26,15 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const owner = await getAuthenticatedOwner();
     if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const id = parseInt(params.id, 10);
-    const rows = await sql`DELETE FROM properties WHERE id=${id} AND owner_id=${owner.ownerId} RETURNING id`;
-    if (rows.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const prop = await sql`SELECT id FROM properties WHERE id=${id} AND owner_id=${owner.ownerId}`;
+    if (prop.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    await sql`DELETE FROM bookings WHERE property_id = ${id}`;
+    await sql`DELETE FROM beds WHERE room_id IN (SELECT id FROM rooms WHERE property_id = ${id})`;
+    await sql`DELETE FROM rooms WHERE property_id = ${id}`;
+    await sql`DELETE FROM properties WHERE id = ${id} AND owner_id = ${owner.ownerId}`;
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("Delete error:", error);
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }

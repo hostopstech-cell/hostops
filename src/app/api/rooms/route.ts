@@ -1,63 +1,48 @@
-import { NextResponse } from 'next/server'
-import { Pool } from 'pg'
+import { NextResponse } from "next/server";
+import { sql } from "@/lib/db";
+import { getAuthenticatedOwner } from "@/lib/auth";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-})
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const propertyId = searchParams.get('property_id')
-    let result
+    const owner = await getAuthenticatedOwner();
+    if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { searchParams } = new URL(request.url);
+    const propertyId = searchParams.get("property_id");
+    let rooms;
     if (propertyId) {
-      result = await pool.query('SELECT * FROM rooms WHERE property_id = $1 ORDER BY id', [propertyId])
+      rooms = await sql`SELECT r.* FROM rooms r INNER JOIN properties p ON p.id = r.property_id WHERE r.property_id = ${parseInt(propertyId, 10)} AND p.owner_id = ${owner.ownerId} ORDER BY r.id`;
     } else {
-      result = await pool.query('SELECT * FROM rooms ORDER BY id')
+      rooms = await sql`SELECT r.* FROM rooms r INNER JOIN properties p ON p.id = r.property_id WHERE p.owner_id = ${owner.ownerId} ORDER BY r.id`;
     }
-    return NextResponse.json({ rooms: result.rows })
+    return NextResponse.json({ rooms });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { propertyId, name, type, capacity, pricePerNight, status } = body
-
-    // Check property total beds
-    const propResult = await pool.query(
-      'SELECT total_beds FROM properties WHERE id = $1',
-      [propertyId]
-    )
-    if (!propResult.rows[0]) {
-      return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+    const owner = await getAuthenticatedOwner();
+    if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const body = await request.json();
+    const { propertyId, name, type, capacity, pricePerNight, status } = body;
+    if (!propertyId || !name?.trim() || !type || !capacity || !pricePerNight) {
+      return NextResponse.json({ error: "Property, name, type, capacity, and price are required" }, { status: 400 });
     }
-    const totalAllowed = Number(propResult.rows[0].total_beds)
-
-    // Check already used beds in this property
-    const existingResult = await pool.query(
-      'SELECT COALESCE(SUM(number_of_beds), 0) as used FROM rooms WHERE property_id = $1',
-      [propertyId]
-    )
-    const usedBeds = Number(existingResult.rows[0].used)
-    const available = totalAllowed - usedBeds
-
+    const propRows = await sql`SELECT id, total_beds FROM properties WHERE id = ${parseInt(propertyId, 10)} AND owner_id = ${owner.ownerId}`;
+    if (propRows.length === 0) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    const totalAllowed = Number(propRows[0].total_beds);
+    const usedRows = await sql`SELECT COALESCE(SUM(number_of_beds), 0)::int AS used FROM rooms WHERE property_id = ${parseInt(propertyId, 10)}`;
+    const usedBeds = Number(usedRows[0].used);
+    const available = totalAllowed - usedBeds;
     if (Number(capacity) > available) {
-      return NextResponse.json(
-        { error: `Only ${available} beds remaining in this property (Total: ${totalAllowed}, Used: ${usedBeds})` },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: `Only ${available} beds remaining (Total: ${totalAllowed}, Used: ${usedBeds})` }, { status: 400 });
     }
-
-    const result = await pool.query(
-      'INSERT INTO rooms (property_id, name, type, number_of_beds, price_per_night, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [Number(propertyId), name, type, Number(capacity), Number(pricePerNight), status || 'available']
-    )
-    return NextResponse.json({ room: result.rows[0] })
+    const rows = await sql`INSERT INTO rooms (property_id, name, type, number_of_beds, price_per_night, status) VALUES (${parseInt(propertyId, 10)}, ${name.trim()}, ${type}, ${Number(capacity)}, ${Number(pricePerNight)}, ${status || "available"}) RETURNING *`;
+    return NextResponse.json({ room: rows[0] }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
