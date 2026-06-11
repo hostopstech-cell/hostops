@@ -34,20 +34,18 @@ export default function LoginModal({ onClose }: Props) {
     finally { setLoading(false); }
   }
 
+  const inputClass = "w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-orange-500 transition-colors bg-white";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
 
-      {/* Modal */}
       <div
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 font-[family-name:var(--font-geist-sans)]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close */}
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">×</button>
 
-        {/* Logo + Header */}
         <div className="flex items-center gap-2 mb-6">
           <div className="w-9 h-9 bg-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
             <span className="text-white font-black">H</span>
@@ -62,14 +60,12 @@ export default function LoginModal({ onClose }: Props) {
           {mode === "login" ? "Sign in to manage your properties." : "Start your 7-day free trial today."}
         </p>
 
-        {/* Error */}
         {error && (
           <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 mb-4">
             <p className="text-sm font-semibold text-red-700">⚠️ {error}</p>
           </div>
         )}
 
-        {/* Google */}
         <button
           onClick={handleGoogleSignIn} disabled={googleLoading}
           className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 rounded-xl py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all mb-5 disabled:opacity-60"
@@ -89,21 +85,18 @@ export default function LoginModal({ onClose }: Props) {
           <div className="flex-1 h-px bg-slate-200" />
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "register" && (
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
               <input type="text" value={name} onChange={(e)=>setName(e.target.value)} required
-                className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-colors"
-                placeholder="Rajesh Kumar" />
+                className={inputClass} placeholder="Rajesh Kumar" />
             </div>
           )}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
             <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required
-              className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-colors"
-              placeholder="owner@hostel.com" />
+              className={inputClass} placeholder="owner@hostel.com" />
           </div>
           <div>
             <div className="flex justify-between mb-1.5">
@@ -112,8 +105,7 @@ export default function LoginModal({ onClose }: Props) {
             </div>
             <div className="relative">
               <input type={showPassword?"text":"password"} value={password} onChange={(e)=>setPassword(e.target.value)} required minLength={6}
-                className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-colors pr-12"
-                placeholder="••••••••" />
+                className={`${inputClass} pr-12`} placeholder="••••••••" />
               <button type="button" onClick={()=>setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                 {showPassword?"🙈":"👁️"}
               </button>
