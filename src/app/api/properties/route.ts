@@ -40,7 +40,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Plan aur limit check karo
     const ownerRows = await sql`
       SELECT subscription_plan, subscription_ends_at, properties_limit, trial_starts_at
       FROM owners WHERE id = ${owner.ownerId}
@@ -53,7 +52,6 @@ export async function POST(request: Request) {
     const ownerData = ownerRows[0];
     const now = new Date();
 
-    // Subscription active hai ya nahi check karo
     const isOnTrial = ownerData.subscription_plan === "trial";
     const trialStart = ownerData.trial_starts_at ? new Date(ownerData.trial_starts_at) : new Date(0);
     const trialEnd = new Date(trialStart);
@@ -67,19 +65,18 @@ export async function POST(request: Request) {
 
     if (trialExpired) {
       return NextResponse.json(
-        { error: "Trial expired. Please subscribe to add properties.", code: "TRIAL_EXPIRED" },
+        { error: "Your trial has expired. Please subscribe to add properties.", code: "TRIAL_EXPIRED" },
         { status: 403 }
       );
     }
 
     if (!isOnTrial && !subscriptionActive) {
       return NextResponse.json(
-        { error: "Subscription expired. Please renew to add properties.", code: "SUBSCRIPTION_EXPIRED" },
+        { error: "Your subscription has expired. Please renew to add properties.", code: "SUBSCRIPTION_EXPIRED" },
         { status: 403 }
       );
     }
 
-    // Property limit check karo
     const propertiesLimit = ownerData.properties_limit || 1;
     const countRows = await sql`
       SELECT COUNT(*) as count FROM properties WHERE owner_id = ${owner.ownerId}
@@ -89,7 +86,7 @@ export async function POST(request: Request) {
     if (currentCount >= propertiesLimit) {
       return NextResponse.json(
         {
-          error: `Aapke ${ownerData.subscription_plan} plan mein sirf ${propertiesLimit} ${propertiesLimit === 1 ? "property" : "properties"} allowed ${propertiesLimit === 1 ? "hai" : "hain"}. Upgrade karen!`,
+          error: `Your ${ownerData.subscription_plan} plan allows only ${propertiesLimit} ${propertiesLimit === 1 ? "property" : "properties"}. Please upgrade your plan!`,
           code: "PROPERTY_LIMIT_REACHED",
           limit: propertiesLimit,
           current: currentCount,

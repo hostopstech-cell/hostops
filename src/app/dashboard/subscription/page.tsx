@@ -57,7 +57,7 @@ export default function SubscriptionPage() {
     setLoading(plan.planKey);
     try {
       const loaded = await loadRazorpay();
-      if (!loaded) { alert("Razorpay load nahi hua."); setLoading(null); return; }
+      if (!loaded) { alert("Razorpay failed to load."); setLoading(null); return; }
 
       const amount = billing === "monthly" ? plan.monthlyPrice : plan.sixMonthPrice;
 
@@ -78,7 +78,7 @@ export default function SubscriptionPage() {
         amount: data.amount,
         currency: data.currency,
         name: "HostOps",
-        description: `${plan.name} Plan - ${billing === "6month" ? "6 Mahine" : "1 Mahina"}`,
+        description: `${plan.name} Plan - ${billing === "6month" ? "6 Months" : "1 Month"}`,
         order_id: data.orderId,
         prefill: {
           name: ownerData?.name || "",
@@ -89,19 +89,14 @@ export default function SubscriptionPage() {
           const verify = await fetch("/api/razorpay/verify-payment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...response,
-              plan: plan.planKey,
-              billing,
-              amount,
-            }),
+            body: JSON.stringify({ ...response, plan: plan.planKey, billing, amount }),
           });
           const verifyData = await verify.json();
           if (verifyData.success) {
-            alert(`✅ ${plan.name} plan active ho gaya! Welcome!`);
+            alert(`✅ ${plan.name} plan activated successfully!`);
             window.location.href = "/dashboard?payment=success";
           } else {
-            alert("Payment verify nahi hui. Support se contact karen.");
+            alert("Payment verification failed. Please contact support.");
           }
         },
         modal: { ondismiss: () => setLoading(null) },
@@ -109,12 +104,12 @@ export default function SubscriptionPage() {
 
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", (r: any) => {
-        alert(`Payment fail hua: ${r.error.description}`);
+        alert(`Payment failed: ${r.error.description}`);
         setLoading(null);
       });
       rzp.open();
     } catch {
-      alert("Payment shuru karne mein dikkat aayi.");
+      alert("Failed to initiate payment. Please try again.");
       setLoading(null);
     }
   };
@@ -125,7 +120,7 @@ export default function SubscriptionPage() {
   return (
     <div className="min-h-screen bg-white p-6 md:p-8">
 
-      {/* Banner - Active ya Trial */}
+      {/* Banner */}
       {isActivePlan ? (
         <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 flex items-center gap-4">
           <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0 text-xl">✅</div>
@@ -146,7 +141,7 @@ export default function SubscriptionPage() {
             </div>
             <div>
               <p className="font-semibold text-gray-900 text-sm">7 Days Free Trial</p>
-              <p className="text-xs text-gray-500">Aapka free trial khatam hone wala hai</p>
+              <p className="text-xs text-gray-500">Your free trial is ending soon</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -158,16 +153,16 @@ export default function SubscriptionPage() {
             <span className="text-gray-300 text-xl font-light mb-3">:</span>
             <CountdownBox value={timeLeft.seconds} label="Seconds" />
           </div>
-          <p className="text-xs text-gray-500 text-center md:text-right">Trial khatam hone ke baad account pause ho jayega.</p>
+          <p className="text-xs text-gray-500 text-center md:text-right">After trial ends, your account will be paused.</p>
         </div>
       )}
 
-      {/* Header + Toggle */}
+      {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
-          {isActivePlan ? "Apna Plan Manage Karen" : "Plan Chunen"}
+          {isActivePlan ? "Manage Your Plan" : "Choose Your Plan"}
         </h1>
-        <p className="text-gray-500 mt-1">Apne business ke hisab se sahi plan select karen</p>
+        <p className="text-gray-500 mt-1">Select the plan that fits your business needs</p>
 
         <div className="inline-flex items-center gap-1 mt-5 bg-gray-100 rounded-xl p-1.5">
           <button
@@ -180,7 +175,7 @@ export default function SubscriptionPage() {
             onClick={() => setBilling("6month")}
             className={`px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${billing === "6month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
           >
-            6 Mahine
+            6 Months
             <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-semibold">1 Free</span>
           </button>
         </div>
@@ -189,7 +184,6 @@ export default function SubscriptionPage() {
       {/* Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-10">
         {plans.map((plan) => {
-          const price = billing === "monthly" ? plan.monthlyPrice : plan.sixMonthPrice;
           const displayPrice = billing === "monthly" ? plan.monthlyDisplay : plan.sixMonthDisplay;
           const isLoading = loading === plan.planKey;
           const current = isCurrent(plan.planKey);
@@ -197,21 +191,29 @@ export default function SubscriptionPage() {
           return (
             <div
               key={plan.planKey}
-              className={`relative rounded-2xl border-2 flex flex-col overflow-hidden transition-all
-                ${current ? "border-green-400 ring-2 ring-green-200" : plan.popular ? "border-orange-400 shadow-xl scale-105" : "border-gray-200"}
+              className={`relative rounded-2xl flex flex-col overflow-hidden transition-all
+                ${current
+                  ? "border-2 border-green-400 shadow-lg ring-2 ring-green-100"
+                  : plan.popular
+                  ? "border-2 border-orange-400 shadow-xl"
+                  : "border border-gray-200 shadow-sm"
+                }
               `}
             >
-              {/* Top badge */}
-              {(plan.popular || current) && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
-                  <span className={`text-white text-xs font-semibold px-4 py-1 rounded-full ${current ? "bg-green-500" : "bg-orange-500"}`}>
-                    {current ? "✅ Current Plan" : plan.badge}
-                  </span>
+              {/* Current Plan Tag - inside, not floating */}
+              {current && (
+                <div className="bg-green-500 text-white text-xs font-semibold text-center py-1.5">
+                  ✅ Current Plan
+                </div>
+              )}
+              {!current && plan.popular && (
+                <div className="bg-orange-500 text-white text-xs font-semibold text-center py-1.5">
+                  Most Popular
                 </div>
               )}
 
               {/* Header */}
-              <div className={`${plan.headerBg} px-6 pt-8 pb-4`}>
+              <div className={`${plan.headerBg} px-6 pt-5 pb-4`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-xs font-bold px-3 py-1 rounded-full ${plan.badgeColor}`}>{plan.badge}</span>
                   <span className="text-2xl">{plan.icon}</span>
@@ -221,14 +223,14 @@ export default function SubscriptionPage() {
                 <div className="mt-3">
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-black text-gray-900">{displayPrice}</span>
-                    {billing === "monthly" && <span className="text-gray-400 text-sm">/mahina</span>}
+                    {billing === "monthly" && <span className="text-gray-400 text-sm">/month</span>}
                   </div>
                   {billing === "6month" && (
                     <p className="text-green-600 text-xs font-semibold mt-1">✅ {plan.sixMonthSaving}</p>
                   )}
                   {billing === "monthly" && (
                     <p className="text-gray-400 text-xs mt-1">
-                      6 mahine mein <span className="text-green-600 font-medium">{plan.sixMonthSaving.split("(")[0].trim()}</span>
+                      Save <span className="text-green-600 font-medium">{plan.sixMonthSaving.split("(")[0].trim()}</span> with 6 months
                     </p>
                   )}
                 </div>
@@ -282,7 +284,7 @@ export default function SubscriptionPage() {
         <div className="text-2xl mb-2">🎁</div>
         <h3 className="font-bold text-lg">Referral Program</h3>
         <p className="text-orange-100 text-sm mt-1">
-          Kisi property owner ko refer karen. Jab woh subscribe karen, aapko <strong className="text-white">1 mahina free</strong> milega!
+          Refer a property owner. When they subscribe, you get <strong className="text-white">1 month free!</strong>
         </p>
       </div>
 
