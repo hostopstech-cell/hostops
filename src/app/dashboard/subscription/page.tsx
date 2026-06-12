@@ -64,11 +64,7 @@ export default function SubscriptionPage() {
       const res = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount,
-          receipt: `hostops_${plan.planKey}_${Date.now()}`,
-          notes: { plan: plan.planKey, billing },
-        }),
+        body: JSON.stringify({ amount, receipt: `hostops_${plan.planKey}_${Date.now()}`, notes: { plan: plan.planKey, billing } }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -80,10 +76,7 @@ export default function SubscriptionPage() {
         name: "HostOps",
         description: `${plan.name} Plan - ${billing === "6month" ? "6 Months" : "1 Month"}`,
         order_id: data.orderId,
-        prefill: {
-          name: ownerData?.name || "",
-          email: ownerData?.email || "",
-        },
+        prefill: { name: ownerData?.name || "", email: ownerData?.email || "" },
         theme: { color: "#ea580c" },
         handler: async (response: any) => {
           const verify = await fetch("/api/razorpay/verify-payment", {
@@ -103,10 +96,7 @@ export default function SubscriptionPage() {
       };
 
       const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", (r: any) => {
-        alert(`Payment failed: ${r.error.description}`);
-        setLoading(null);
-      });
+      rzp.on("payment.failed", (r: any) => { alert(`Payment failed: ${r.error.description}`); setLoading(null); });
       rzp.open();
     } catch {
       alert("Failed to initiate payment. Please try again.");
@@ -125,12 +115,8 @@ export default function SubscriptionPage() {
         <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 flex items-center gap-4">
           <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0 text-xl">✅</div>
           <div>
-            <p className="font-semibold text-gray-900 text-sm">
-              Active Subscription — {subData.plan.charAt(0).toUpperCase() + subData.plan.slice(1)} Plan
-            </p>
-            <p className="text-xs text-gray-500">
-              Valid until: {new Date(subData.subscriptionEndsAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-            </p>
+            <p className="font-semibold text-gray-900 text-sm">Active Subscription — {subData.plan.charAt(0).toUpperCase() + subData.plan.slice(1)} Plan</p>
+            <p className="text-xs text-gray-500">Valid until: {new Date(subData.subscriptionEndsAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
           </div>
         </div>
       ) : (
@@ -159,24 +145,12 @@ export default function SubscriptionPage() {
 
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          {isActivePlan ? "Manage Your Plan" : "Choose Your Plan"}
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">{isActivePlan ? "Manage Your Plan" : "Choose Your Plan"}</h1>
         <p className="text-gray-500 mt-1">Select the plan that fits your business needs</p>
-
         <div className="inline-flex items-center gap-1 mt-5 bg-gray-100 rounded-xl p-1.5">
-          <button
-            onClick={() => setBilling("monthly")}
-            className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${billing === "monthly" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBilling("6month")}
-            className={`px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${billing === "6month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            6 Months
-            <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-semibold">1 Free</span>
+          <button onClick={() => setBilling("monthly")} className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${billing === "monthly" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Monthly</button>
+          <button onClick={() => setBilling("6month")} className={`px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${billing === "6month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            6 Months <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-semibold">1 Free</span>
           </button>
         </div>
       </div>
@@ -193,22 +167,15 @@ export default function SubscriptionPage() {
               key={plan.planKey}
               className={`relative rounded-2xl flex flex-col overflow-hidden transition-all
                 ${current
-                  ? "border-2 border-green-400 shadow-lg ring-2 ring-green-100"
-                  : plan.popular
-                  ? "border-2 border-orange-400 shadow-xl"
-                  : "border border-gray-200 shadow-sm"
+                  ? "border-2 border-green-400 shadow-lg ring-4 ring-green-100"
+                  : "border border-gray-200 shadow-sm hover:shadow-md"
                 }
               `}
             >
-              {/* Current Plan Tag - inside, not floating */}
+              {/* Current Plan Tag - only for current plan */}
               {current && (
                 <div className="bg-green-500 text-white text-xs font-semibold text-center py-1.5">
                   ✅ Current Plan
-                </div>
-              )}
-              {!current && plan.popular && (
-                <div className="bg-orange-500 text-white text-xs font-semibold text-center py-1.5">
-                  Most Popular
                 </div>
               )}
 
