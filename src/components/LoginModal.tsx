@@ -15,6 +15,7 @@ export default function LoginModal({ onClose }: Props) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true); setError("");
@@ -24,7 +25,7 @@ export default function LoginModal({ onClose }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setError(""); setLoading(true);
     const endpoint = mode==="login" ? "/api/auth/login" : "/api/auth/register";
-    const body = mode==="login" ? {email,password} : {name,email,password};
+    const body = mode==="login" ? {email,password} : {name,email,password,referralCode};
     try {
       const res = await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data = await res.json();
@@ -111,6 +112,14 @@ export default function LoginModal({ onClose }: Props) {
               </button>
             </div>
           </div>
+          {mode === "register" && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Partner Referral Code <span className="text-slate-400 font-normal">(optional)</span></label>
+              <input type="text" value={referralCode} onChange={(e)=>setReferralCode(e.target.value.toUpperCase())}
+                className={inputClass} placeholder="e.g. RAHUL2847" maxLength={12} />
+              <p className="text-xs text-slate-400 mt-1">Got a code from a HostOps partner? Enter it here.</p>
+            </div>
+          )}
           <button type="submit" disabled={loading}
             className="w-full bg-orange-600 text-white py-3.5 rounded-xl font-bold hover:bg-orange-700 active:scale-95 transition-all disabled:opacity-60 shadow-lg shadow-orange-200">
             {loading ? "Please wait..." : mode==="login" ? "Sign In →" : "Create Account →"}
