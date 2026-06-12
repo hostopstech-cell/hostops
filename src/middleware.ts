@@ -4,7 +4,6 @@ import type { NextRequest } from "next/server";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Only dashboard routes check karo (subscription aur trial-expired ko bypass karo)
   const isProtectedDashboard =
     pathname.startsWith("/dashboard") &&
     !pathname.startsWith("/dashboard/subscription") &&
@@ -12,11 +11,9 @@ export async function middleware(request: NextRequest) {
 
   if (!isProtectedDashboard) return NextResponse.next();
 
-  // Auth cookie check
   const token = request.cookies.get("hostops_token")?.value;
   if (!token) return NextResponse.redirect(new URL("/login", request.url));
 
-  // Subscription check API call
   try {
     const subRes = await fetch(new URL("/api/subscription", request.url), {
       headers: { cookie: request.headers.get("cookie") || "" },
@@ -24,12 +21,13 @@ export async function middleware(request: NextRequest) {
 
     if (subRes.ok) {
       const sub = await subRes.json();
-      if (sub.trialExpired && !sub.subscriptionActive) {
+      // Block only if hardBlocked (not in grace period, not active, trial expired)
+      if (sub.hardBlocked) {
         return NextResponse.redirect(new URL("/dashboard/trial-expired", request.url));
       }
     }
-  } catch (e) {
-    // Error pe block mat karo — graceful degradation
+  } catch {
+    // Graceful degradation — allow access on error
   }
 
   return NextResponse.next();

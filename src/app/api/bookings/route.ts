@@ -1,14 +1,29 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getAuthenticatedOwner } from "@/lib/auth";
-import type { BookingStatus, BookingSource, PaymentMethod } from "@/types";
+import { getSubStatus } from "@/lib/subscription-guard";
 
 export const dynamic = "force-dynamic";
+
+async function checkAccess(ownerId: number) {
+  const sub = await getSubStatus(ownerId);
+  if (sub.hardBlocked) {
+    return NextResponse.json(
+      { error: "subscription_expired", message: "Your trial has ended. Please subscribe to continue." },
+      { status: 403 }
+    );
+  }
+  return null;
+}
 
 export async function GET() {
   try {
     const owner = await getAuthenticatedOwner();
     if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const block = await checkAccess(owner.ownerId);
+    if (block) return block;
+
     const bookings = await sql`
       SELECT b.id, b.booking_code, b.property_id, b.room_id, b.bed_id,
              b.guest_name, b.guest_phone, b.guest_email, b.check_in, b.check_out,
@@ -32,6 +47,10 @@ export async function POST(request: Request) {
   try {
     const owner = await getAuthenticatedOwner();
     if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const block = await checkAccess(owner.ownerId);
+    if (block) return block;
+
     const body = await request.json();
     const { guestName, guestPhone, guestEmail, idProofType, idProofNumber, additionalGuests, propertyId, roomId, bedId, checkIn, checkOut, numberOfGuests, amount, discount, paymentMethod, paymentStatus, bookingSource, specialRequests, notes, bookingCode, status } = body;
 
@@ -43,10 +62,8 @@ export async function POST(request: Request) {
     if (!numberOfGuests) return NextResponse.json({ error: "Number of guests is required" }, { status: 400 });
     if (!amount) return NextResponse.json({ error: "Amount is required" }, { status: 400 });
 
-    // Same-day check
     if (checkIn >= checkOut) return NextResponse.json({ error: "Check-out must be after check-in" }, { status: 400 });
 
-    // Availability check (date-based)
     if (roomId) {
       const roomRows = await sql`SELECT type, number_of_beds FROM rooms WHERE id = ${roomId} LIMIT 1`;
       if (roomRows.length) {

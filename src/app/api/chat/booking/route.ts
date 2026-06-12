@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
+import { getSubStatus } from '@/lib/subscription-guard';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { propertyId, name, phone, checkin, checkout, guests, room, amount, idtype, idnumber, utr, sender, paydate, guestsData } = body;
-    console.log('BOOKING RECEIVED:', JSON.stringify(body));
+    const { propertyId, name, phone, checkin, checkout, guests, room, amount, idtype, idnumber, utr, sender, paydate, guestsData, ownerId } = body;
+
+    // Subscription check — ownerId chatbot se pass karna hoga
+    if (ownerId) {
+      try {
+        const sub = await getSubStatus(Number(ownerId));
+        if (sub.hardBlocked) {
+          return NextResponse.json({ error: 'Service unavailable. Property owner subscription has expired.' }, { status: 403 });
+        }
+      } catch {}
+    }
+
     const sql = neon(process.env.DATABASE_URL!);
     const code = 'CB' + Date.now().toString().slice(-8);
 
-    // Find room
     const rooms = await sql`SELECT id, type, number_of_beds FROM rooms WHERE property_id = ${propertyId} AND name ILIKE ${room || '%'} AND status = 'available' LIMIT 1`;
     const roomRow = rooms[0] || null;
     const roomId = roomRow?.id || null;
 
-    // Availability check (date-based only, no status change)
     if (roomRow && roomId) {
       const requestedGuests = parseInt(guests) || 1;
       if (roomRow.type === 'dorm' || roomRow.type === 'mixed_dorm') {
@@ -39,7 +48,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Build guests JSON
     let guestsArray = null;
     if (guestsData) {
       const arr = Array.isArray(guestsData) ? guestsData : (guestsData.guests || []);
@@ -53,7 +61,6 @@ export async function POST(req: NextRequest) {
     `;
 
     const saved = await sql`SELECT id FROM bookings WHERE booking_code = ${code}`;
-    console.log('BOOKING SAVED:', code, 'ID:', saved[0]?.id);
     return NextResponse.json({ success: true, booking_code: code, bookingId: saved[0]?.id });
   } catch (error: any) {
     console.error('BOOKING ERROR:', error?.message || error);
