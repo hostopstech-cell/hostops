@@ -66,12 +66,9 @@ export async function POST(request: Request) {
     const disc = parseFloat(discount || "0");
     const final = amt - disc;
 
-    // Build guests_data: primary guest + additional guests
-    const allGuests = [
-      { name: guestName.trim(), phone: guestPhone.trim(), idProofType: idProofType || null, idProofNumber: idProofNumber?.trim() || null },
-      ...(Array.isArray(additionalGuests) ? additionalGuests : [])
-    ];
-    const guestsDataJson = JSON.stringify(allGuests);
+    // Save ONLY additional guests in guests_data (primary is saved separately)
+    const allGuests = Array.isArray(additionalGuests) ? additionalGuests : [];
+    const guestsDataJson = allGuests.length > 0 ? JSON.stringify(allGuests) : null;
 
     const rows = await sql`
       INSERT INTO bookings (

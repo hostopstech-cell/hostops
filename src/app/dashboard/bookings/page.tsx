@@ -192,17 +192,15 @@ function ActionMenu({
 
 // ── Group Guest Cell: timeline style like reference image ──
 function GuestCell({ booking }: { booking: Booking }) {
-  let allGuests: { name: string; phone: string }[] = [];
+  const primary = { name: booking.guest_name, phone: booking.guest_phone || "" };
+  let allGuests: { name: string; phone: string }[] = [primary];
   try {
     const gd = (booking as any).guests_data;
     const parsed = typeof gd === "string" ? JSON.parse(gd) : gd;
     if (Array.isArray(parsed) && parsed.length > 0) {
-      allGuests = parsed.map((g: any) => ({ name: g.name || "", phone: g.phone || "" }));
+      allGuests = [primary, ...parsed.map((g: any) => ({ name: g.name || "", phone: g.phone || "" }))];
     }
   } catch {}
-  if (allGuests.length === 0) {
-    allGuests = [{ name: booking.guest_name, phone: booking.guest_phone || "" }];
-  }
 
   const isGroup = allGuests.length > 1;
 
@@ -230,7 +228,7 @@ function GuestCell({ booking }: { booking: Booking }) {
           <div key={i} className="flex flex-col items-center">
             <div className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0 mt-1" />
             {i < allGuests.length - 1 && (
-              <div className="w-0.5 bg-orange-200 flex-grow" style={{ minHeight: 20 }} />
+              <div className="w-0.5 bg-orange-200 flex-grow" style={{ minHeight: 32 }} />
             )}
           </div>
         ))}
@@ -378,7 +376,7 @@ export default function BookingsPage() {
     } catch {}
     const allGuests = savedGuests.length >= n
       ? savedGuests.slice(0, n)
-      : [primaryGuest, ...savedGuests.slice(1), ...Array.from({ length: n - savedGuests.length }, makeGuest)];
+      : [primaryGuest, ...savedGuests, ...Array.from({ length: n - savedGuests.length }, makeGuest)];
     setGuests(allGuests.length > 0 ? allGuests : [primaryGuest]);
     setError("");
     setShowModal(true);

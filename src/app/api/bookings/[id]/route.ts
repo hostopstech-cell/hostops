@@ -28,10 +28,12 @@ export async function PUT(
       checkIn, checkOut, numberOfGuests, amount, discount,
       paymentMethod, paymentStatus, bookingSource,
       specialRequests, notes, status,
-      idProofType, idProofNumber
+      idProofType, idProofNumber,
+      additionalGuests, utrNumber, paymentSenderName
     } = body;
 
-    if (!guestName?.trim() || !guestPhone?.trim() || !propertyId || !checkIn || !checkOut || !numberOfGuests || !amount) {
+    // FIX: amount can be 0, so check explicitly for undefined/null/empty string
+    if (!guestName?.trim() || !guestPhone?.trim() || !propertyId || !checkIn || !checkOut || !numberOfGuests || amount === undefined || amount === null || amount === "") {
       return NextResponse.json(
         { error: "Guest name, phone, property, check-in, check-out, guests, and amount are required" },
         { status: 400 }
@@ -64,6 +66,11 @@ export async function PUT(
       );
     }
 
+    // FIX: Accept additionalGuests from staff page and guestsData from dashboard
+    const guestsDataToSave = additionalGuests && additionalGuests.length > 0
+      ? JSON.stringify(additionalGuests)
+      : (body.guestsData ? JSON.stringify(body.guestsData) : null);
+
     const rows = await sql`
       UPDATE bookings
       SET
@@ -86,13 +93,15 @@ export async function PUT(
         notes = ${notes?.trim() || null},
         id_proof_type = ${idProofType || null},
         id_proof_number = ${idProofNumber?.trim() || null},
-        guests_data = ${body.guestsData ? JSON.stringify(body.guestsData) : null},
+        guests_data = ${guestsDataToSave},
+        utr_number = ${utrNumber || null},
+        payment_sender_name = ${paymentSenderName || null},
         status = ${status || 'confirmed'}
       WHERE id = ${id}
       RETURNING id, booking_code, property_id, room_id, bed_id, guest_name, guest_phone, guest_email,
               check_in, check_out, number_of_guests, amount, discount, final_amount,
               payment_method, payment_status, booking_source, special_requests, notes, status, created_at,
-              id_proof_type, id_proof_number
+              id_proof_type, id_proof_number, guests_data
     `;
 
     if (rows.length === 0) {

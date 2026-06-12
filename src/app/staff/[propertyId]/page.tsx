@@ -62,7 +62,7 @@ function getAvatarColor(name: string) {
 }
 
 function getInitials(name: string) {
-  return (name || "G").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+  return (name || "G").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -86,6 +86,39 @@ interface GuestDetail {
 
 function makeGuest(): GuestDetail {
   return { name: "", phone: "", idProofType: "aadhar", idProofNumber: "" };
+}
+
+// FIX: Parse all guests from booking — primary guest is index 0, additional guests from guests_data are index 1+
+// The total count comes from number_of_guests which already includes primary guest.
+function parseAllGuests(booking: any): GuestDetail[] {
+  // Start with primary guest
+  const primary: GuestDetail = {
+    name: booking.guest_name || "",
+    phone: booking.guest_phone || "",
+    idProofType: booking.id_proof_type || "aadhar",
+    idProofNumber: booking.id_proof_number || "",
+  };
+
+  // Parse additional guests from guests_data (these are guests 2, 3, 4... NOT including primary)
+  const additional: GuestDetail[] = [];
+  try {
+    const gd = booking.guests_data;
+    if (gd) {
+      const parsed = typeof gd === "string" ? JSON.parse(gd) : gd;
+      if (Array.isArray(parsed)) {
+        parsed.forEach((g: any) => {
+          additional.push({
+            name: g.name || "",
+            phone: g.phone || "",
+            idProofType: g.idProofType || g.id_proof_type || "aadhar",
+            idProofNumber: g.idProofNumber || g.id_proof_number || "",
+          });
+        });
+      }
+    }
+  } catch {}
+
+  return [primary, ...additional];
 }
 
 const emptyBookingForm = () => ({
@@ -119,13 +152,22 @@ export default function StaffPage() {
   const [success, setSuccess] = useState("");
   const [infoBooking, setInfoBooking] = useState<any>(null);
 
+  // Add modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState(emptyBookingForm());
   const [guests, setGuests] = useState<GuestDetail[]>([makeGuest()]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
 
-  // Sync guest array size with numberOfGuests
+  // Edit modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<any>(null);
+  const [editForm, setEditForm] = useState(emptyBookingForm());
+  const [editGuests, setEditGuests] = useState<GuestDetail[]>([makeGuest()]);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  // Sync guest array size with numberOfGuests (add modal)
   useEffect(() => {
     const n = Math.max(1, parseInt(form.numberOfGuests) || 1);
     setGuests(prev => {
@@ -135,8 +177,25 @@ export default function StaffPage() {
     });
   }, [form.numberOfGuests]);
 
+  // FIX: Sync guest array size with numberOfGuests (edit modal)
+  // Only resize if user manually changes numberOfGuests AFTER modal is open
+  // We use a separate effect that watches editForm.numberOfGuests
+  useEffect(() => {
+    if (!showEditModal) return; // Don't run when modal is closed
+    const n = Math.max(1, parseInt(editForm.numberOfGuests) || 1);
+    setEditGuests(prev => {
+      if (prev.length === n) return prev;
+      if (prev.length < n) return [...prev, ...Array.from({ length: n - prev.length }, makeGuest)];
+      return prev.slice(0, n);
+    });
+  }, [editForm.numberOfGuests]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function updateGuest(index: number, field: keyof GuestDetail, value: string) {
     setGuests(prev => prev.map((g, i) => i === index ? { ...g, [field]: value } : g));
+  }
+
+  function updateEditGuest(index: number, field: keyof GuestDetail, value: string) {
+    setEditGuests(prev => prev.map((g, i) => i === index ? { ...g, [field]: value } : g));
   }
 
   async function fetchBookings(t: string) {
@@ -185,6 +244,8 @@ export default function StaffPage() {
         body: JSON.stringify({
           guestName: primaryGuest.name,
           guestPhone: primaryGuest.phone,
+          idProofType: primaryGuest.idProofType,
+          idProofNumber: primaryGuest.idProofNumber,
           checkIn: form.checkIn,
           checkOut: form.checkOut,
           amount: parseFloat(form.amount) || 0,
@@ -195,6 +256,7 @@ export default function StaffPage() {
           numberOfGuests: parseInt(form.numberOfGuests) || 1,
           status: form.status,
           bookingSource: form.bookingSource,
+          // FIX: slice(1) so primary guest is NOT duplicated in additionalGuests
           additionalGuests: guests.slice(1).map(g => ({
             name: g.name, phone: g.phone,
             idProofType: g.idProofType, idProofNumber: g.idProofNumber,
@@ -218,6 +280,90 @@ export default function StaffPage() {
     setGuests([makeGuest()]);
     setFormError("");
     setShowAddModal(true);
+  }
+
+  function openEditModal(booking: any) {
+    setEditingBooking(booking);
+
+    // FIX: number_of_guests already includes primary guest, so total slots = number_of_guests
+    const totalGuests = Math.max(1, booking.number_of_guests || 1);
+
+    // FIX: Parse guests correctly — primary + additional from guests_data
+    const parsedGuests = parseAllGuests(booking);
+
+    // Pad with empty guests if parsed < totalGuests, trim if more
+    while (parsedGuests.length < totalGuests) parsedGuests.push(makeGuest());
+    const finalGuests = parsedGuests.slice(0, totalGuests);
+
+    setEditForm({
+      checkIn: booking.check_in?.slice(0, 10) || "",
+      checkOut: booking.check_out?.slice(0, 10) || "",
+      amount: String(booking.final_amount || booking.amount || ""),
+      paymentStatus: booking.payment_status || "pending",
+      paymentMethod: booking.payment_method || "cash",
+      bookingSource: booking.booking_source || "direct",
+      numberOfGuests: String(totalGuests),
+      utrNumber: booking.utr_number || "",
+      paymentSenderName: booking.payment_sender_name || "",
+      status: booking.status || "confirmed",
+    });
+
+    // FIX: Set guests FIRST, then show modal so the useEffect doesn't override with empty guests
+    setEditGuests(finalGuests);
+    setEditError("");
+    // Small delay to ensure state is set before modal opens and useEffect fires
+    setTimeout(() => setShowEditModal(true), 0);
+  }
+
+  async function handleEditBooking() {
+    const primaryGuest = editGuests[0];
+    if (!primaryGuest.name.trim()) { setEditError("Primary guest name required"); return; }
+    if (!editForm.checkIn) { setEditError("Check-in date required"); return; }
+    if (!editForm.checkOut) { setEditError("Check-out date required"); return; }
+
+    setEditSubmitting(true); setEditError("");
+    try {
+      const res = await fetch(`/api/bookings/${editingBooking.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          propertyId: editingBooking.property_id,
+          roomId: editingBooking.room_id || "",
+          bedId: editingBooking.bed_id || "",
+          checkIn: editForm.checkIn,
+          checkOut: editForm.checkOut,
+          amount: parseFloat(editForm.amount) || 0,
+          discount: editingBooking.discount || 0,
+          paymentStatus: editForm.paymentStatus,
+          paymentMethod: editForm.paymentMethod,
+          bookingSource: editForm.bookingSource,
+          numberOfGuests: parseInt(editForm.numberOfGuests) || 1,
+          status: editForm.status,
+          utrNumber: editForm.utrNumber,
+          paymentSenderName: editForm.paymentSenderName,
+          guestName: primaryGuest.name,
+          guestPhone: primaryGuest.phone,
+          guestEmail: "",
+          idProofType: primaryGuest.idProofType,
+          idProofNumber: primaryGuest.idProofNumber,
+          // FIX: slice(1) so primary guest is not duplicated in additionalGuests
+          additionalGuests: editGuests.slice(1).map(g => ({
+            name: g.name, phone: g.phone,
+            idProofType: g.idProofType, idProofNumber: g.idProofNumber,
+          })),
+          finalAmount: parseFloat(editForm.amount) || 0,
+          bookingCode: editingBooking.booking_code,
+          specialRequests: editingBooking.special_requests || "",
+          notes: editingBooking.notes || "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEditError(data.error || "Failed to update"); setEditSubmitting(false); return; }
+      setSuccess("Booking updated!");
+      setShowEditModal(false);
+      fetchBookings(token);
+    } catch { setEditError("Something went wrong."); }
+    setEditSubmitting(false);
   }
 
   useEffect(() => {
@@ -263,6 +409,55 @@ export default function StaffPage() {
       </div>
     </div>
   );
+
+  // FIX: GuestCell — shows grouped guests using parseAllGuests
+  function GuestCell({ booking }: { booking: any }) {
+    const allGuests = parseAllGuests(booking);
+    const totalGuests = booking.number_of_guests || 1;
+
+    // If only 1 guest or no additional guests data, show single guest row
+    if (totalGuests <= 1 || allGuests.length <= 1) {
+      const color = getAvatarColor(booking.guest_name || "G");
+      return (
+        <div className="flex items-center gap-2.5">
+          <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${color}`}>
+            {getInitials(booking.guest_name)}
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 text-sm">{booking.guest_name}</p>
+            <p className="text-xs text-slate-400">{booking.guest_phone}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Multiple guests — show stacked group
+    return (
+      <div className="flex gap-2 items-start">
+        <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 16 }}>
+          {allGuests.map((_, i) => (
+            <div key={i} className="flex flex-col items-center">
+              <div className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
+              {i < allGuests.length - 1 && <div className="w-0.5 bg-orange-200" style={{ height: 32 }} />}
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-col gap-1.5 min-w-0">
+          {allGuests.map((g, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${getAvatarColor(g.name || "G")}`}>
+                {getInitials(g.name || "G")}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 leading-tight">{g.name || "—"}</p>
+                <p className="text-[11px] text-slate-400">{g.phone || ""}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   // ── Main Page ──
   return (
@@ -353,58 +548,53 @@ export default function StaffPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
-                      {["Guest", "Property / Bed", "Check-in", "Check-out", "Amount", "Source", "Status", "Info"].map(h => (
+                      {["Guest", "Property / Bed", "Check-in", "Check-out", "Amount", "Source", "Status", "Actions"].map(h => (
                         <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {paginated.map(b => {
-                      const color = getAvatarColor(b.guest_name);
-                      return (
-                        <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${color}`}>
-                                {getInitials(b.guest_name)}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-slate-900 text-sm">{b.guest_name}</p>
-                                <p className="text-xs text-slate-400">{b.guest_phone}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="text-sm font-semibold text-slate-800">{b.property_name || "—"}</p>
-                            <p className="text-xs text-slate-400">{b.room_name || ""}</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="text-sm text-slate-700 font-medium whitespace-nowrap">{formatDate(b.check_in)}</p>
-                            <p className="text-[11px] text-slate-400">{new Date(b.check_in).toLocaleDateString("en-IN", { weekday: "short" })}</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="text-sm text-slate-700 font-medium whitespace-nowrap">{formatDate(b.check_out)}</p>
-                            <p className="text-[11px] text-slate-400">{new Date(b.check_out).toLocaleDateString("en-IN", { weekday: "short" })}</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="text-sm font-bold text-slate-900">₹{Number(b.final_amount || b.amount || 0).toLocaleString("en-IN")}</p>
-                            <p className={`text-[11px] font-semibold ${b.payment_status === "paid" ? "text-emerald-600" : "text-amber-600"}`}>
-                              {capitalize(b.payment_status)}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-slate-500 capitalize">
-                            {b.booking_source?.replace(/_/g, " ") || "direct"}
-                          </td>
-                          <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
-                          <td className="px-4 py-3">
+                    {paginated.map(b => (
+                      <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="px-4 py-3"><GuestCell booking={b} /></td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-semibold text-slate-800">{b.property_name || "—"}</p>
+                          <p className="text-xs text-slate-400">{b.room_name || ""}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-slate-700 font-medium whitespace-nowrap">{formatDate(b.check_in)}</p>
+                          <p className="text-[11px] text-slate-400">{new Date(b.check_in).toLocaleDateString("en-IN", { weekday: "short" })}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-slate-700 font-medium whitespace-nowrap">{formatDate(b.check_out)}</p>
+                          <p className="text-[11px] text-slate-400">{new Date(b.check_out).toLocaleDateString("en-IN", { weekday: "short" })}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-bold text-slate-900">₹{Number(b.final_amount || b.amount || 0).toLocaleString("en-IN")}</p>
+                          <p className={`text-[11px] font-semibold ${b.payment_status === "paid" ? "text-emerald-600" : "text-amber-600"}`}>
+                            {capitalize(b.payment_status)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-500 capitalize">
+                          {b.booking_source?.replace(/_/g, " ") || "direct"}
+                        </td>
+                        <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => openEditModal(b)}
+                              className="h-7 w-7 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-500 hover:bg-orange-100 transition-all"
+                              title="Edit Booking">
+                              ✏️
+                            </button>
                             <button onClick={() => setInfoBooking(b)}
-                              className="h-7 w-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-500 hover:border-blue-200 transition-all">
+                              className="h-7 w-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-500 hover:border-blue-200 transition-all"
+                              title="View Info">
                               👁
                             </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -417,15 +607,15 @@ export default function StaffPage() {
                 </p>
                 <div className="flex items-center gap-1">
                   <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                    className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:text-orange-500 disabled:opacity-30 transition-all">‹</button>
+                    className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30 transition-all">‹</button>
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                     <button key={p} onClick={() => setCurrentPage(p)}
-                      className={`h-8 w-8 rounded-lg text-sm font-semibold transition-all ${currentPage === p ? "bg-orange-500 text-white" : "border border-slate-200 text-slate-600 hover:border-orange-300"}`}>
+                      className={`h-8 w-8 rounded-lg text-sm font-semibold transition-all ${currentPage === p ? "bg-orange-500 text-white" : "border border-slate-200 text-slate-600"}`}>
                       {p}
                     </button>
                   ))}
                   <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                    className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:text-orange-500 disabled:opacity-30 transition-all">›</button>
+                    className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30 transition-all">›</button>
                 </div>
               </div>
             )}
@@ -446,22 +636,17 @@ export default function StaffPage() {
               </div>
               <button onClick={() => setShowAddModal(false)} className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-sm">✕</button>
             </div>
-
             <div className="p-5 space-y-5">
-
-              {/* Booking Details */}
               <div className="space-y-3">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Booking Details</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-in *</label>
-                    <input type="date" value={form.checkIn} onChange={e => setForm(f => ({ ...f, checkIn: e.target.value }))}
-                      className={INPUT} />
+                    <input type="date" value={form.checkIn} onChange={e => setForm(f => ({ ...f, checkIn: e.target.value }))} className={INPUT} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-out *</label>
-                    <input type="date" value={form.checkOut} min={form.checkIn} onChange={e => setForm(f => ({ ...f, checkOut: e.target.value }))}
-                      className={INPUT} />
+                    <input type="date" value={form.checkOut} min={form.checkIn} onChange={e => setForm(f => ({ ...f, checkOut: e.target.value }))} className={INPUT} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">Status</label>
@@ -480,23 +665,17 @@ export default function StaffPage() {
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">No. of Guests</label>
                     <input type="number" min="1" max="20" value={form.numberOfGuests}
-                      onChange={e => setForm(f => ({ ...f, numberOfGuests: e.target.value }))}
-                      className={INPUT} />
+                      onChange={e => setForm(f => ({ ...f, numberOfGuests: e.target.value }))} className={INPUT} />
                   </div>
                 </div>
               </div>
-
               <div className="border-t border-slate-100" />
-
-              {/* Payment */}
               <div className="space-y-3">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payment</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">Amount (₹)</label>
-                    <input type="number" min="0" value={form.amount}
-                      onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                      placeholder="0" className={INPUT} />
+                    <input type="number" min="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" className={INPUT} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">Payment Status</label>
@@ -513,81 +692,182 @@ export default function StaffPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">UTR Number</label>
-                    <input value={form.utrNumber} onChange={e => setForm(f => ({ ...f, utrNumber: e.target.value }))}
-                      placeholder="e.g. 123456789012" autoComplete="off" className={INPUT} />
+                    <input value={form.utrNumber} onChange={e => setForm(f => ({ ...f, utrNumber: e.target.value }))} placeholder="e.g. 123456789012" className={INPUT} />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">Sender Name</label>
-                    <input value={form.paymentSenderName} onChange={e => setForm(f => ({ ...f, paymentSenderName: e.target.value }))}
-                      placeholder="Name of payment sender" autoComplete="off" className={INPUT} />
+                    <input value={form.paymentSenderName} onChange={e => setForm(f => ({ ...f, paymentSenderName: e.target.value }))} placeholder="Name of payment sender" className={INPUT} />
                   </div>
                 </div>
               </div>
-
               <div className="border-t border-slate-100" />
-
-              {/* Guest Details — dynamic based on numberOfGuests */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Guest Details</p>
-                  <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                    {guests.length} guest{guests.length !== 1 ? "s" : ""}
-                  </span>
+                  <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{guests.length} guest{guests.length !== 1 ? "s" : ""}</span>
                 </div>
                 <div className="space-y-4">
                   {guests.map((guest, index) => (
                     <div key={index} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                      <p className="text-xs font-bold text-slate-600 mb-3">
-                        {index === 0 ? "👤 Primary Guest" : `👤 Guest ${index + 1}`}
-                      </p>
+                      <p className="text-xs font-bold text-slate-600 mb-3">{index === 0 ? "👤 Primary Guest" : `👤 Guest ${index + 1}`}</p>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                            Name {index === 0 ? "*" : ""}
-                          </label>
-                          <input type="text" value={guest.name}
-                            onChange={e => updateGuest(index, "name", e.target.value)}
-                            placeholder="Guest name" autoComplete="off" className={INPUT} />
+                          <label className="block text-xs font-semibold text-slate-700 mb-1.5">Name {index === 0 ? "*" : ""}</label>
+                          <input type="text" value={guest.name} onChange={e => updateGuest(index, "name", e.target.value)} placeholder="Guest name" className={INPUT} />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                            Phone {index === 0 ? "*" : ""}
-                          </label>
-                          <input type="tel" value={guest.phone}
-                            onChange={e => updateGuest(index, "phone", e.target.value)}
-                            placeholder="Phone number" autoComplete="off" className={INPUT} />
+                          <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone {index === 0 ? "*" : ""}</label>
+                          <input type="tel" value={guest.phone} onChange={e => updateGuest(index, "phone", e.target.value)} placeholder="Phone number" className={INPUT} />
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-1.5">ID Proof Type</label>
-                          <select value={guest.idProofType}
-                            onChange={e => updateGuest(index, "idProofType", e.target.value)}
-                            className={SELECT}>
+                          <select value={guest.idProofType} onChange={e => updateGuest(index, "idProofType", e.target.value)} className={SELECT}>
                             {ID_PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-1.5">ID Number</label>
-                          <input type="text" value={guest.idProofNumber}
-                            onChange={e => updateGuest(index, "idProofNumber", e.target.value)}
-                            placeholder="ID number" autoComplete="off" className={INPUT} />
+                          <input type="text" value={guest.idProofNumber} onChange={e => updateGuest(index, "idProofNumber", e.target.value)} placeholder="ID number" className={INPUT} />
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
               {formError && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">{formError}</p>}
-
               <div className="flex gap-3 pt-1">
                 <button onClick={handleAddBooking} disabled={submitting}
                   className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all">
                   {submitting ? "Adding..." : "Add Booking"}
                 </button>
                 <button onClick={() => setShowAddModal(false)}
-                  className="flex-1 border border-slate-200 py-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">
-                  Cancel
+                  className="flex-1 border border-slate-200 py-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Booking Modal ── */}
+      {showEditModal && editingBooking && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Edit Booking</h2>
+                <p className="text-xs text-slate-400 mt-0.5">#{editingBooking.booking_code}</p>
+              </div>
+              <button onClick={() => setShowEditModal(false)} className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-sm">✕</button>
+            </div>
+            <div className="p-5 space-y-5">
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Booking Details</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-in *</label>
+                    <input type="date" value={editForm.checkIn} onChange={e => setEditForm(f => ({ ...f, checkIn: e.target.value }))} className={INPUT} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-out *</label>
+                    <input type="date" value={editForm.checkOut} min={editForm.checkIn} onChange={e => setEditForm(f => ({ ...f, checkOut: e.target.value }))} className={INPUT} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Status</label>
+                    <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className={SELECT}>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="checked_in">Checked In</option>
+                      <option value="checked_out">Checked Out</option>
+                      <option value="pending">Pending</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Source</label>
+                    <select value={editForm.bookingSource} onChange={e => setEditForm(f => ({ ...f, bookingSource: e.target.value }))} className={SELECT}>
+                      {BOOKING_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">No. of Guests</label>
+                    <input type="number" min="1" max="20" value={editForm.numberOfGuests}
+                      onChange={e => setEditForm(f => ({ ...f, numberOfGuests: e.target.value }))} className={INPUT} />
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-slate-100" />
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payment</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Amount (₹)</label>
+                    <input type="number" min="0" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className={INPUT} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Payment Status</label>
+                    <select value={editForm.paymentStatus} onChange={e => setEditForm(f => ({ ...f, paymentStatus: e.target.value }))} className={SELECT}>
+                      <option value="pending">Pending</option>
+                      <option value="paid">Paid</option>
+                      <option value="partial">Partial</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Payment Method</label>
+                    <select value={editForm.paymentMethod} onChange={e => setEditForm(f => ({ ...f, paymentMethod: e.target.value }))} className={SELECT}>
+                      {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">UTR Number</label>
+                    <input value={editForm.utrNumber} onChange={e => setEditForm(f => ({ ...f, utrNumber: e.target.value }))} placeholder="e.g. 123456789012" className={INPUT} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Sender Name</label>
+                    <input value={editForm.paymentSenderName} onChange={e => setEditForm(f => ({ ...f, paymentSenderName: e.target.value }))} placeholder="Name of payment sender" className={INPUT} />
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-slate-100" />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Guest Details</p>
+                  <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{editGuests.length} guest{editGuests.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="space-y-4">
+                  {editGuests.map((guest, index) => (
+                    <div key={index} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+                      <p className="text-xs font-bold text-slate-600 mb-3">{index === 0 ? "👤 Primary Guest" : `👤 Guest ${index + 1}`}</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1.5">Name {index === 0 ? "*" : ""}</label>
+                          <input type="text" value={guest.name} onChange={e => updateEditGuest(index, "name", e.target.value)} placeholder="Guest name" className={INPUT} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone {index === 0 ? "*" : ""}</label>
+                          <input type="tel" value={guest.phone} onChange={e => updateEditGuest(index, "phone", e.target.value)} placeholder="Phone number" className={INPUT} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1.5">ID Proof Type</label>
+                          <select value={guest.idProofType} onChange={e => updateEditGuest(index, "idProofType", e.target.value)} className={SELECT}>
+                            {ID_PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1.5">ID Number</label>
+                          <input type="text" value={guest.idProofNumber} onChange={e => updateEditGuest(index, "idProofNumber", e.target.value)} placeholder="ID number" className={INPUT} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {editError && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">{editError}</p>}
+              <div className="flex gap-3 pt-1">
+                <button onClick={handleEditBooking} disabled={editSubmitting}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all">
+                  {editSubmitting ? "Saving..." : "Update Booking"}
                 </button>
+                <button onClick={() => setShowEditModal(false)}
+                  className="flex-1 border border-slate-200 py-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
               </div>
             </div>
           </div>
@@ -603,8 +883,7 @@ export default function StaffPage() {
                 <h2 className="text-lg font-bold text-slate-900">Payment Info</h2>
                 <p className="text-sm text-slate-500">{infoBooking.guest_name} — {infoBooking.booking_code}</p>
               </div>
-              <button onClick={() => setInfoBooking(null)}
-                className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200">✕</button>
+              <button onClick={() => setInfoBooking(null)} className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200">✕</button>
             </div>
             <div className="space-y-2 text-sm">
               {[
