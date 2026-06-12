@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: { propertyId: 
       FROM rooms WHERE property_id = ${params.propertyId} AND status = 'available'
     `;
 
-    // For each room, calculate available beds/slots for the given dates
+    // Calculate availability per individual room
     const roomsWithAvailability = await Promise.all(rooms.map(async (r: any) => {
       const isDorm = r.type === 'dorm' || r.type === 'mixed_dorm';
       if (isDorm) {
@@ -35,10 +35,85 @@ export async function GET(req: NextRequest, { params }: { params: { propertyId: 
           WHERE room_id = ${r.id} AND status NOT IN ('cancelled','checked_out')
           AND check_in < ${checkout} AND check_out > ${checkin}
         `;
-        const available = Number(overlap[0].cnt) === 0;
-        return { ...r, available_beds: available ? 1 : 0, is_available: available };
+        const isAvailable = Number(overlap[0].cnt) === 0;
+        return { ...r, available_beds: isAvailable ? 1 : 0, is_available: isAvailable };
       }
     }));
+
+    // Group rooms by type + price_per_night
+    // For dorms: sum available_beds across all rooms of same type+price
+    // For private: count how many rooms are available
+    const groupMap = new Map<string, any>();
+
+    for (const r of roomsWithAvailability) {
+      const isDorm = r.type === 'dorm' || r.type === 'mixed_dorm';
+      const key = `${r.type}__${r.price_per_night}`;
+
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          id: r.id, // representative id (not used for booking)
+          type: r.type,
+          price_per_night: r.price_per_night,
+          number_of_beds: 0,
+          total_rooms: 0,
+          available_count: 0, // available rooms (private) or available beds (dorm)
+          total_available_beds: 0,
+          is_available: false,
+          // store individual room ids for booking assignment
+          available_room_ids: [],
+        });
+      }
+
+      const g = groupMap.get(key);
+      g.total_rooms += 1;
+      g.number_of_beds += Number(r.number_of_beds);
+
+      if (isDorm) {
+        g.total_available_beds += r.available_beds;
+        if (r.available_beds > 0) {
+          g.available_count += r.available_beds;
+          g.is_available = true;
+          g.available_room_ids.push({ id: r.id, available_beds: r.available_beds });
+        }
+      } else {
+        if (r.is_available) {
+          g.available_count += 1;
+          g.is_available = true;
+          g.available_room_ids.push({ id: r.id });
+        }
+      }
+    }
+
+    // Convert map to array with clean display names
+    const typeLabels: Record<string, string> = {
+      private: 'Private Room',
+      private_room: 'Private Room',
+      dorm: 'Dorm Bed',
+      mixed_dorm: 'Mixed Dorm',
+      suite: 'Suite',
+      deluxe: 'Deluxe Room',
+      standard: 'Standard Room',
+      villa: 'Villa',
+      apartment: 'Apartment',
+    };
+
+    const groupedRooms = Array.from(groupMap.values()).map(g => {
+      const isDorm = g.type === 'dorm' || g.type === 'mixed_dorm';
+      const label = typeLabels[g.type] || g.type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+      return {
+        // Use a composite key as id for frontend selection
+        id: `group__${g.type}__${g.price_per_night}`,
+        name: label,
+        type: g.type,
+        price_per_night: g.price_per_night,
+        number_of_beds: isDorm ? g.total_available_beds : g.total_rooms,
+        available_beds: isDorm ? g.total_available_beds : g.available_count,
+        available_count: g.available_count,
+        total_rooms: g.total_rooms,
+        is_available: g.is_available,
+        available_room_ids: g.available_room_ids,
+      };
+    });
 
     return NextResponse.json({
       property: {
@@ -49,7 +124,7 @@ export async function GET(req: NextRequest, { params }: { params: { propertyId: 
         check_in_time: p.check_in_time || '14:00',
         check_out_time: p.check_out_time || '11:00',
       },
-      rooms: roomsWithAvailability,
+      rooms: groupedRooms,
     });
   } catch (error) {
     console.error('GET error:', error);
