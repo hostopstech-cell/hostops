@@ -7,7 +7,7 @@ import ConfirmModal from "@/components/ConfirmModal";
 import {
   Plus, Edit, Trash2, BedDouble, Search, TrendingUp, CheckCircle,
   Building2, Bed as BedIcon, MoreVertical, ChevronLeft, ChevronRight, X,
-  LayoutGrid, List, ChevronDown,
+  LayoutGrid, List, ChevronDown, Hash,
 } from "lucide-react";
 
 const ROOM_TYPES: { value: RoomType; label: string }[] = [
@@ -87,12 +87,16 @@ export default function RoomsPage() {
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
 
   const [roomForm, setRoomForm] = useState({
-    propertyId: "", name: "", type: "dorm" as RoomType,
-    capacity: "1", pricePerNight: "",
+    propertyId: "",
+    name: "",
+    type: "dorm" as RoomType,
+    capacity: "1",
+    pricePerNight: "",
     status: "available" as "available" | "maintenance" | "inactive",
+    numberOfRooms: "1",
+    startingRoomNumber: "101",
   });
 
-  // Correct: count how many ROOMS exist, compare with property's total_beds (= max rooms allowed)
   function getRemainingRoomSlots(propId: string, excludeRoomId?: number): number {
     if (!propId) return 999;
     const prop = properties.find(p => p.id === Number(propId));
@@ -100,7 +104,7 @@ export default function RoomsPage() {
     const maxRooms = Number(prop.total_beds || 0);
     const usedRooms = rooms.filter(
       r => Number(r.property_id) === Number(propId) && r.id !== excludeRoomId
-    ).length; // COUNT rooms, not SUM of beds
+    ).length;
     return Math.max(maxRooms - usedRooms, 0);
   }
 
@@ -158,7 +162,11 @@ export default function RoomsPage() {
 
   function openAddRoom() {
     setEditingRoom(null);
-    setRoomForm({ propertyId: selectedProperty ? String(selectedProperty) : "", name: "", type: "dorm", capacity: "1", pricePerNight: "", status: "available" });
+    setRoomForm({
+      propertyId: selectedProperty ? String(selectedProperty) : "",
+      name: "", type: "dorm", capacity: "1", pricePerNight: "",
+      status: "available", numberOfRooms: "1", startingRoomNumber: "101",
+    });
     setError(""); setShowRoomModal(true);
   }
 
@@ -171,6 +179,8 @@ export default function RoomsPage() {
       capacity: String(room.number_of_beds),
       pricePerNight: String(room.price_per_night),
       status: room.status,
+      numberOfRooms: "1",
+      startingRoomNumber: "101",
     });
     setError(""); setShowRoomModal(true); setOpenMenuId(null);
   }
@@ -198,20 +208,23 @@ export default function RoomsPage() {
     try {
       const url = editingRoom ? `/api/rooms/${editingRoom.id}` : "/api/rooms";
       const method = editingRoom ? "PUT" : "POST";
+      const payload = editingRoom
+        ? roomForm
+        : { ...roomForm, numberOfRooms: roomForm.numberOfRooms, startingRoomNumber: roomForm.startingRoomNumber };
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(roomForm),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed to save room"); return; }
-      setSuccess(editingRoom ? "Room updated!" : "Room created!");
+      const created = parseInt(roomForm.numberOfRooms, 10) || 1;
+      setSuccess(editingRoom ? "Room updated!" : created > 1 ? `${created} rooms created successfully!` : "Room created!");
       setShowRoomModal(false);
       await fetchData();
     } catch { setError("Network error."); } finally { setSubmitting(false); }
   }
 
-  // Set total beds — no capacity check, just update number_of_beds freely
   async function handleBedsSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!bedsTargetRoom) return;
@@ -240,6 +253,14 @@ export default function RoomsPage() {
   }
 
   const remainingRoomSlots = getRemainingRoomSlots(roomForm.propertyId, editingRoom?.id);
+  const bulkCount = parseInt(roomForm.numberOfRooms, 10) || 1;
+  const isBulk = !editingRoom && bulkCount > 1;
+  const bulkExceedsSlots = !editingRoom && !!roomForm.propertyId && bulkCount > remainingRoomSlots;
+
+  // Preview names for bulk
+  const bulkPreviewNames = isBulk
+    ? Array.from({ length: Math.min(bulkCount, 3) }, (_, i) => `${roomForm.name || "Room"} ${(parseInt(roomForm.startingRoomNumber, 10) || 101) + i}`)
+    : [];
 
   return (
     <div className="space-y-6 pb-8">
@@ -415,16 +436,10 @@ export default function RoomsPage() {
                   </div>
 
                   <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between bg-slate-50/50">
-                    <button
-                      onClick={() => openSetBeds(room)}
-                      className="text-xs font-semibold text-slate-500 hover:text-orange-500 transition-colors flex items-center gap-1.5"
-                    >
+                    <button onClick={() => openSetBeds(room)} className="text-xs font-semibold text-slate-500 hover:text-orange-500 transition-colors flex items-center gap-1.5">
                       <BedIcon size={11} /> Beds ({capacity})
                     </button>
-                    <button
-                      onClick={() => openEditRoom(room)}
-                      className="text-xs font-semibold text-orange-500 hover:text-orange-600 transition-colors flex items-center gap-1"
-                    >
+                    <button onClick={() => openEditRoom(room)} className="text-xs font-semibold text-orange-500 hover:text-orange-600 transition-colors flex items-center gap-1">
                       <Edit size={11} /> Edit
                     </button>
                   </div>
@@ -546,6 +561,8 @@ export default function RoomsPage() {
               <button onClick={() => setShowRoomModal(false)} className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-all"><X size={16} /></button>
             </div>
             <form onSubmit={handleRoomSubmit} className="p-6 space-y-4">
+
+              {/* Property */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Property *</label>
                 <select required value={roomForm.propertyId} onChange={e => setRoomForm({ ...roomForm, propertyId: e.target.value })} className="input-field w-full text-sm">
@@ -561,10 +578,29 @@ export default function RoomsPage() {
                   </p>
                 )}
               </div>
+
+              {/* Room Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Room Name *</label>
-                <input type="text" required placeholder="e.g. Dorm A, Room 101" value={roomForm.name} onChange={e => setRoomForm({ ...roomForm, name: e.target.value })} className="input-field w-full text-sm" />
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                  {isBulk ? "Room Name Prefix *" : "Room Name *"}
+                </label>
+                <input
+                  type="text" required
+                  placeholder={isBulk ? "e.g. Room, Dorm A" : "e.g. Dorm A, Room 101"}
+                  value={roomForm.name}
+                  onChange={e => setRoomForm({ ...roomForm, name: e.target.value })}
+                  className="input-field w-full text-sm"
+                />
+                {isBulk && roomForm.name && (
+                  <p className="text-[11px] mt-1 text-slate-400">
+                    Will create: <span className="font-semibold text-slate-600">
+                      {bulkPreviewNames.join(", ")}{bulkCount > 3 ? ` ... +${bulkCount - 3} more` : ""}
+                    </span>
+                  </p>
+                )}
               </div>
+
+              {/* Type + Beds in this Room */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Type *</label>
@@ -573,10 +609,7 @@ export default function RoomsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                    Beds in this Room *
-                  </label>
-                  {/* No max limit — a dorm can have 100 beds, that's fine */}
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Beds in this Room *</label>
                   <input type="number" required min={1}
                     placeholder="e.g. 8" value={roomForm.capacity}
                     onChange={e => setRoomForm({ ...roomForm, capacity: e.target.value })}
@@ -584,6 +617,40 @@ export default function RoomsPage() {
                   <p className="text-[11px] text-slate-400 mt-1">No limit — enter any number</p>
                 </div>
               </div>
+
+              {/* Number of Rooms — only for Add mode */}
+              {!editingRoom && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+                      <Hash size={11} /> Number of Rooms
+                    </label>
+                    <input
+                      type="number" min={1} max={remainingRoomSlots || 999}
+                      value={roomForm.numberOfRooms}
+                      onChange={e => setRoomForm({ ...roomForm, numberOfRooms: e.target.value })}
+                      className="input-field w-full text-sm font-semibold"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {bulkCount > 1 ? <span className="text-orange-500 font-semibold">{bulkCount} rooms will be created</span> : "Default: 1"}
+                    </p>
+                  </div>
+                  {isBulk && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Starting Number</label>
+                      <input
+                        type="number" min={1}
+                        value={roomForm.startingRoomNumber}
+                        onChange={e => setRoomForm({ ...roomForm, startingRoomNumber: e.target.value })}
+                        className="input-field w-full text-sm"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">e.g. 101 → Room 101, 102...</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Price + Status */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Price/Night (₹) *</label>
@@ -598,10 +665,32 @@ export default function RoomsPage() {
                   </select>
                 </div>
               </div>
+
+              {/* Bulk exceeded warning */}
+              {bulkExceedsSlots && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+                  <p className="text-sm text-red-600 font-semibold">
+                    Only {remainingRoomSlots} slot{remainingRoomSlots !== 1 ? "s" : ""} remaining — reduce the number of rooms.
+                  </p>
+                </div>
+              )}
+
               {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{error}</p>}
+
               <div className="flex gap-3 pt-1">
-                <button type="submit" disabled={submitting || (!editingRoom && remainingRoomSlots === 0 && !!roomForm.propertyId)} className="btn-primary flex-1 disabled:opacity-60">
-                  {submitting ? "Saving..." : editingRoom ? "Update Room" : "Add Room"}
+                <button
+                  type="submit"
+                  disabled={submitting || bulkExceedsSlots || (!editingRoom && remainingRoomSlots === 0 && !!roomForm.propertyId)}
+                  className="btn-primary flex-1 disabled:opacity-60"
+                >
+                  {submitting
+                    ? "Saving..."
+                    : editingRoom
+                      ? "Update Room"
+                      : isBulk
+                        ? `Create ${bulkCount} Rooms`
+                        : "Add Room"
+                  }
                 </button>
                 <button type="button" onClick={() => setShowRoomModal(false)} className="btn-secondary px-5">Cancel</button>
               </div>
@@ -626,9 +715,7 @@ export default function RoomsPage() {
             </div>
             <form onSubmit={handleBedsSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  Total Beds *
-                </label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Total Beds *</label>
                 <input
                   type="number" required min={1}
                   value={bedsCount}
