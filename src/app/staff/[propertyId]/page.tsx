@@ -440,6 +440,7 @@ export default function StaffPage() {
                 <div className="w-2 h-2 rounded-full bg-orange-400" />
                 {i < allGuests.length - 1 && <div className="w-0.5 bg-orange-200" style={{ height: 20 }} />}
               </div>
+
               <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${getAvatarColor(g.name || "G")}`}>
                 {getInitials(g.name || "G")}
               </div>
