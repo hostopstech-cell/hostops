@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let guestsArray = null;
+let guestsArray = null;
     if (guestsData) {
       const arr = Array.isArray(guestsData) ? guestsData : (guestsData.guests || []);
       const additionalGuests = arr.slice(1);
@@ -128,6 +128,16 @@ export async function POST(req: NextRequest) {
         idProofNumber: g.idnumber || g.idProofNumber || null,
       })));
     }
+    if (guestsData) {
+      const arr = Array.isArray(guestsData) ? guestsData : (guestsData.guests || []);
+      if (arr.length > 0) guestsArray = JSON.stringify(arr.map((g: any) => ({
+        name: g.name || '',
+        phone: g.phone || '',
+        idProofType: g.idtype || g.idProofType || null,
+        idProofNumber: g.idnumber || g.idProofNumber || null,
+      })));
+    }
+    if (!guestsArray) guestsArray = JSON.stringify([{ name: name || 'Guest', phone: phone || '', idProofType: idtype || null, idProofNumber: idnumber || null }]);
 
     const code = 'CB' + Date.now().toString().slice(-8);
 

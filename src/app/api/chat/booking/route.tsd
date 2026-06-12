@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let guestsArray = null;
+let guestsArray = null;
     if (guestsData) {
       const arr = Array.isArray(guestsData) ? guestsData : (guestsData.guests || []);
       const additionalGuests = arr.slice(1);
@@ -128,7 +128,6 @@ export async function POST(req: NextRequest) {
         idProofNumber: g.idnumber || g.idProofNumber || null,
       })));
     }
-
     const code = 'CB' + Date.now().toString().slice(-8);
 
     await sql`
