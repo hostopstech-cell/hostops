@@ -1,169 +1,475 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 
+interface Guest { name: string; phone: string; idtype: string; idnumber: string; }
+interface Room { id: string; name: string; type: string; price_per_night: number; number_of_beds: number; }
+
 export default function BookPage({ params }: { params: { propertyId: string } }) {
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(0);
   const [property, setProperty] = useState<any>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [bookingDone, setBookingDone] = useState(false);
+  const [bookingId, setBookingId] = useState("");
 
-  useEffect(() => { sendMessage("Hello", true); }, []);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  // Booking data
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [checkin, setCheckin] = useState("");
+  const [checkout, setCheckout] = useState("");
+  const [guestCount, setGuestCount] = useState(1);
+  const [guests, setGuests] = useState<Guest[]>([{ name: "", phone: "", idtype: "aadhaar", idnumber: "" }]);
+  const [utr, setUtr] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [payDate, setPayDate] = useState("");
+  const [stepError, setStepError] = useState("");
 
-  async function sendMessage(text: string, auto = false) {
-    const userMsg = { role: "user", content: text };
-    const newMessages = auto ? [userMsg] : [...messages, userMsg];
-    if (!auto) setMessages(prev => [...prev, userMsg]);
-    setInput("");
-    setLoading(true);
+  const today = new Date().toISOString().split("T")[0];
+
+  // Fetch property + rooms
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch(`/api/chat/${params.propertyId}?init=1`);
+        const data = await res.json();
+        if (data.property) setProperty(data.property);
+        if (data.rooms) setRooms(data.rooms);
+        setLoading(false);
+      } catch {
+        setError("Could not load property. Please try again.");
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  // Sync guests array with guestCount
+  useEffect(() => {
+    setGuests(prev => {
+      const arr = [...prev];
+      while (arr.length < guestCount) arr.push({ name: "", phone: "", idtype: "aadhaar", idnumber: "" });
+      return arr.slice(0, guestCount);
+    });
+  }, [guestCount]);
+
+  const nights = checkin && checkout
+    ? Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000))
+    : 0;
+
+  const totalAmount = selectedRoom && nights > 0
+    ? (selectedRoom.type === "dorm" || selectedRoom.type === "mixed_dorm")
+      ? selectedRoom.price_per_night * guestCount * nights
+      : selectedRoom.price_per_night * nights
+    : 0;
+
+  function validateStep() {
+    setStepError("");
+    if (step === 1) {
+      if (!selectedRoom) return "Please select a room.";
+      if (!checkin) return "Please select check-in date.";
+      if (!checkout) return "Please select check-out date.";
+      if (new Date(checkout) <= new Date(checkin)) return "Check-out must be after check-in.";
+    }
+    if (step === 2) {
+      for (let i = 0; i < guestCount; i++) {
+        const g = guests[i];
+        if (!g.name.trim()) return `Guest ${i + 1}: name is required.`;
+        if (!/^\d{7,12}$/.test(g.phone)) return `Guest ${i + 1}: enter valid phone number.`;
+        if (!g.idnumber.trim()) return `Guest ${i + 1}: ID number is required.`;
+        if (!validateId(g.idtype, g.idnumber)) return `Guest ${i + 1}: ${g.idtype} number is invalid. Check format.`;
+      }
+    }
+    if (step === 4) {
+      if (!/^\d{12}$/.test(utr)) return "UTR must be exactly 12 digits.";
+      if (!senderName.trim()) return "Sender name is required.";
+      if (!payDate) return "Payment date is required.";
+    }
+    return "";
+  }
+
+  function validateId(type: string, num: string) {
+    const n = num.trim().toUpperCase();
+    switch (type) {
+      case "aadhaar": return /^\d{12}$/.test(n);
+      case "pan": return /^[A-Z]{5}\d{4}[A-Z]$/.test(n);
+      case "passport": return /^[A-Z]\d{7}$/.test(n);
+      case "voter": return /^[A-Z]{3}\d{7}$/.test(n);
+      case "driving": return /^[A-Z0-9]{10,16}$/.test(n);
+      default: return true;
+    }
+  }
+
+  function idPlaceholder(type: string) {
+    switch (type) {
+      case "aadhaar": return "123456789012 (12 digits)";
+      case "pan": return "ABCDE1234F";
+      case "passport": return "A1234567";
+      case "voter": return "ABC1234567";
+      case "driving": return "MH0120210012345";
+      default: return "Enter ID number";
+    }
+  }
+
+  function nextStep() {
+    const err = validateStep();
+    if (err) { setStepError(err); return; }
+    setStepError("");
+    setStep(s => s + 1);
+  }
+
+  async function submitBooking() {
+    const err = validateStep();
+    if (err) { setStepError(err); return; }
+    setSubmitting(true);
     try {
-      const res = await fetch(`/api/chat/${params.propertyId}`, {
+      const res = await fetch("/api/chat/booking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({
+          propertyId: params.propertyId,
+          name: guests[0].name,
+          phone: guests[0].phone,
+          checkin, checkout,
+          guests: guestCount,
+          room: selectedRoom?.name,
+          amount: totalAmount,
+          idtype: guests[0].idtype,
+          idnumber: guests[0].idnumber,
+          utr, sender: senderName, paydate: payDate,
+          guestsData: { guests },
+        }),
       });
       const data = await res.json();
-      if (data.error) {
-        setMessages(prev => [
-          ...(auto ? [] : prev),
-          ...(auto ? [userMsg] : []),
-          { role: "assistant", content: data.error === "rate_limit" ? "⏳ Bot is temporarily busy due to high usage. Please try again in a few minutes." : "Sorry, booking bot is not available right now. Please contact the property directly." }
-        ]);
-        setLoading(false);
-        return;
-      }
-      if (data.property) setProperty(data.property);
-      const reply: string = data.reply || "";
-      const contact = data.property?.contact || property?.contact || "N/A";
-      const propName = data.property?.name || property?.name || "the property";
-
-      // Hide BOOKING_READY line from display
-      const displayReply = reply.replace(/BOOKING_READY:[\s\S]*$/m, "").trim();
-      setMessages(prev => [
-        ...(auto ? [] : prev),
-        ...(auto ? [userMsg] : []),
-        { role: "assistant", content: displayReply }
-      ]);
-
-      if (reply.includes("BOOKING_READY:")) {
-        // Show confirmation message
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: `✅ Booking Confirmed!\nYour booking at ${propName} is confirmed. Booking ID will be sent shortly.\n📞 Contact: ${contact}\nSee you soon! 🙏`
-        }]);
-
-        // Parse BOOKING_READY line
-        const bookingLine = reply.match(/BOOKING_READY:(.*?)(?:\n\n|\n✅|$)/s)?.[1] || "";
-        const get = (key: string) => {
-          const match = bookingLine.match(new RegExp(`${key}=\\[?([^\\],\\n]+?)\\]?(?:,\\s*\\w+=|$)`));
-          return match?.[1]?.trim();
-        };
-
-        const name = get("name");
-        const phone = get("phone");
-        const checkin = get("checkin");
-        const checkout = get("checkout");
-        const guestsN = get("guests");
-        const room = get("room");
-        const pricePerNight = parseFloat(get("amount") || "0") || 0;
-        const nights = parseInt(get("nights") || "0") || Math.max(1, Math.round(
-          (new Date(checkout || "").getTime() - new Date(checkin || "").getTime()) / 86400000
-        ));
-        // Use total from AI if available, else calculate
-        const totalFromAI = parseFloat(get("total") || "0");
-        const totalAmount = totalFromAI > 0 ? totalFromAI : pricePerNight * nights;
-
-        const idtype = get("idtype");
-        const idnumber = get("idnumber");
-        const utr = get("utr");
-        const sender = get("sender");
-        const paydate = get("paydate");
-
-        let guestsData = null;
-        const gjMatch = bookingLine.match(/guests_json=(\{[\s\S]*\})/);
-        if (gjMatch) {
-          try { guestsData = JSON.parse(gjMatch[1]); } catch {}
-        }
-
-        if (name && checkin && checkout) {
-          await fetch("/api/chat/booking", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              propertyId: params.propertyId,
-              name, phone, checkin, checkout,
-              guests: parseInt(guestsN || "1") || 1,
-              room,
-              amount: totalAmount,
-              idtype: idtype || null,
-              idnumber: idnumber || null,
-              utr: utr || null,
-              sender: sender || null,
-              paydate: paydate || null,
-              guestsData,
-            }),
-          });
-        }
-      }
+      setBookingId(data.bookingId || "CONFIRMED");
+      setBookingDone(true);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "Something went wrong. Please try again." }]);
+      setStepError("Something went wrong. Please try again.");
     }
-    setLoading(false);
+    setSubmitting(false);
   }
+
+  const dormRooms = rooms.filter(r => r.type === "dorm" || r.type === "mixed_dorm");
+  const privateRooms = rooms.filter(r => r.type !== "dorm" && r.type !== "mixed_dorm");
+
+  if (loading) return (
+    <div className="min-h-screen bg-gradient-to-br from-violet-100 to-indigo-200 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-slate-600">Loading...</p>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-gradient-to-br from-violet-100 to-indigo-200 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-8 text-center shadow-xl max-w-sm w-full">
+        <div className="text-4xl mb-3">😕</div>
+        <p className="text-slate-700">{error}</p>
+      </div>
+    </div>
+  );
+
+  if (bookingDone) return (
+    <div className="min-h-screen bg-gradient-to-br from-violet-100 to-indigo-200 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-sm w-full">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✅</div>
+        <h2 className="text-xl font-bold text-slate-800 mb-1">Booking Confirmed!</h2>
+        <p className="text-slate-500 text-sm mb-4">Your stay at {property?.name} is confirmed.</p>
+        <div className="bg-slate-50 rounded-xl p-4 text-left text-sm space-y-1 mb-4">
+          <p><span className="text-slate-400">Room:</span> <strong>{selectedRoom?.name}</strong></p>
+          <p><span className="text-slate-400">Check-in:</span> <strong>{checkin}</strong></p>
+          <p><span className="text-slate-400">Check-out:</span> <strong>{checkout}</strong></p>
+          <p><span className="text-slate-400">Guests:</span> <strong>{guestCount}</strong></p>
+          <p><span className="text-slate-400">Total Paid:</span> <strong>Rs.{totalAmount}</strong></p>
+        </div>
+        <p className="text-xs text-slate-400">📞 Contact: {property?.contact}</p>
+        <p className="text-xs text-green-600 mt-2 font-medium">See you soon! 🙏</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 to-indigo-200 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ height: "85vh" }}>
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+        {/* Header */}
         <div className="bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">🏨</div>
             <div>
-              <h1 className="text-white font-bold text-lg">{property?.name || "Loading..."}</h1>
+              <h1 className="text-white font-bold text-lg">{property?.name || "Property"}</h1>
               <p className="text-white/70 text-xs">{property?.city} · {property?.type}</p>
             </div>
           </div>
+          {/* Progress bar */}
+          <div className="flex gap-1.5 mt-4">
+            {["Room", "Guests", "Summary", "Payment"].map((label, i) => (
+              <div key={i} className="flex-1">
+                <div className={`h-1 rounded-full ${step > i ? "bg-white" : step === i + 1 ? "bg-white/60" : "bg-white/20"}`} />
+                <p className={`text-[9px] mt-1 text-center ${step > i ? "text-white" : "text-white/40"}`}>{label}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
-                msg.role === "user"
-                  ? "bg-indigo-500 text-white rounded-br-sm"
-                  : "bg-slate-100 text-slate-800 rounded-bl-sm"
-              }`}>{msg.content}</div>
-            </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-slate-100 px-4 py-3 rounded-2xl rounded-bl-sm">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+
+        <div className="p-5">
+          {/* STEP 0: Welcome */}
+          {step === 0 && (
+            <div className="text-center py-6">
+              <div className="text-5xl mb-4">👋</div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">Welcome to {property?.name}!</h2>
+              <p className="text-slate-500 text-sm mb-6">{property?.city} · {property?.type}<br />Let's get your room booked in a few easy steps.</p>
+              {rooms.length === 0 ? (
+                <div className="bg-red-50 rounded-xl p-4 text-red-600 text-sm">
+                  No rooms available right now. Please contact us at {property?.contact}.
                 </div>
+              ) : (
+                <button onClick={() => setStep(1)} className="w-full bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">
+                  Book a Room →
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* STEP 1: Room + Dates */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <h2 className="font-bold text-slate-800 text-lg">Choose Your Room & Dates</h2>
+
+              {dormRooms.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase mb-2">Dorm Beds</p>
+                  <div className="space-y-2">
+                    {dormRooms.map(r => (
+                      <button key={r.id} onClick={() => setSelectedRoom(r)}
+                        className={`w-full text-left p-3 rounded-xl border-2 transition ${selectedRoom?.id === r.id ? "border-indigo-500 bg-indigo-50" : "border-slate-100 hover:border-slate-200"}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-slate-800 text-sm">{r.name}</p>
+                            <p className="text-xs text-slate-400">{r.number_of_beds} beds total</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-indigo-600">₹{r.price_per_night}</p>
+                            <p className="text-xs text-slate-400">/bed/night</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {privateRooms.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase mb-2">Private Rooms</p>
+                  <div className="space-y-2">
+                    {privateRooms.map(r => (
+                      <button key={r.id} onClick={() => setSelectedRoom(r)}
+                        className={`w-full text-left p-3 rounded-xl border-2 transition ${selectedRoom?.id === r.id ? "border-indigo-500 bg-indigo-50" : "border-slate-100 hover:border-slate-200"}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-slate-800 text-sm">{r.name}</p>
+                            <p className="text-xs text-slate-400">{r.type}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-indigo-600">₹{r.price_per_night}</p>
+                            <p className="text-xs text-slate-400">/room/night</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500 font-medium block mb-1">Check-in Date</label>
+                  <input type="date" value={checkin} min={today} onChange={e => setCheckin(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 font-medium block mb-1">Check-out Date</label>
+                  <input type="date" value={checkout} min={checkin || today} onChange={e => setCheckout(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-500 font-medium block mb-1">Number of Guests</label>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setGuestCount(g => Math.max(1, g - 1))}
+                    className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-bold text-lg hover:bg-slate-200 transition">−</button>
+                  <span className="text-lg font-bold text-slate-800 w-8 text-center">{guestCount}</span>
+                  <button onClick={() => setGuestCount(g => Math.min(20, g + 1))}
+                    className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-bold text-lg hover:bg-slate-200 transition">+</button>
+                  <span className="text-xs text-slate-400">guests</span>
+                </div>
+              </div>
+
+              {selectedRoom && nights > 0 && (
+                <div className="bg-indigo-50 rounded-xl p-3 text-sm">
+                  <p className="text-indigo-700 font-semibold">{selectedRoom.name} · {nights} night{nights > 1 ? "s" : ""}</p>
+                  <p className="text-indigo-500 text-xs">
+                    {selectedRoom.type === "dorm" || selectedRoom.type === "mixed_dorm"
+                      ? `₹${selectedRoom.price_per_night} × ${guestCount} guests × ${nights} nights`
+                      : `₹${selectedRoom.price_per_night} × ${nights} nights`}
+                    {" = "}<strong>₹{totalAmount}</strong>
+                  </p>
+                </div>
+              )}
+
+              {stepError && <p className="text-red-500 text-xs bg-red-50 p-2 rounded-lg">{stepError}</p>}
+              <button onClick={nextStep} className="w-full bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">
+                Continue →
+              </button>
+            </div>
+          )}
+
+          {/* STEP 2: Guest details */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <h2 className="font-bold text-slate-800 text-lg">Guest Details</h2>
+              <p className="text-slate-500 text-sm">Fill in details for all {guestCount} guest{guestCount > 1 ? "s" : ""}.</p>
+
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                {guests.map((g, i) => (
+                  <div key={i} className="border border-slate-100 rounded-xl p-3 space-y-2">
+                    <p className="text-xs font-bold text-indigo-500 uppercase">Guest {i + 1}</p>
+                    <input
+                      placeholder="Full Name"
+                      value={g.name}
+                      onChange={e => { const a = [...guests]; a[i].name = e.target.value; setGuests(a); }}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800"
+                    />
+                    <input
+                      placeholder="Phone Number"
+                      value={g.phone}
+                      type="tel"
+                      maxLength={12}
+                      onChange={e => { const a = [...guests]; a[i].phone = e.target.value.replace(/\D/g,""); setGuests(a); }}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800"
+                    />
+                    <select
+                      value={g.idtype}
+                      onChange={e => { const a = [...guests]; a[i].idtype = e.target.value; a[i].idnumber = ""; setGuests(a); }}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 bg-white"
+                    >
+                      <option value="aadhaar">Aadhaar Card</option>
+                      <option value="pan">PAN Card</option>
+                      <option value="passport">Passport</option>
+                      <option value="voter">Voter ID</option>
+                      <option value="driving">Driving License</option>
+                    </select>
+                    <input
+                      placeholder={idPlaceholder(g.idtype)}
+                      value={g.idnumber}
+                      onChange={e => { const a = [...guests]; a[i].idnumber = e.target.value.toUpperCase(); setGuests(a); }}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {stepError && <p className="text-red-500 text-xs bg-red-50 p-2 rounded-lg">{stepError}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => setStep(1)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-50 transition">← Back</button>
+                <button onClick={nextStep} className="flex-1 bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">Continue →</button>
               </div>
             </div>
           )}
-          <div ref={bottomRef} />
-        </div>
-        <div className="p-4 border-t border-slate-100">
-          <div className="flex gap-2">
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && !loading && input.trim() && sendMessage(input.trim())}
-              placeholder="Type your message..."
-              className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400"
-              style={{ color: "#000", background: "#fff" }}
-            />
-            <button
-              onClick={() => !loading && input.trim() && sendMessage(input.trim())}
-              disabled={loading || !input.trim()}
-              className="h-10 w-10 rounded-xl bg-indigo-500 flex items-center justify-center text-white disabled:opacity-50"
-            >➤</button>
-          </div>
-          <p className="text-center text-[10px] text-slate-300 mt-2">Powered by HostOps</p>
+
+          {/* STEP 3: Summary */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <h2 className="font-bold text-slate-800 text-lg">Booking Summary</h2>
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-slate-400">Property</span><span className="font-medium text-slate-800">{property?.name}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Room</span><span className="font-medium text-slate-800">{selectedRoom?.name}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Check-in</span><span className="font-medium text-slate-800">{checkin} at {property?.check_in_time || "14:00"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Check-out</span><span className="font-medium text-slate-800">{checkout} at {property?.check_out_time || "11:00"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Nights</span><span className="font-medium text-slate-800">{nights}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Guests</span><span className="font-medium text-slate-800">{guestCount}</span></div>
+                <div className="border-t border-slate-200 pt-2 flex justify-between"><span className="font-bold text-slate-700">Total</span><span className="font-bold text-indigo-600 text-base">₹{totalAmount}</span></div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-400 uppercase">Guests</p>
+                {guests.map((g, i) => (
+                  <div key={i} className="bg-white border border-slate-100 rounded-lg px-3 py-2 text-xs text-slate-700">
+                    <strong>{g.name}</strong> · {g.phone} · {g.idtype.toUpperCase()}: {g.idnumber}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <button onClick={() => setStep(2)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-50 transition">← Back</button>
+                <button onClick={() => setStep(4)} className="flex-1 bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">Confirm & Pay →</button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: Payment */}
+          {step === 4 && (
+            <div className="space-y-4">
+              <h2 className="font-bold text-slate-800 text-lg">Payment</h2>
+
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center">
+                <p className="text-xs text-indigo-400 mb-1">Pay via UPI</p>
+                <p className="text-indigo-700 font-bold text-lg">{property?.upi_id || "Contact property"}</p>
+                <p className="text-xs text-indigo-400 mt-1">{property?.payment_name || property?.name}</p>
+                <div className="mt-3 bg-white rounded-lg px-4 py-2 inline-block">
+                  <p className="text-2xl font-black text-indigo-600">₹{totalAmount}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-500 text-center">After paying, enter the UTR/transaction details below:</p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-slate-500 font-medium block mb-1">UTR Number <span className="text-slate-400">(12 digits from bank)</span></label>
+                  <input
+                    placeholder="123456789012"
+                    value={utr}
+                    maxLength={12}
+                    onChange={e => setUtr(e.target.value.replace(/\D/g, ""))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono tracking-widest"
+                  />
+                  {utr.length > 0 && utr.length !== 12 && (
+                    <p className="text-xs text-amber-500 mt-1">{utr.length}/12 digits</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 font-medium block mb-1">Sender Name</label>
+                  <input
+                    placeholder="Name as in bank account"
+                    value={senderName}
+                    onChange={e => setSenderName(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 font-medium block mb-1">Payment Date</label>
+                  <input
+                    type="date"
+                    value={payDate}
+                    max={today}
+                    onChange={e => setPayDate(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800"
+                  />
+                </div>
+              </div>
+
+              {stepError && <p className="text-red-500 text-xs bg-red-50 p-2 rounded-lg">{stepError}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => setStep(3)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-50 transition">← Back</button>
+                <button onClick={submitBooking} disabled={submitting}
+                  className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition disabled:opacity-50">
+                  {submitting ? "Confirming..." : "Confirm Booking ✓"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
