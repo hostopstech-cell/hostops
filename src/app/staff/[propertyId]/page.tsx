@@ -433,14 +433,18 @@ export default function StaffPage() {
 
     // Multiple guests — show stacked group
     return (
-      <div className="flex flex-col gap-1.5 min-w-0">
+      <div className="flex gap-2 items-start">
+        <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 16 }}>
+          {allGuests.map((_, i) => (
+            <div key={i} className="flex flex-col items-center">
+              <div className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
+              {i < allGuests.length - 1 && <div className="w-0.5 bg-orange-200" style={{ height: 32 }} />}
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-col gap-1.5 min-w-0">
           {allGuests.map((g, i) => (
             <div key={i} className="flex items-center gap-2">
-              <div className="flex flex-col items-center flex-shrink-0">
-                <div className="w-2 h-2 rounded-full bg-orange-400" />
-                {i < allGuests.length - 1 && <div className="w-0.5 bg-orange-200" style={{ height: 20 }} />}
-              </div>
-
               <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${getAvatarColor(g.name || "G")}`}>
                 {getInitials(g.name || "G")}
               </div>
