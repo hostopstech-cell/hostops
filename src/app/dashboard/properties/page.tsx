@@ -34,6 +34,7 @@ export default function PropertiesPage() {
   const [upiId, setUpiId] = useState("");
   const [paymentName, setPaymentName] = useState("");
   const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentFromBot, setPaymentFromBot] = useState(false);
   const [botLinkProp, setBotLinkProp] = useState<Property | null>(null);
   const [copied, setCopied] = useState(false);
   const [staffLinkProp, setStaffLinkProp] = useState<Property | null>(null);
@@ -98,13 +99,33 @@ export default function PropertiesPage() {
 
   async function savePaymentDetails() {
     if (!paymentProp) return;
+    if (!paymentName.trim() || !upiId.trim()) {
+      setError("Owner name aur UPI ID dono required hain");
+      return;
+    }
     setPaymentSaving(true);
     await fetch(`/api/properties/${(paymentProp as any).id}/payment`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ upi_id: upiId, payment_name: paymentName }),
+      body: JSON.stringify({ upi_id: upiId.trim(), payment_name: paymentName.trim() }),
     });
-    setPaymentSaving(false); setPaymentModal(false);
-    setSuccess("Payment details saved!"); fetchProperties();
+    setPaymentSaving(false);
+    setPaymentModal(false);
+    setError("");
+    // Agar payment bot activate karne ke liye khola tha, ab bot activate karo
+    if (paymentFromBot) {
+      setPaymentFromBot(false);
+      const updatedProp = { ...paymentProp, upi_id: upiId.trim() } as any;
+      await fetch(`/api/properties/${(paymentProp as any).id}/bot-toggle`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bot_enabled: true }),
+      });
+      setSuccess("UPI saved & Bot activated! 🤖");
+      fetchProperties();
+      setBotLinkProp({ ...updatedProp, bot_enabled: true });
+    } else {
+      setSuccess("Payment details saved!");
+      fetchProperties();
+    }
   }
 
   async function saveStaffToken() {
@@ -128,6 +149,15 @@ export default function PropertiesPage() {
 
   async function toggleBot(p: Property) {
     const newVal = !(p as any).bot_enabled;
+    // Bot activate karne se pehle UPI mandatory check
+    if (newVal && !(p as any).upi_id) {
+      setPaymentProp(p);
+      setUpiId("");
+      setPaymentName("");
+      setPaymentFromBot(true);
+      setPaymentModal(true);
+      return;
+    }
     await fetch(`/api/properties/${p.id}/bot-toggle`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bot_enabled: newVal }),
@@ -228,7 +258,7 @@ export default function PropertiesPage() {
             const hasStaffToken = !!(p as any).staff_token;
             return (
               <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-all">
-                {/* Card header image */}
+                {/* Card header */}
                 <div className={`h-32 bg-gradient-to-br ${bg} flex items-center justify-center relative`}>
                   <span className="text-6xl">{icon}</span>
                   <div className="absolute top-3 left-3">
@@ -250,7 +280,7 @@ export default function PropertiesPage() {
                       <p className="text-xs text-slate-500 capitalize">{p.type}</p>
                     </div>
                     <button
-                      onClick={() => { setPaymentProp(p); setUpiId((p as any).upi_id || ""); setPaymentName((p as any).payment_name || ""); setPaymentModal(true); }}
+                      onClick={() => { setPaymentProp(p); setUpiId(""); setPaymentName(""); setPaymentFromBot(false); setPaymentModal(true); }}
                       className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${hasPayment ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-orange-50 hover:text-orange-600"}`}>
                       💳 {hasPayment ? "UPI ✓" : "Add UPI"}
                     </button>
@@ -281,7 +311,7 @@ export default function PropertiesPage() {
                     ))}
                   </div>
 
-                  {/* Check-in/out times */}
+                  {/* Check-in/out */}
                   <div className="flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-3 mb-3">
                     <span>🕐 {(p as any).check_in_time || "14:00"} – {(p as any).check_out_time || "11:00"}</span>
                     <span className="capitalize">🏷️ {p.type}</span>
@@ -313,10 +343,15 @@ export default function PropertiesPage() {
                         </div>
                       </div>
                       <button onClick={() => toggleBot(p)}
+                        title={!hasPayment && !botEnabled ? "UPI details required" : ""}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${botEnabled ? "bg-emerald-500" : "bg-slate-300"}`}>
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${botEnabled ? "translate-x-6" : "translate-x-1"}`} />
                       </button>
                     </div>
+                    {/* UPI missing warning under bot */}
+                    {!hasPayment && !botEnabled && (
+                      <p className="text-[10px] text-amber-600 mt-2 font-medium">⚠️ Bot ke liye pehle UPI add karein</p>
+                    )}
                     {botEnabled && (
                       <div className="mt-2">
                         <p className="text-[10px] text-slate-500 mb-1 font-medium">Guest booking link:</p>
@@ -405,51 +440,51 @@ export default function PropertiesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Property Name *</label>
-                  <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="" autoComplete="off" className="input-field w-full text-sm" />
+                  <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoComplete="off" className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Type *</label>
-                  <select required value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="input-field w-full text-sm">
+                  <select required value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="input-field w-full text-sm text-slate-900">
                     <option value="hostel">Hostel</option><option value="hotel">Hotel</option><option value="guesthouse">Guesthouse</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Total Rooms *</label>
-                  <input required type="number" min={1} value={form.totalBeds} onChange={e => setForm(f => ({ ...f, totalBeds: e.target.value }))} placeholder="" autoComplete="off" className="input-field w-full text-sm" />
+                  <input required type="number" min={1} value={form.totalBeds} onChange={e => setForm(f => ({ ...f, totalBeds: e.target.value }))} autoComplete="off" className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Address *</label>
-                  <input required value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="" autoComplete="off" className="input-field w-full text-sm" />
+                  <input required value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} autoComplete="off" className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">City *</label>
-                  <input required value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder="" autoComplete="off" className="input-field w-full text-sm" />
+                  <input required value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} autoComplete="off" className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">State *</label>
-                  <select required value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} className="input-field w-full text-sm">
+                  <select required value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} className="input-field w-full text-sm text-slate-900">
                     {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Pincode</label>
-                  <input value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} placeholder="" autoComplete="off" className="input-field w-full text-sm" />
+                  <input value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} autoComplete="off" className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Contact Number</label>
-                  <input value={form.contactNumber} onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value }))} placeholder="" autoComplete="off" className="input-field w-full text-sm" />
+                  <input value={form.contactNumber} onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value }))} autoComplete="off" className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Check-in Time</label>
-                  <input type="time" value={form.checkInTime} onChange={e => setForm(f => ({ ...f, checkInTime: e.target.value }))} className="input-field w-full text-sm" />
+                  <input type="time" value={form.checkInTime} onChange={e => setForm(f => ({ ...f, checkInTime: e.target.value }))} className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Check-out Time</label>
-                  <input type="time" value={form.checkOutTime} onChange={e => setForm(f => ({ ...f, checkOutTime: e.target.value }))} className="input-field w-full text-sm" />
+                  <input type="time" value={form.checkOutTime} onChange={e => setForm(f => ({ ...f, checkOutTime: e.target.value }))} className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Status</label>
-                  <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="input-field w-full text-sm">
+                  <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="input-field w-full text-sm text-slate-900">
                     <option value="active">Active</option><option value="inactive">Inactive</option>
                   </select>
                 </div>
@@ -477,21 +512,43 @@ export default function PropertiesPage() {
                 <p className="text-xs text-slate-500">{(paymentProp as any).name}</p>
               </div>
             </div>
+            {/* Bot se aaya hai toh warning */}
+            {paymentFromBot && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
+                <p className="text-xs text-amber-700 font-semibold">⚠️ Bot activate karne ke liye UPI details required hain</p>
+                <p className="text-xs text-amber-600 mt-0.5">Save karne ke baad bot automatically activate ho jayega</p>
+              </div>
+            )}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Owner / Account Name</label>
-                <input value={paymentName} onChange={e => setPaymentName(e.target.value)} placeholder="e.g. Rajesh Kumar" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-400" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Owner / Account Name <span className="text-red-500">*</span></label>
+                <input
+                  value={paymentName}
+                  onChange={e => setPaymentName(e.target.value)}
+                  placeholder="e.g. Rajesh Kumar"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100"
+                />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">UPI ID</label>
-                <input value={upiId} onChange={e => setUpiId(e.target.value)} placeholder="e.g. rajesh@upi" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-400" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">UPI ID <span className="text-red-500">*</span></label>
+                <input
+                  value={upiId}
+                  onChange={e => setUpiId(e.target.value)}
+                  placeholder="e.g. rajesh@upi"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100"
+                />
               </div>
             </div>
+            {error && (
+              <div className="mt-3 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+                <p className="text-xs text-red-600 font-medium">{error}</p>
+              </div>
+            )}
             <div className="flex gap-3 mt-6">
               <button onClick={savePaymentDetails} disabled={paymentSaving} className="flex-1 bg-green-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-60">
-                {paymentSaving ? "Saving..." : "Save Payment Details"}
+                {paymentSaving ? "Saving..." : paymentFromBot ? "Save & Activate Bot" : "Save Payment Details"}
               </button>
-              <button onClick={() => setPaymentModal(false)} className="flex-1 border border-slate-200 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button onClick={() => { setPaymentModal(false); setPaymentFromBot(false); setError(""); }} className="flex-1 border border-slate-200 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
             </div>
           </div>
         </div>
@@ -515,7 +572,8 @@ export default function PropertiesPage() {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Staff Access Code</label>
                 <input value={staffToken} onChange={e => setStaffToken(e.target.value)}
-                  placeholder="e.g. staff123 (set a secret code)" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400" />
+                  placeholder="e.g. staff123 (set a secret code)"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400" />
                 <p className="text-xs text-slate-400 mt-1">Staff will enter this code to access bookings</p>
               </div>
               {staffToken && (
