@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 interface Guest { name: string; phone: string; idtype: string; idnumber: string; }
-interface Room { id: string; name: string; type: string; price_per_night: number; number_of_beds: number; }
+interface Room { id: string; name: string; type: string; price_per_night: number; number_of_beds: number; is_available: boolean; available_beds: number; }
 
 export default function BookPage({ params }: { params: { propertyId: string } }) {
   const [step, setStep] = useState(0);
@@ -12,9 +12,6 @@ export default function BookPage({ params }: { params: { propertyId: string } })
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [bookingDone, setBookingDone] = useState(false);
-  const [bookingId, setBookingId] = useState("");
-
-  // Booking data
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
@@ -26,25 +23,43 @@ export default function BookPage({ params }: { params: { propertyId: string } })
   const [stepError, setStepError] = useState("");
 
   const today = new Date().toISOString().split("T")[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
-  // Fetch property + rooms
+  // Fetch property (once)
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/chat/${params.propertyId}?init=1`);
+        const res = await fetch(`/api/chat/${params.propertyId}?checkin=${today}&checkout=${tomorrow}`);
         const data = await res.json();
+        if (data.error) { setError("Property not found or bot not enabled."); setLoading(false); return; }
         if (data.property) setProperty(data.property);
         if (data.rooms) setRooms(data.rooms);
         setLoading(false);
-      } catch {
-        setError("Could not load property. Please try again.");
-        setLoading(false);
-      }
+      } catch { setError("Could not load property."); setLoading(false); }
     }
     load();
   }, []);
 
-  // Sync guests array with guestCount
+  // Re-fetch rooms when dates change
+  useEffect(() => {
+    if (!checkin || !checkout || checkin >= checkout) return;
+    async function refetch() {
+      try {
+        const res = await fetch(`/api/chat/${params.propertyId}?checkin=${checkin}&checkout=${checkout}`);
+        const data = await res.json();
+        if (data.rooms) {
+          setRooms(data.rooms);
+          // If selected room is now unavailable, deselect it
+          if (selectedRoom) {
+            const updated = data.rooms.find((r: Room) => r.id === selectedRoom.id);
+            if (!updated?.is_available) setSelectedRoom(null);
+          }
+        }
+      } catch {}
+    }
+    refetch();
+  }, [checkin, checkout]);
+
   useEffect(() => {
     setGuests(prev => {
       const arr = [...prev];
@@ -53,40 +68,12 @@ export default function BookPage({ params }: { params: { propertyId: string } })
     });
   }, [guestCount]);
 
-  const nights = checkin && checkout
-    ? Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000))
-    : 0;
-
+  const nights = checkin && checkout ? Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000)) : 0;
   const totalAmount = selectedRoom && nights > 0
     ? (selectedRoom.type === "dorm" || selectedRoom.type === "mixed_dorm")
       ? selectedRoom.price_per_night * guestCount * nights
       : selectedRoom.price_per_night * nights
     : 0;
-
-  function validateStep() {
-    setStepError("");
-    if (step === 1) {
-      if (!selectedRoom) return "Please select a room.";
-      if (!checkin) return "Please select check-in date.";
-      if (!checkout) return "Please select check-out date.";
-      if (new Date(checkout) <= new Date(checkin)) return "Check-out must be after check-in.";
-    }
-    if (step === 2) {
-      for (let i = 0; i < guestCount; i++) {
-        const g = guests[i];
-        if (!g.name.trim()) return `Guest ${i + 1}: name is required.`;
-        if (!/^\d{7,12}$/.test(g.phone)) return `Guest ${i + 1}: enter valid phone number.`;
-        if (!g.idnumber.trim()) return `Guest ${i + 1}: ID number is required.`;
-        if (!validateId(g.idtype, g.idnumber)) return `Guest ${i + 1}: ${g.idtype} number is invalid. Check format.`;
-      }
-    }
-    if (step === 4) {
-      if (!/^\d{12}$/.test(utr)) return "UTR must be exactly 12 digits.";
-      if (!senderName.trim()) return "Sender name is required.";
-      if (!payDate) return "Payment date is required.";
-    }
-    return "";
-  }
 
   function validateId(type: string, num: string) {
     const n = num.trim().toUpperCase();
@@ -111,6 +98,33 @@ export default function BookPage({ params }: { params: { propertyId: string } })
     }
   }
 
+  function validateStep() {
+    if (step === 1) {
+      if (!selectedRoom) return "Please select a room.";
+      if (!selectedRoom.is_available) return "This room is not available for the selected dates.";
+      if (!checkin) return "Please select check-in date.";
+      if (!checkout) return "Please select check-out date.";
+      if (checkin >= checkout) return "Check-out must be after check-in.";
+      const isDorm = selectedRoom.type === "dorm" || selectedRoom.type === "mixed_dorm";
+      if (isDorm && guestCount > selectedRoom.available_beds) return `Only ${selectedRoom.available_beds} bed(s) available.`;
+    }
+    if (step === 2) {
+      for (let i = 0; i < guestCount; i++) {
+        const g = guests[i];
+        if (!g.name.trim()) return `Guest ${i + 1}: name is required.`;
+        if (!/^\d{7,12}$/.test(g.phone)) return `Guest ${i + 1}: enter valid phone number.`;
+        if (!g.idnumber.trim()) return `Guest ${i + 1}: ID number is required.`;
+        if (!validateId(g.idtype, g.idnumber)) return `Guest ${i + 1}: ${g.idtype} number is invalid.`;
+      }
+    }
+    if (step === 4) {
+      if (!/^\d{12}$/.test(utr)) return "UTR must be exactly 12 digits.";
+      if (!senderName.trim()) return "Sender name is required.";
+      if (!payDate) return "Payment date is required.";
+    }
+    return "";
+  }
+
   function nextStep() {
     const err = validateStep();
     if (err) { setStepError(err); return; }
@@ -128,24 +142,18 @@ export default function BookPage({ params }: { params: { propertyId: string } })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           propertyId: params.propertyId,
-          name: guests[0].name,
-          phone: guests[0].phone,
-          checkin, checkout,
-          guests: guestCount,
-          room: selectedRoom?.name,
-          amount: totalAmount,
-          idtype: guests[0].idtype,
-          idnumber: guests[0].idnumber,
+          name: guests[0].name, phone: guests[0].phone,
+          checkin, checkout, guests: guestCount,
+          room: selectedRoom?.name, amount: totalAmount,
+          idtype: guests[0].idtype, idnumber: guests[0].idnumber,
           utr, sender: senderName, paydate: payDate,
           guestsData: { guests },
         }),
       });
       const data = await res.json();
-      setBookingId(data.bookingId || "CONFIRMED");
+      if (!data.success) { setStepError(data.error || "Booking failed. Please try again."); setSubmitting(false); return; }
       setBookingDone(true);
-    } catch {
-      setStepError("Something went wrong. Please try again.");
-    }
+    } catch { setStepError("Something went wrong. Please try again."); }
     setSubmitting(false);
   }
 
@@ -154,19 +162,13 @@ export default function BookPage({ params }: { params: { propertyId: string } })
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 to-indigo-200 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-slate-600">Loading...</p>
-      </div>
+      <div className="text-center"><div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" /><p className="text-slate-600">Loading...</p></div>
     </div>
   );
 
   if (error) return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 to-indigo-200 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-8 text-center shadow-xl max-w-sm w-full">
-        <div className="text-4xl mb-3">😕</div>
-        <p className="text-slate-700">{error}</p>
-      </div>
+      <div className="bg-white rounded-2xl p-8 text-center shadow-xl max-w-sm w-full"><div className="text-4xl mb-3">😕</div><p className="text-slate-700">{error}</p></div>
     </div>
   );
 
@@ -180,8 +182,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
           <p><span className="text-slate-400">Room:</span> <strong>{selectedRoom?.name}</strong></p>
           <p><span className="text-slate-400">Check-in:</span> <strong>{checkin}</strong></p>
           <p><span className="text-slate-400">Check-out:</span> <strong>{checkout}</strong></p>
-          <p><span className="text-slate-400">Guests:</span> <strong>{guestCount}</strong></p>
-          <p><span className="text-slate-400">Total Paid:</span> <strong>Rs.{totalAmount}</strong></p>
+          <p><span className="text-slate-400">Total Paid:</span> <strong>₹{totalAmount}</strong></p>
         </div>
         <p className="text-xs text-slate-400">📞 Contact: {property?.contact}</p>
         <p className="text-xs text-green-600 mt-2 font-medium">See you soon! 🙏</p>
@@ -189,19 +190,54 @@ export default function BookPage({ params }: { params: { propertyId: string } })
     </div>
   );
 
+  function RoomCard({ r }: { r: Room }) {
+    const isDorm = r.type === "dorm" || r.type === "mixed_dorm";
+    const selected = selectedRoom?.id === r.id;
+    const unavailable = !r.is_available;
+    return (
+      <button
+        onClick={() => !unavailable && setSelectedRoom(r)}
+        disabled={unavailable}
+        className={`w-full text-left p-3 rounded-xl border-2 transition relative ${
+          unavailable ? "border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed"
+          : selected ? "border-indigo-500 bg-indigo-50"
+          : "border-slate-100 hover:border-slate-200"
+        }`}
+      >
+        <div className="flex justify-between items-start">
+          <div>
+            <p className={`font-semibold text-sm ${unavailable ? "text-slate-400" : "text-slate-800"}`}>{r.name}</p>
+            <p className="text-xs text-slate-400">
+              {isDorm ? `${r.number_of_beds} beds total` : r.type}
+              {isDorm && !unavailable && ` · ${r.available_beds} available`}
+            </p>
+          </div>
+          <div className="text-right">
+            {unavailable ? (
+              <span className="text-xs font-semibold text-red-400 bg-red-50 px-2 py-1 rounded-lg">Sold Out</span>
+            ) : (
+              <>
+                <p className="font-bold text-indigo-600">₹{r.price_per_night}</p>
+                <p className="text-xs text-slate-400">/{isDorm ? "bed" : "room"}/night</p>
+              </>
+            )}
+          </div>
+        </div>
+      </button>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 to-indigo-200 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-        {/* Header */}
         <div className="bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">🏨</div>
             <div>
-              <h1 className="text-white font-bold text-lg">{property?.name || "Property"}</h1>
+              <h1 className="text-white font-bold text-lg">{property?.name || "Loading..."}</h1>
               <p className="text-white/70 text-xs">{property?.city} · {property?.type}</p>
             </div>
           </div>
-          {/* Progress bar */}
           <div className="flex gap-1.5 mt-4">
             {["Room", "Guests", "Summary", "Payment"].map((label, i) => (
               <div key={i} className="flex-1">
@@ -213,96 +249,44 @@ export default function BookPage({ params }: { params: { propertyId: string } })
         </div>
 
         <div className="p-5">
-          {/* STEP 0: Welcome */}
           {step === 0 && (
             <div className="text-center py-6">
               <div className="text-5xl mb-4">👋</div>
               <h2 className="text-xl font-bold text-slate-800 mb-2">Welcome to {property?.name}!</h2>
-              <p className="text-slate-500 text-sm mb-6">{property?.city} · {property?.type}<br />Let's get your room booked in a few easy steps.</p>
+              <p className="text-slate-500 text-sm mb-6">{property?.city} · {property?.type}</p>
               {rooms.length === 0 ? (
-                <div className="bg-red-50 rounded-xl p-4 text-red-600 text-sm">
-                  No rooms available right now. Please contact us at {property?.contact}.
-                </div>
+                <div className="bg-red-50 rounded-xl p-4 text-red-600 text-sm">No rooms available. Contact us at {property?.contact}.</div>
               ) : (
-                <button onClick={() => setStep(1)} className="w-full bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">
-                  Book a Room →
-                </button>
+                <button onClick={() => setStep(1)} className="w-full bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">Book a Room →</button>
               )}
             </div>
           )}
 
-          {/* STEP 1: Room + Dates */}
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="font-bold text-slate-800 text-lg">Choose Your Room & Dates</h2>
-
-              {dormRooms.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase mb-2">Dorm Beds</p>
-                  <div className="space-y-2">
-                    {dormRooms.map(r => (
-                      <button key={r.id} onClick={() => setSelectedRoom(r)}
-                        className={`w-full text-left p-3 rounded-xl border-2 transition ${selectedRoom?.id === r.id ? "border-indigo-500 bg-indigo-50" : "border-slate-100 hover:border-slate-200"}`}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-semibold text-slate-800 text-sm">{r.name}</p>
-                            <p className="text-xs text-slate-400">{r.number_of_beds} beds total</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-indigo-600">₹{r.price_per_night}</p>
-                            <p className="text-xs text-slate-400">/bed/night</p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {privateRooms.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase mb-2">Private Rooms</p>
-                  <div className="space-y-2">
-                    {privateRooms.map(r => (
-                      <button key={r.id} onClick={() => setSelectedRoom(r)}
-                        className={`w-full text-left p-3 rounded-xl border-2 transition ${selectedRoom?.id === r.id ? "border-indigo-500 bg-indigo-50" : "border-slate-100 hover:border-slate-200"}`}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-semibold text-slate-800 text-sm">{r.name}</p>
-                            <p className="text-xs text-slate-400">{r.type}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-indigo-600">₹{r.price_per_night}</p>
-                            <p className="text-xs text-slate-400">/room/night</p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-slate-500 font-medium block mb-1">Check-in Date</label>
-                  <input type="date" value={checkin} min={today} onChange={e => setCheckin(e.target.value)}
+                  <input type="date" value={checkin} min={today} onChange={e => { setCheckin(e.target.value); setSelectedRoom(null); }}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 font-medium block mb-1">Check-out Date</label>
-                  <input type="date" value={checkout} min={checkin || today} onChange={e => setCheckout(e.target.value)}
+                  <input type="date" value={checkout} min={checkin || today} onChange={e => { setCheckout(e.target.value); setSelectedRoom(null); }}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
                 </div>
               </div>
 
+              {dormRooms.length > 0 && <div><p className="text-xs font-semibold text-slate-400 uppercase mb-2">Dorm Beds</p><div className="space-y-2">{dormRooms.map(r => <RoomCard key={r.id} r={r} />)}</div></div>}
+              {privateRooms.length > 0 && <div><p className="text-xs font-semibold text-slate-400 uppercase mb-2">Private Rooms</p><div className="space-y-2">{privateRooms.map(r => <RoomCard key={r.id} r={r} />)}</div></div>}
+
               <div>
                 <label className="text-xs text-slate-500 font-medium block mb-1">Number of Guests</label>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setGuestCount(g => Math.max(1, g - 1))}
-                    className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-bold text-lg hover:bg-slate-200 transition">−</button>
+                  <button onClick={() => setGuestCount(g => Math.max(1, g - 1))} className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-bold text-lg hover:bg-slate-200">−</button>
                   <span className="text-lg font-bold text-slate-800 w-8 text-center">{guestCount}</span>
-                  <button onClick={() => setGuestCount(g => Math.min(20, g + 1))}
-                    className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-bold text-lg hover:bg-slate-200 transition">+</button>
+                  <button onClick={() => setGuestCount(g => Math.min(20, g + 1))} className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-bold text-lg hover:bg-slate-200">+</button>
                   <span className="text-xs text-slate-400">guests</span>
                 </div>
               </div>
@@ -320,153 +304,90 @@ export default function BookPage({ params }: { params: { propertyId: string } })
               )}
 
               {stepError && <p className="text-red-500 text-xs bg-red-50 p-2 rounded-lg">{stepError}</p>}
-              <button onClick={nextStep} className="w-full bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">
-                Continue →
-              </button>
+              <button onClick={nextStep} className="w-full bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">Continue →</button>
             </div>
           )}
 
-          {/* STEP 2: Guest details */}
           {step === 2 && (
             <div className="space-y-4">
               <h2 className="font-bold text-slate-800 text-lg">Guest Details</h2>
-              <p className="text-slate-500 text-sm">Fill in details for all {guestCount} guest{guestCount > 1 ? "s" : ""}.</p>
-
               <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
                 {guests.map((g, i) => (
                   <div key={i} className="border border-slate-100 rounded-xl p-3 space-y-2">
                     <p className="text-xs font-bold text-indigo-500 uppercase">Guest {i + 1}</p>
-                    <input
-                      placeholder="Full Name"
-                      value={g.name}
-                      onChange={e => { const a = [...guests]; a[i].name = e.target.value; setGuests(a); }}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800"
-                    />
-                    <input
-                      placeholder="Phone Number"
-                      value={g.phone}
-                      type="tel"
-                      maxLength={12}
-                      onChange={e => { const a = [...guests]; a[i].phone = e.target.value.replace(/\D/g,""); setGuests(a); }}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800"
-                    />
-                    <select
-                      value={g.idtype}
-                      onChange={e => { const a = [...guests]; a[i].idtype = e.target.value; a[i].idnumber = ""; setGuests(a); }}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 bg-white"
-                    >
+                    <input placeholder="Full Name" value={g.name} onChange={e => { const a = [...guests]; a[i].name = e.target.value; setGuests(a); }} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
+                    <input placeholder="Phone Number" value={g.phone} type="tel" maxLength={12} onChange={e => { const a = [...guests]; a[i].phone = e.target.value.replace(/\D/g,""); setGuests(a); }} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
+                    <select value={g.idtype} onChange={e => { const a = [...guests]; a[i].idtype = e.target.value; a[i].idnumber = ""; setGuests(a); }} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 bg-white">
                       <option value="aadhaar">Aadhaar Card</option>
                       <option value="pan">PAN Card</option>
                       <option value="passport">Passport</option>
                       <option value="voter">Voter ID</option>
                       <option value="driving">Driving License</option>
                     </select>
-                    <input
-                      placeholder={idPlaceholder(g.idtype)}
-                      value={g.idnumber}
-                      onChange={e => { const a = [...guests]; a[i].idnumber = e.target.value.toUpperCase(); setGuests(a); }}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono"
-                    />
+                    <input placeholder={idPlaceholder(g.idtype)} value={g.idnumber} onChange={e => { const a = [...guests]; a[i].idnumber = e.target.value.toUpperCase(); setGuests(a); }} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono" />
                   </div>
                 ))}
               </div>
-
               {stepError && <p className="text-red-500 text-xs bg-red-50 p-2 rounded-lg">{stepError}</p>}
               <div className="flex gap-2">
-                <button onClick={() => setStep(1)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-50 transition">← Back</button>
-                <button onClick={nextStep} className="flex-1 bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">Continue →</button>
+                <button onClick={() => setStep(1)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-50">← Back</button>
+                <button onClick={nextStep} className="flex-1 bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600">Continue →</button>
               </div>
             </div>
           )}
 
-          {/* STEP 3: Summary */}
           {step === 3 && (
             <div className="space-y-4">
               <h2 className="font-bold text-slate-800 text-lg">Booking Summary</h2>
               <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-slate-400">Property</span><span className="font-medium text-slate-800">{property?.name}</span></div>
                 <div className="flex justify-between"><span className="text-slate-400">Room</span><span className="font-medium text-slate-800">{selectedRoom?.name}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Check-in</span><span className="font-medium text-slate-800">{checkin} at {property?.check_in_time || "14:00"}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Check-out</span><span className="font-medium text-slate-800">{checkout} at {property?.check_out_time || "11:00"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Check-in</span><span className="font-medium text-slate-800">{checkin}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Check-out</span><span className="font-medium text-slate-800">{checkout}</span></div>
                 <div className="flex justify-between"><span className="text-slate-400">Nights</span><span className="font-medium text-slate-800">{nights}</span></div>
                 <div className="flex justify-between"><span className="text-slate-400">Guests</span><span className="font-medium text-slate-800">{guestCount}</span></div>
                 <div className="border-t border-slate-200 pt-2 flex justify-between"><span className="font-bold text-slate-700">Total</span><span className="font-bold text-indigo-600 text-base">₹{totalAmount}</span></div>
               </div>
-
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-slate-400 uppercase">Guests</p>
-                {guests.map((g, i) => (
-                  <div key={i} className="bg-white border border-slate-100 rounded-lg px-3 py-2 text-xs text-slate-700">
-                    <strong>{g.name}</strong> · {g.phone} · {g.idtype.toUpperCase()}: {g.idnumber}
-                  </div>
-                ))}
+                {guests.map((g, i) => <div key={i} className="bg-white border border-slate-100 rounded-lg px-3 py-2 text-xs text-slate-700"><strong>{g.name}</strong> · {g.phone} · {g.idtype.toUpperCase()}: {g.idnumber}</div>)}
               </div>
-
               <div className="flex gap-2">
-                <button onClick={() => setStep(2)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-50 transition">← Back</button>
-                <button onClick={() => setStep(4)} className="flex-1 bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600 transition">Confirm & Pay →</button>
+                <button onClick={() => setStep(2)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-50">← Back</button>
+                <button onClick={() => setStep(4)} className="flex-1 bg-indigo-500 text-white py-3 rounded-xl font-semibold hover:bg-indigo-600">Confirm & Pay →</button>
               </div>
             </div>
           )}
 
-          {/* STEP 4: Payment */}
           {step === 4 && (
             <div className="space-y-4">
               <h2 className="font-bold text-slate-800 text-lg">Payment</h2>
-
               <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center">
                 <p className="text-xs text-indigo-400 mb-1">Pay via UPI</p>
                 <p className="text-indigo-700 font-bold text-lg">{property?.upi_id || "Contact property"}</p>
                 <p className="text-xs text-indigo-400 mt-1">{property?.payment_name || property?.name}</p>
-                <div className="mt-3 bg-white rounded-lg px-4 py-2 inline-block">
-                  <p className="text-2xl font-black text-indigo-600">₹{totalAmount}</p>
-                </div>
+                <div className="mt-3 bg-white rounded-lg px-4 py-2 inline-block"><p className="text-2xl font-black text-indigo-600">₹{totalAmount}</p></div>
               </div>
-
               <p className="text-xs text-slate-500 text-center">After paying, enter the UTR/transaction details below:</p>
-
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-slate-500 font-medium block mb-1">UTR Number <span className="text-slate-400">(12 digits from bank)</span></label>
-                  <input
-                    placeholder="123456789012"
-                    value={utr}
-                    maxLength={12}
-                    onChange={e => setUtr(e.target.value.replace(/\D/g, ""))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono tracking-widest"
-                  />
-                  {utr.length > 0 && utr.length !== 12 && (
-                    <p className="text-xs text-amber-500 mt-1">{utr.length}/12 digits</p>
-                  )}
+                  <input placeholder="123456789012" value={utr} maxLength={12} onChange={e => setUtr(e.target.value.replace(/\D/g, ""))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono tracking-widest" />
+                  {utr.length > 0 && utr.length !== 12 && <p className="text-xs text-amber-500 mt-1">{utr.length}/12 digits</p>}
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 font-medium block mb-1">Sender Name</label>
-                  <input
-                    placeholder="Name as in bank account"
-                    value={senderName}
-                    onChange={e => setSenderName(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800"
-                  />
+                  <input placeholder="Name as in bank account" value={senderName} onChange={e => setSenderName(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 font-medium block mb-1">Payment Date</label>
-                  <input
-                    type="date"
-                    value={payDate}
-                    max={today}
-                    onChange={e => setPayDate(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800"
-                  />
+                  <input type="date" value={payDate} max={today} onChange={e => setPayDate(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
                 </div>
               </div>
-
               {stepError && <p className="text-red-500 text-xs bg-red-50 p-2 rounded-lg">{stepError}</p>}
               <div className="flex gap-2">
-                <button onClick={() => setStep(3)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-50 transition">← Back</button>
-                <button onClick={submitBooking} disabled={submitting}
-                  className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition disabled:opacity-50">
-                  {submitting ? "Confirming..." : "Confirm Booking ✓"}
-                </button>
+                <button onClick={() => setStep(3)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-50">← Back</button>
+                <button onClick={submitBooking} disabled={submitting} className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold hover:bg-green-600 disabled:opacity-50">{submitting ? "Confirming..." : "Confirm Booking ✓"}</button>
               </div>
             </div>
           )}
