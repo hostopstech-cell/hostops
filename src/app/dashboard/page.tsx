@@ -1,4 +1,5 @@
 'use client'
+import { getCurrencySymbol } from '@/lib/currency-utils';
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -13,6 +14,7 @@ export default function Dashboard() {
   const [properties, setProperties] = useState<any[]>([])
   const [ownerName, setOwnerName] = useState('Owner')
   const [loading, setLoading] = useState(true)
+  const [currencySymbol, setCurrencySymbol] = useState("₹");
   const [revenueView, setRevenueView] = useState<'week' | 'month'>('week')
 
   const getGreeting = () => {
@@ -26,6 +28,7 @@ export default function Dashboard() {
   const tomorrowStr = new Date(Date.now() + 86400000).toLocaleDateString('en-CA')
 
   useEffect(() => {
+    setCurrencySymbol(getCurrencySymbol());
     Promise.all([
       fetch('/api/auth/me').then(r => r.json()),
       fetch('/api/bookings').then(r => r.json()),
@@ -189,7 +192,7 @@ export default function Dashboard() {
           <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-amber-800">
-              {pendingPaymentBookings.length} booking{pendingPaymentBookings.length !== 1 ? 's' : ''} pending verification — ₹{pendingPaymentTotal.toLocaleString('en-IN')} unverified
+              {pendingPaymentBookings.length} booking{pendingPaymentBookings.length !== 1 ? 's' : ''} pending verification — {currencySymbol}{pendingPaymentTotal.toLocaleString('en-IN')} unverified
             </p>
             <p className="text-xs text-amber-600 mt-0.5">Click Check In button after verifying payment to count in revenue & occupancy</p>
           </div>
@@ -208,7 +211,7 @@ export default function Dashboard() {
             <ArrowUpRight size={14} className="text-slate-300 group-hover:text-orange-400 transition-colors" />
           </div>
           <p className="text-xs text-slate-500 font-medium mb-1">Today's Revenue</p>
-          <p className="text-2xl font-bold text-slate-900">₹{todayRevenue.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-bold text-slate-900">{currencySymbol}{todayRevenue.toLocaleString('en-IN')}</p>
           <p className="text-xs text-slate-400 mt-2">verified paid only</p>
         </div>
 
@@ -252,7 +255,7 @@ export default function Dashboard() {
             <ArrowUpRight size={14} className="text-slate-300 group-hover:text-red-400 transition-colors" />
           </div>
           <p className="text-xs text-slate-500 font-medium mb-1">Pending Payments</p>
-          <p className="text-2xl font-bold text-red-500">₹{pendingPaymentTotal.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-bold text-red-500">{currencySymbol}{pendingPaymentTotal.toLocaleString('en-IN')}</p>
           <p className="text-xs text-slate-400 mt-2">{pendingPaymentBookings.length} booking{pendingPaymentBookings.length !== 1 ? 's' : ''} unverified</p>
         </div>
       </div>
@@ -278,7 +281,7 @@ export default function Dashboard() {
           <div className="mb-5">
             <p className="text-xs text-slate-400">Verified Revenue (Paid only)</p>
             <p className="text-3xl font-bold text-orange-500">
-              ₹{(revenueView === 'week' ? weekRevenue : monthRevenue).toLocaleString('en-IN')}
+              {currencySymbol}{(revenueView === 'week' ? weekRevenue : monthRevenue).toLocaleString('en-IN')}
             </p>
             <p className="text-xs text-emerald-500 font-medium mt-0.5 flex items-center gap-1">
               <TrendingUp size={11} /> vs last {revenueView === 'week' ? 'week' : 'month'}
@@ -292,7 +295,7 @@ export default function Dashboard() {
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
                   {d.rev > 0 && (
                     <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 pointer-events-none">
-                      ₹{d.rev.toLocaleString('en-IN')}
+                      {currencySymbol}{d.rev.toLocaleString('en-IN')}
                     </div>
                   )}
                   <div className="w-full flex items-end" style={{ height: '112px' }}>
@@ -482,7 +485,7 @@ export default function Dashboard() {
                       <p className="text-xs text-slate-400 truncate">{b.property_name || '—'} · {fmtDate(b.check_in)}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-slate-900">₹{Number(b.final_amount).toLocaleString('en-IN')}</p>
+                      <p className="text-sm font-bold text-slate-900">{currencySymbol}{Number(b.final_amount).toLocaleString('en-IN')}</p>
                       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${sc.cls}`}>{sc.label}</span>
                     </div>
                   </div>
@@ -528,7 +531,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-slate-900">₹{p.income.toLocaleString('en-IN')}</p>
+                      <p className="text-sm font-bold text-slate-900">{currencySymbol}{p.income.toLocaleString('en-IN')}</p>
                       <p className="text-xs text-slate-400">{p.activeBookings}/{p.total_beds} beds</p>
                     </div>
                   </div>

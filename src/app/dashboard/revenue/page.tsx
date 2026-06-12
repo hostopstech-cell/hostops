@@ -1,4 +1,5 @@
 "use client";
+import { getCurrencySymbol } from '@/lib/currency-utils';
 
 import { useEffect, useState } from "react";
 import {
@@ -14,6 +15,7 @@ const COLORS = ["#F97316", "#3B82F6", "#10B981", "#8B5CF6", "#F59E0B"];
 type TrendRange = "7" | "30" | "90";
 
 export default function RevenuePage() {
+  const [currencySymbol, setCurrencySymbol] = useState("₹");
   const [loading, setLoading] = useState(true);
   const [trendRange, setTrendRange] = useState<TrendRange>("30");
   const [revenueData, setRevenueData] = useState({
@@ -30,6 +32,7 @@ export default function RevenuePage() {
   });
 
   useEffect(() => {
+    setCurrencySymbol(getCurrencySymbol());
     async function fetchRevenueData() {
       try {
         const response = await fetch("/api/bookings");
@@ -183,10 +186,10 @@ export default function RevenuePage() {
   }
 
   const cards = [
-    { label: "Daily Collection", sub: "Today", value: revenueData.daily, prev: revenueData.dailyPrev, compareLabel: "vs yesterday", color: "border-l-orange-500", iconBg: "bg-orange-50", iconColor: "text-orange-600", Icon: Calendar, format: (v: number) => `₹${v.toLocaleString("en-IN")}` },
-    { label: "Weekly Collection", sub: "This Week", value: revenueData.weekly, prev: revenueData.weeklyPrev, compareLabel: "vs last week", color: "border-l-blue-500", iconBg: "bg-blue-50", iconColor: "text-blue-600", Icon: TrendingUp, format: (v: number) => `₹${v.toLocaleString("en-IN")}` },
-    { label: "Monthly Collection", sub: "This Month", value: revenueData.monthly, prev: revenueData.monthlyPrev, compareLabel: "vs last month", color: "border-l-emerald-500", iconBg: "bg-emerald-50", iconColor: "text-emerald-600", Icon: DollarSign, format: (v: number) => `₹${v.toLocaleString("en-IN")}` },
-    { label: "Yearly Collection", sub: "This Year", value: revenueData.yearly, prev: revenueData.yearlyPrev, compareLabel: "vs last year", color: "border-l-purple-500", iconBg: "bg-purple-50", iconColor: "text-purple-600", Icon: Building2, format: (v: number) => `₹${(v / 100000).toFixed(1)}L` },
+    { label: "Daily Collection", sub: "Today", value: revenueData.daily, prev: revenueData.dailyPrev, compareLabel: "vs yesterday", color: "border-l-orange-500", iconBg: "bg-orange-50", iconColor: "text-orange-600", Icon: Calendar, format: (v: number) => `${currencySymbol}${v.toLocaleString("en-IN")}` },
+    { label: "Weekly Collection", sub: "This Week", value: revenueData.weekly, prev: revenueData.weeklyPrev, compareLabel: "vs last week", color: "border-l-blue-500", iconBg: "bg-blue-50", iconColor: "text-blue-600", Icon: TrendingUp, format: (v: number) => `${currencySymbol}${v.toLocaleString("en-IN")}` },
+    { label: "Monthly Collection", sub: "This Month", value: revenueData.monthly, prev: revenueData.monthlyPrev, compareLabel: "vs last month", color: "border-l-emerald-500", iconBg: "bg-emerald-50", iconColor: "text-emerald-600", Icon: DollarSign, format: (v: number) => `${currencySymbol}${v.toLocaleString("en-IN")}` },
+    { label: "Yearly Collection", sub: "This Year", value: revenueData.yearly, prev: revenueData.yearlyPrev, compareLabel: "vs last year", color: "border-l-purple-500", iconBg: "bg-purple-50", iconColor: "text-purple-600", Icon: Building2, format: (v: number) => `${currencySymbol}${(v / 100000).toFixed(1)}L` },
   ];
 
   return (
@@ -237,7 +240,7 @@ export default function RevenuePage() {
             <YAxis stroke="#64748B" tick={{ fontSize: 12 }} />
             <Tooltip
               contentStyle={{ backgroundColor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}
-              formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Revenue"]}
+              formatter={(value: number) => [`${currencySymbol}${value.toLocaleString("en-IN")}`, "Revenue"]}
             />
             <Legend />
             <Line type="monotone" dataKey="revenue" stroke="#F97316" strokeWidth={3} dot={{ fill: "#F97316", strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} />
@@ -262,7 +265,7 @@ export default function RevenuePage() {
                   </Pie>
                   <Tooltip
                     contentStyle={{ backgroundColor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px" }}
-                    formatter={(value: number, name: string, props: any) => [`₹${props.payload.revenue.toLocaleString("en-IN")} (${value}%)`, props.payload.name]}
+                    formatter={(value: number, name: string, props: any) => [`${currencySymbol}${props.payload.revenue.toLocaleString("en-IN")} (${value}%)`, props.payload.name]}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -273,7 +276,7 @@ export default function RevenuePage() {
                       <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                       <span className="text-slate-700 font-medium">{src.name}</span>
                     </div>
-                    <span className="text-slate-500">₹{src.revenue.toLocaleString("en-IN")} ({src.value}%)</span>
+                    <span className="text-slate-500">{currencySymbol}{src.revenue.toLocaleString("en-IN")} ({src.value}%)</span>
                   </div>
                 ))}
               </div>
@@ -306,7 +309,7 @@ export default function RevenuePage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-slate-900 text-sm">₹{c.amount.toLocaleString("en-IN")}</p>
+                    <p className="font-bold text-slate-900 text-sm">{currencySymbol}{c.amount.toLocaleString("en-IN")}</p>
                     <p className={`text-xs font-medium capitalize ${STATUS_STYLES[c.status] ?? "text-slate-500"}`}>
                       {STATUS_LABELS[c.status] ?? c.status.replace("_", " ")}
                     </p>
