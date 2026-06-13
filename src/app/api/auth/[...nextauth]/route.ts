@@ -20,22 +20,36 @@ const handler = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
-          const rows = await sql`
-            SELECT id, name, email FROM owners WHERE email = ${user.email!.toLowerCase()}
+          const email = user.email!.toLowerCase();
+
+          // STEP 1: Partner check PEHLE — agar partner hai toh block karo
+          const partnerRows = await sql`
+            SELECT id FROM referral_agents WHERE email = ${email}
           `;
-          let owner;
-          if (rows.length === 0) {
-            const hash = await bcrypt.hash("google-" + user.email, 10);
-            const newOwner = await sql`
-              INSERT INTO owners (name, email, password_hash, email_verified)
-              VALUES (${user.name || "Owner"}, ${user.email!.toLowerCase()}, ${hash}, true)
-              RETURNING id, name, email
-            `;
-            owner = newOwner[0];
-          } else {
-            owner = rows[0];
-            await sql`UPDATE owners SET email_verified = true WHERE id = ${owner.id}`;
+          if (partnerRows.length > 0) {
+            return "/login?error=partner_account";
           }
+
+          // STEP 2: Existing owner — login karo
+          const ownerRows = await sql`
+            SELECT id, name, email FROM owners WHERE email = ${email}
+          `;
+          if (ownerRows.length > 0) {
+            const owner = ownerRows[0];
+            await sql`UPDATE owners SET email_verified = true WHERE id = ${owner.id}`;
+            const token = signToken({ ownerId: owner.id, email: owner.email, name: owner.name });
+            await setAuthCookie(token);
+            return true;
+          }
+
+          // STEP 3: Naya user — owner banao
+          const hash = await bcrypt.hash("google-" + email, 10);
+          const newOwner = await sql`
+            INSERT INTO owners (name, email, password_hash, email_verified)
+            VALUES (${user.name || "Owner"}, ${email}, ${hash}, true)
+            RETURNING id, name, email
+          `;
+          const owner = newOwner[0];
           const token = signToken({ ownerId: owner.id, email: owner.email, name: owner.name });
           await setAuthCookie(token);
           return true;
@@ -50,6 +64,7 @@ const handler = NextAuth({
       return session;
     },
     async redirect({ url, baseUrl }) {
+      if (url.startsWith("/login?error=")) return baseUrl + url;
       return baseUrl + "/dashboard";
     },
   },
