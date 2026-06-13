@@ -11,14 +11,12 @@ import {
 } from "lucide-react";
 
 const ROOM_TYPES: { value: RoomType; label: string }[] = [
-  { value: "dorm", label: "Mixed Dorm" },
   { value: "private", label: "Private Room" },
   { value: "deluxe", label: "Deluxe Room" },
-  { value: "family", label: "Family Room" },
-  { value: "female_dorm", label: "Female Dorm" },
-  { value: "male_dorm", label: "Male Dorm" },
-  { value: "ac_room", label: "AC Room" },
-  { value: "non_ac_room", label: "Non-AC Room" },
+  { value: "female_dorm", label: "Suite" },
+  { value: "dorm", label: "Dormitory" },
+  { value: "family", label: "Studio Apartment" },
+  { value: "male_dorm", label: "Entire Property" },
 ];
 
 const ROOM_CONFIG: Record<string, { bg: string; bar: string; badge: string; illustration: React.ReactNode }> = {
