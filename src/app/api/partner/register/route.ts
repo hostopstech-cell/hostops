@@ -14,7 +14,7 @@ function generateReferralCode(name: string): string {
 
 export async function POST(request: Request) {
   try {
-    const { name, email, phone, password, upi_id, bank_account, bank_ifsc, bank_name, bank_holder_name } = await request.json();
+    const { name, email, phone, password } = await request.json();
 
     if (!name?.trim() || !email?.trim() || !phone?.trim() || !password) {
       return NextResponse.json({ error: "Name, email, phone and password are required" }, { status: 400 });
@@ -23,31 +23,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
     }
 
-    const existing = await sql`SELECT id FROM referral_agents WHERE email = ${email.toLowerCase().trim()}`;
+    const emailClean = email.toLowerCase().trim();
+
+    // Block if already an owner
+    const ownerCheck = await sql`SELECT id FROM owners WHERE email = ${emailClean}`;
+    if (ownerCheck.length > 0) {
+      return NextResponse.json({ error: "This email is already registered as a property owner. Please use a different email." }, { status: 409 });
+    }
+
+    // Block if partner already exists
+    const existing = await sql`SELECT id FROM referral_agents WHERE email = ${emailClean}`;
     if (existing.length > 0) {
-      return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
+      return NextResponse.json({ error: "A partner account with this email already exists. Please login instead." }, { status: 409 });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Unique referral code generate karo
     let referralCode = generateReferralCode(name);
-    let attempts = 0;
-    while (attempts < 10) {
-      const codeCheck = await sql`SELECT id FROM referral_agents WHERE referral_code = ${referralCode}`;
-      if (codeCheck.length === 0) break;
+    for (let i = 0; i < 10; i++) {
+      const check = await sql`SELECT id FROM referral_agents WHERE referral_code = ${referralCode}`;
+      if (check.length === 0) break;
       referralCode = generateReferralCode(name);
-      attempts++;
     }
 
     const rows = await sql`
-      INSERT INTO referral_agents (name, email, phone, password_hash, referral_code, upi_id, bank_account, bank_ifsc, bank_name, bank_holder_name)
-      VALUES (${name.trim()}, ${email.toLowerCase().trim()}, ${phone.trim()}, ${passwordHash}, ${referralCode}, ${upi_id || null}, ${bank_account || null}, ${bank_ifsc || null}, ${bank_name || null}, ${bank_holder_name || null})
+      INSERT INTO referral_agents (name, email, phone, password_hash, referral_code, is_active)
+      VALUES (${name.trim()}, ${emailClean}, ${phone.trim()}, ${passwordHash}, ${referralCode}, true)
       RETURNING id, name, email, phone, referral_code, created_at
     `;
 
     const agent = rows[0];
-    const token = jwt.sign({ agentId: agent.id, email: agent.email, name: agent.name }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign(
+      { agentId: agent.id, email: agent.email, name: agent.name },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     cookies().set("hostops_agent_token", token, {
       httpOnly: true,
@@ -57,7 +67,14 @@ export async function POST(request: Request) {
       path: "/",
     });
 
-    return NextResponse.json({ agent: { id: agent.id, name: agent.name, email: agent.email, referralCode: agent.referral_code } });
+    return NextResponse.json({
+      agent: {
+        id: agent.id,
+        name: agent.name,
+        email: agent.email,
+        referralCode: agent.referral_code,
+      }
+    });
   } catch (error) {
     console.error("Partner register error:", error);
     return NextResponse.json({ error: "Failed to register" }, { status: 500 });
