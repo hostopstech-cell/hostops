@@ -356,7 +356,7 @@ export default function PropertiesPage() {
                     </div>
                     {/* UPI missing warning under bot */}
                     {!hasPayment && !botEnabled && (
-                      <p className="text-[10px] text-amber-600 mt-2 font-medium">⚠️ Bot ke liye pehle UPI add karein</p>
+                      <p className="text-[10px] text-amber-600 mt-2 font-medium">⚠️ Add UPI details first to activate the bot</p>
                     )}
                     {botEnabled && (
                       <div className="mt-2">
@@ -544,8 +544,8 @@ export default function PropertiesPage() {
             {/* Bot se aaya hai toh warning */}
             {paymentFromBot && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
-                <p className="text-xs text-amber-700 font-semibold">⚠️ Bot activate karne ke liye UPI details required hain</p>
-                <p className="text-xs text-amber-600 mt-0.5">Save karne ke baad bot automatically activate ho jayega</p>
+                <p className="text-xs text-amber-700 font-semibold">⚠️ UPI details are required to activate the booking bot</p>
+                <p className="text-xs text-amber-600 mt-0.5">Please enter the correct details so payments reach your account. The bot will activate automatically after saving.</p>
               </div>
             )}
             <div className="space-y-4">
