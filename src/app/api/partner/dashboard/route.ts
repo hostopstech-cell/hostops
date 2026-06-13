@@ -27,47 +27,69 @@ export async function GET() {
 
     const agentId = payload.agentId;
 
-    // Leads with owner info
+    // Leads with payout details
     const leads = await sql`
       SELECT 
         rl.id, rl.prospect_email, rl.prospect_name, rl.status, rl.payment_status,
         rl.plan_name, rl.plan_amount, rl.billing_type,
         rl.commission_percent, rl.commission_amount,
         rl.created_at, rl.onboarded_at, rl.paid_at,
+        rl.payment_note,
+        rp.transaction_ref,
+        rp.note as payout_note,
         o.name as owner_name, o.owner_number, o.subscription_plan
       FROM referral_leads rl
       LEFT JOIN owners o ON o.id = rl.owner_id
+      LEFT JOIN referral_payouts rp ON rp.lead_id = rl.id
       WHERE rl.agent_id = ${agentId}
       ORDER BY rl.created_at DESC
     `;
 
-    // Summary stats
-    const stats = await sql`
+    // All commission events (first + renewal) with lead info
+    const commissionEvents = await sql`
       SELECT 
-        COUNT(*) as total_leads,
-        COUNT(CASE WHEN status = 'onboarded' THEN 1 END) as converted,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-        COALESCE(SUM(commission_amount), 0) as total_commission,
-        COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN commission_amount ELSE 0 END), 0) as total_paid
-      FROM referral_leads WHERE agent_id = ${agentId}
+        ce.id, ce.lead_id, ce.event_type, ce.plan_name, ce.plan_amount,
+        ce.billing_type, ce.commission_percent, ce.commission_amount,
+        ce.payment_status, ce.transaction_ref, ce.note, ce.paid_at, ce.created_at,
+        ce.razorpay_payment_id,
+        rl.prospect_email, rl.prospect_name, rl.onboarded_at,
+        o.name as owner_name
+      FROM referral_commission_events ce
+      JOIN referral_leads rl ON rl.id = ce.lead_id
+      LEFT JOIN owners o ON o.id = rl.owner_id
+      WHERE ce.agent_id = ${agentId}
+      ORDER BY ce.created_at DESC
     `;
 
-    const s = stats[0];
+    // Stats calculated from commission_events (single source of truth)
+    const totalCommission = commissionEvents.reduce((sum: number, e: any) => sum + parseFloat(String(e.commission_amount || 0)), 0);
+    const totalPaid = commissionEvents.filter((e: any) => e.payment_status === "paid").reduce((sum: number, e: any) => sum + parseFloat(String(e.commission_amount || 0)), 0);
+    const pendingPayout = totalCommission - totalPaid;
+
+    const totalLeads = leads.length;
+    const converted = leads.filter((l: any) => l.status === "onboarded").length;
+    const pending = leads.filter((l: any) => l.status === "pending").length;
 
     return NextResponse.json({
-      leads: leads.map(l => ({
+      leads: leads.map((l: any) => ({
         ...l,
         prospect_email: maskEmail(l.prospect_email),
-        commission_amount: parseFloat(l.commission_amount || 0),
-        plan_amount: parseFloat(l.plan_amount || 0),
+        commission_amount: parseFloat(String(l.commission_amount || 0)),
+        plan_amount: parseFloat(String(l.plan_amount || 0)),
+      })),
+      commissionEvents: commissionEvents.map((e: any) => ({
+        ...e,
+        prospect_email: maskEmail(e.prospect_email),
+        commission_amount: parseFloat(String(e.commission_amount || 0)),
+        plan_amount: parseFloat(String(e.plan_amount || 0)),
       })),
       stats: {
-        totalLeads: parseInt(s.total_leads),
-        converted: parseInt(s.converted),
-        pending: parseInt(s.pending),
-        totalCommission: parseFloat(s.total_commission),
-        totalPaid: parseFloat(s.total_paid),
-        pendingPayout: parseFloat(s.total_commission) - parseFloat(s.total_paid),
+        totalLeads,
+        converted,
+        pending,
+        totalCommission,
+        totalPaid,
+        pendingPayout,
       }
     });
   } catch (error) {

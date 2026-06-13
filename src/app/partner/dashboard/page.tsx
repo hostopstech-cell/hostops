@@ -13,7 +13,14 @@ interface Lead {
   status: string; payment_status: string; plan_name?: string;
   plan_amount: number; commission_amount: number; commission_percent: number;
   created_at: string; onboarded_at?: string; paid_at?: string;
-  owner_name?: string; owner_number?: number;
+  owner_name?: string; payment_note?: string; transaction_ref?: string; payout_note?: string;
+}
+interface CommissionEvent {
+  id: number; lead_id: number; event_type: string; plan_name?: string;
+  plan_amount: number; billing_type?: string; commission_percent: number;
+  commission_amount: number; payment_status: string; transaction_ref?: string;
+  note?: string; paid_at?: string; created_at: string; razorpay_payment_id?: string;
+  prospect_email: string; prospect_name?: string; owner_name?: string;
 }
 interface Stats {
   totalLeads: number; converted: number; pending: number;
@@ -24,9 +31,10 @@ export default function PartnerDashboard() {
   const router = useRouter();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [commissionEvents, setCommissionEvents] = useState<CommissionEvent[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "leads" | "payment">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "leads" | "earnings" | "payment">("overview");
   const [showAddLead, setShowAddLead] = useState(false);
   const [leadEmail, setLeadEmail] = useState("");
   const [leadName, setLeadName] = useState("");
@@ -38,6 +46,14 @@ export default function PartnerDashboard() {
   const [payLoading, setPayLoading] = useState(false);
   const [payMsg, setPayMsg] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  async function loadDashboard() {
+    const dashRes = await fetch("/api/partner/dashboard");
+    const dashData = await dashRes.json();
+    if (dashData.leads) setLeads(dashData.leads);
+    if (dashData.stats) setStats(dashData.stats);
+    if (dashData.commissionEvents) setCommissionEvents(dashData.commissionEvents);
+  }
 
   useEffect(() => {
     async function load() {
@@ -52,10 +68,7 @@ export default function PartnerDashboard() {
         bank_ifsc: meData.agent.bankIfsc || "",
         bank_name: meData.agent.bankName || "",
       });
-      const dashRes = await fetch("/api/partner/dashboard");
-      const dashData = await dashRes.json();
-      if (dashData.leads) setLeads(dashData.leads);
-      if (dashData.stats) setStats(dashData.stats);
+      await loadDashboard();
       setLoading(false);
     }
     load();
@@ -73,10 +86,7 @@ export default function PartnerDashboard() {
       if (!res.ok) { setAddLeadMsg({ type: "error", text: data.error }); return; }
       setAddLeadMsg({ type: "success", text: "Lead added! They will show here once they register & pay." });
       setLeadEmail(""); setLeadName("");
-      const dashRes = await fetch("/api/partner/dashboard");
-      const dashData = await dashRes.json();
-      if (dashData.leads) setLeads(dashData.leads);
-      if (dashData.stats) setStats(dashData.stats);
+      await loadDashboard();
     } catch { setAddLeadMsg({ type: "error", text: "Something went wrong" }); }
     finally { setAddLeadLoading(false); }
   }
@@ -110,7 +120,6 @@ export default function PartnerDashboard() {
   const statusBadge = (s: string) => {
     if (s === "onboarded") return "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20";
     if (s === "pending") return "text-amber-400 bg-amber-400/10 border border-amber-400/20";
-    if (s === "lost") return "text-red-400 bg-red-400/10 border border-red-400/20";
     return "text-slate-400 bg-slate-400/10 border border-slate-400/20";
   };
 
@@ -118,6 +127,13 @@ export default function PartnerDashboard() {
     s === "paid"
       ? "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20"
       : "text-orange-400 bg-orange-400/10 border border-orange-400/20";
+
+  const tabs = [
+    { key: "overview", label: "Overview" },
+    { key: "leads", label: "My Leads" },
+    { key: "earnings", label: "Earnings" },
+    { key: "payment", label: "Payouts" },
+  ] as const;
 
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -127,6 +143,7 @@ export default function PartnerDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex">
+      {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-56 bg-slate-900 border-r border-slate-800 fixed inset-y-0 left-0 z-20">
         <div className="px-5 py-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
@@ -138,10 +155,10 @@ export default function PartnerDashboard() {
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {(["overview","leads","payment"] as const).map(item => (
-            <button key={item} onClick={() => setActiveTab(item)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${activeTab === item ? "bg-orange-500/15 text-orange-400 border border-orange-500/20" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}>
-              {item === "overview" ? "Overview" : item === "leads" ? "My Leads" : "Payouts"}
+          {tabs.map(item => (
+            <button key={item.key} onClick={() => setActiveTab(item.key)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${activeTab === item.key ? "bg-orange-500/15 text-orange-400 border border-orange-500/20" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}>
+              {item.label}
             </button>
           ))}
         </nav>
@@ -167,6 +184,7 @@ export default function PartnerDashboard() {
         </div>
       </aside>
 
+      {/* Mobile Sidebar */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-40 flex">
           <div className="fixed inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
@@ -181,10 +199,10 @@ export default function PartnerDashboard() {
               </div>
             </div>
             <nav className="flex-1 px-3 py-4 space-y-1">
-              {(["overview","leads","payment"] as const).map(item => (
-                <button key={item} onClick={() => { setActiveTab(item); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${activeTab === item ? "bg-orange-500/15 text-orange-400 border border-orange-500/20" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}>
-                  {item === "overview" ? "Overview" : item === "leads" ? "My Leads" : "Payouts"}
+              {tabs.map(item => (
+                <button key={item.key} onClick={() => { setActiveTab(item.key); setSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${activeTab === item.key ? "bg-orange-500/15 text-orange-400 border border-orange-500/20" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}>
+                  {item.label}
                 </button>
               ))}
             </nav>
@@ -205,81 +223,84 @@ export default function PartnerDashboard() {
       )}
 
       <main className="flex-1 md:ml-56 min-h-screen">
+        {/* Mobile top bar */}
         <div className="md:hidden flex items-center justify-between px-4 py-4 border-b border-slate-800 bg-slate-950 sticky top-0 z-10">
           <button onClick={() => setSidebarOpen(true)} className="text-slate-400 text-xl">☰</button>
           <span className="font-bold text-sm">HostOps Partner</span>
           <button onClick={handleLogout} className="text-slate-400 text-xs">Out</button>
         </div>
 
-        <div className="px-6 py-8 max-w-4xl">
-          <div className="mb-7">
+        <div className="px-4 md:px-6 py-6 md:py-8 max-w-4xl">
+          <div className="mb-6">
             <h1 className="text-xl font-bold text-white">
               {activeTab === "overview" && "Partner Dashboard"}
               {activeTab === "leads" && "My Leads"}
+              {activeTab === "earnings" && "Earnings & Commission History"}
               {activeTab === "payment" && "Payouts & Payment Details"}
             </h1>
             <p className="text-sm text-slate-400 mt-0.5">
               {activeTab === "overview" && "Your referral performance at a glance"}
               {activeTab === "leads" && "Track all referred prospects"}
+              {activeTab === "earnings" && "All commission events — first payments & renewals"}
               {activeTab === "payment" && "Manage where your commissions are sent"}
             </p>
           </div>
 
-          <div className="relative overflow-hidden bg-slate-900 border border-orange-500/20 rounded-2xl p-6 mb-7">
+          {/* Referral code card */}
+          <div className="relative overflow-hidden bg-slate-900 border border-orange-500/20 rounded-2xl p-5 mb-6">
             <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full border-2 border-orange-500/10" />
             <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full border border-orange-500/10" />
             <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <p className="text-xs text-orange-400 font-semibold uppercase tracking-widest mb-2">Your Referral Code</p>
-                <p className="text-4xl font-black tracking-widest text-white mb-2">{agent?.referralCode}</p>
-                <p className="text-sm text-slate-400">Share this when prospects ask who referred them</p>
+                <p className="text-xs text-orange-400 font-semibold uppercase tracking-widest mb-1">Your Referral Code</p>
+                <p className="text-3xl font-black tracking-widest text-white mb-1">{agent?.referralCode}</p>
+                <p className="text-xs text-slate-400">Share this when prospects ask who referred them</p>
               </div>
               <button onClick={copyCode}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all flex-shrink-0 ${copied ? "bg-emerald-500 text-white" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all flex-shrink-0 ${copied ? "bg-emerald-500 text-white" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
                 {copied ? "✓ Copied!" : "Copy Code"}
               </button>
             </div>
           </div>
 
+          {/* ── OVERVIEW TAB ── */}
           {activeTab === "overview" && (
             <div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 {[
-                  { label: "Total Leads", value: stats?.totalLeads ?? 0, color: "text-sky-400", bg: "bg-sky-400/10" },
-                  { label: "Converted", value: stats?.converted ?? 0, color: "text-emerald-400", bg: "bg-emerald-400/10" },
-                  { label: "Total Commission", value: `₹${(stats?.totalCommission ?? 0).toLocaleString("en-IN")}`, color: "text-orange-400", bg: "bg-orange-400/10" },
-                  { label: "Pending Payout", value: `₹${(stats?.pendingPayout ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400", bg: "bg-amber-400/10" },
+                  { label: "Total Leads", value: stats?.totalLeads ?? 0, color: "text-sky-400" },
+                  { label: "Converted", value: stats?.converted ?? 0, color: "text-emerald-400" },
+                  { label: "Total Commission", value: `₹${(stats?.totalCommission ?? 0).toLocaleString("en-IN")}`, color: "text-orange-400" },
+                  { label: "Pending Payout", value: `₹${(stats?.pendingPayout ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400" },
                 ].map((s, i) => (
-                  <div key={i} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-colors">
-                    <div className={`w-9 h-9 ${s.bg} rounded-xl flex items-center justify-center mb-4`} />
+                  <div key={i} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition-colors">
                     <div className={`text-2xl font-bold ${s.color} mb-1`}>{s.value}</div>
                     <div className="text-slate-400 text-xs font-medium">{s.label}</div>
                   </div>
                 ))}
               </div>
+
               {leads.length === 0 ? (
                 <div className="bg-slate-900 border border-dashed border-slate-700 rounded-2xl p-12 flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
-                    <span className="text-3xl">🎯</span>
-                  </div>
+                  <div className="text-3xl mb-4">🎯</div>
                   <div className="text-base font-semibold text-white mb-2">No leads yet</div>
-                  <div className="text-sm text-slate-400 mb-5 max-w-xs">Start referring property owners using your referral code and earn commissions on every conversion.</div>
+                  <div className="text-sm text-slate-400 mb-5 max-w-xs">Start referring property owners and earn commissions on every conversion.</div>
                   <button onClick={() => { setShowAddLead(true); setAddLeadMsg(null); }}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold transition-all">
+                    className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold transition-all">
                     + Add Your First Lead
                   </button>
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-3">
                     <h2 className="text-sm font-semibold text-slate-300">Recent Leads</h2>
                     {leads.length > 5 && (
-                      <button onClick={() => setActiveTab("leads")} className="text-orange-400 hover:text-orange-300 text-xs transition-colors">View all {leads.length} →</button>
+                      <button onClick={() => setActiveTab("leads")} className="text-orange-400 hover:text-orange-300 text-xs">View all {leads.length} →</button>
                     )}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 mb-6">
                     {leads.slice(0, 5).map(lead => (
-                      <div key={lead.id} className="bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 flex items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+                      <div key={lead.id} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3.5 flex items-center justify-between gap-4 hover:border-slate-700 transition-colors">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0">
                             {(lead.prospect_name || lead.prospect_email)[0].toUpperCase()}
@@ -298,11 +319,45 @@ export default function PartnerDashboard() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Recent commission events preview */}
+                  {commissionEvents.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-sm font-semibold text-slate-300">Recent Commissions</h2>
+                        <button onClick={() => setActiveTab("earnings")} className="text-orange-400 hover:text-orange-300 text-xs">View all →</button>
+                      </div>
+                      <div className="space-y-2">
+                        {commissionEvents.slice(0, 3).map(ev => (
+                          <div key={ev.id} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3.5 flex items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-xs font-semibold text-white capitalize">{ev.prospect_name || ev.prospect_email}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${ev.event_type === "first" ? "bg-orange-500/20 text-orange-400" : "bg-purple-500/20 text-purple-400"}`}>
+                                  {ev.event_type === "first" ? "First Payment" : "Renewal"}
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {ev.plan_name ? `${ev.plan_name} • ₹${ev.plan_amount.toLocaleString("en-IN")}` : ""} • {ev.commission_percent}% commission • {new Date(ev.created_at).toLocaleDateString("en-IN")}
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <div className="text-base font-bold text-orange-400">₹{ev.commission_amount.toLocaleString("en-IN")}</div>
+                              <div className={`text-xs font-medium ${ev.payment_status === "paid" ? "text-emerald-400" : "text-amber-400"}`}>
+                                {ev.payment_status === "paid" ? "✓ Paid" : "Pending"}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
+          {/* ── LEADS TAB ── */}
           {activeTab === "leads" && (
             <div>
               {leads.length === 0 ? (
@@ -328,21 +383,48 @@ export default function PartnerDashboard() {
                         </div>
                         <div className="flex flex-wrap gap-2 items-center">
                           <span className={`text-xs px-2.5 py-1 rounded-lg font-medium capitalize ${statusBadge(lead.status)}`}>{lead.status}</span>
-                          <span className={`text-xs px-2.5 py-1 rounded-lg font-medium ${payBadge(lead.payment_status)}`}>
-                            {lead.payment_status === "paid" ? "✓ Commission Paid" : "Payout Pending"}
-                          </span>
                         </div>
                       </div>
                       {lead.status === "onboarded" && (
                         <div className="mt-4 pt-4 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3">
                           <div><div className="text-xs text-slate-500 mb-0.5">Plan</div><div className="text-sm font-semibold text-white capitalize">{lead.plan_name || "—"}</div></div>
                           <div><div className="text-xs text-slate-500 mb-0.5">Plan Amount</div><div className="text-sm font-semibold text-white">₹{lead.plan_amount?.toLocaleString("en-IN") || "—"}</div></div>
-                          <div><div className="text-xs text-slate-500 mb-0.5">Commission</div><div className="text-sm font-bold text-orange-400">₹{lead.commission_amount?.toLocaleString("en-IN") || "—"}</div></div>
+                          <div><div className="text-xs text-slate-500 mb-0.5">First Commission</div><div className="text-sm font-bold text-orange-400">₹{lead.commission_amount?.toLocaleString("en-IN") || "—"}</div></div>
                           <div><div className="text-xs text-slate-500 mb-0.5">Onboarded</div><div className="text-sm font-semibold text-white">{lead.onboarded_at ? new Date(lead.onboarded_at).toLocaleDateString("en-IN") : "—"}</div></div>
                         </div>
                       )}
-                      {lead.payment_status === "paid" && lead.paid_at && (
-                        <div className="mt-3 text-xs text-emerald-400">✓ Commission paid on {new Date(lead.paid_at).toLocaleDateString("en-IN")}</div>
+                      {/* Show all commission events for this lead */}
+                      {commissionEvents.filter(ev => ev.lead_id === lead.id).length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-800">
+                          <div className="text-xs text-slate-500 mb-2 font-semibold">Commission History</div>
+                          <div className="space-y-2">
+                            {commissionEvents.filter(ev => ev.lead_id === lead.id).map(ev => (
+                              <div key={ev.id} className="flex items-center justify-between bg-slate-800/50 rounded-xl px-3 py-2.5">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-xs px-2 py-0.5 rounded-md font-semibold ${ev.event_type === "first" ? "bg-orange-500/20 text-orange-400" : "bg-purple-500/20 text-purple-400"}`}>
+                                      {ev.event_type === "first" ? "First Payment (40%)" : "Renewal (20%)"}
+                                    </span>
+                                    <span className={`text-xs font-medium ${ev.payment_status === "paid" ? "text-emerald-400" : "text-amber-400"}`}>
+                                      {ev.payment_status === "paid" ? "✓ Paid" : "Pending"}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    Plan: <span className="text-slate-300 capitalize">{ev.plan_name}</span> • ₹{ev.plan_amount.toLocaleString("en-IN")} • {new Date(ev.created_at).toLocaleDateString("en-IN")}
+                                  </div>
+                                  {ev.payment_status === "paid" && ev.paid_at && (
+                                    <div className="text-xs text-emerald-400 mt-1">
+                                      ✓ Paid on {new Date(ev.paid_at).toLocaleDateString("en-IN")}
+                                      {ev.transaction_ref ? ` • UTR: ${ev.transaction_ref}` : ""}
+                                      {ev.note ? ` • ${ev.note}` : ""}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="text-base font-bold text-orange-400 flex-shrink-0 ml-3">₹{ev.commission_amount.toLocaleString("en-IN")}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -351,15 +433,87 @@ export default function PartnerDashboard() {
             </div>
           )}
 
+          {/* ── EARNINGS TAB ── */}
+          {activeTab === "earnings" && (
+            <div>
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[
+                  { label: "Total Earned", value: `₹${(stats?.totalCommission ?? 0).toLocaleString("en-IN")}`, color: "text-orange-400", bg: "bg-orange-400/10" },
+                  { label: "Received", value: `₹${(stats?.totalPaid ?? 0).toLocaleString("en-IN")}`, color: "text-emerald-400", bg: "bg-emerald-400/10" },
+                  { label: "Pending", value: `₹${(stats?.pendingPayout ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400", bg: "bg-amber-400/10" },
+                ].map((item, i) => (
+                  <div key={i} className={`${item.bg} border border-slate-800 rounded-2xl p-4 text-center`}>
+                    <div className={`text-xl font-bold ${item.color}`}>{item.value}</div>
+                    <div className="text-xs text-slate-400 mt-1">{item.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {commissionEvents.length === 0 ? (
+                <div className="bg-slate-900 border border-dashed border-slate-700 rounded-2xl p-12 text-center">
+                  <div className="text-3xl mb-3">💰</div>
+                  <div className="text-base font-semibold text-white mb-1">No commissions yet</div>
+                  <div className="text-sm text-slate-400">Commissions appear here when your leads make payments.</div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {commissionEvents.map(ev => (
+                    <div key={ev.id} className={`bg-slate-900 border rounded-2xl p-5 ${ev.payment_status === "paid" ? "border-slate-800" : ev.event_type === "renewal" ? "border-purple-500/20" : "border-orange-500/20"}`}>
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                            <span className="font-semibold text-white text-sm">{ev.owner_name || ev.prospect_name || ev.prospect_email}</span>
+                            <span className={`text-xs px-2.5 py-0.5 rounded-lg font-semibold ${ev.event_type === "first" ? "bg-orange-500/20 text-orange-400 border border-orange-500/20" : "bg-purple-500/20 text-purple-400 border border-purple-500/20"}`}>
+                              {ev.event_type === "first" ? "First Payment — 40%" : "Renewal — 20%"}
+                            </span>
+                            <span className={`text-xs px-2.5 py-0.5 rounded-lg font-medium border ${ev.payment_status === "paid" ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" : "text-amber-400 bg-amber-400/10 border-amber-400/20"}`}>
+                              {ev.payment_status === "paid" ? "✓ Commission Paid" : "Payout Pending"}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-400 mb-1">
+                            Plan: <span className="text-white capitalize">{ev.plan_name || "—"}</span>
+                            {" • "}Owner paid: <span className="text-white">₹{ev.plan_amount.toLocaleString("en-IN")}</span>
+                            {" • "}Commission: <span className="text-orange-400 font-semibold">{ev.commission_percent}% = ₹{ev.commission_amount.toLocaleString("en-IN")}</span>
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            Payment received: {new Date(ev.created_at).toLocaleDateString("en-IN")}
+                          </div>
+                          {ev.payment_status === "paid" && ev.paid_at && (
+                            <div className="mt-2 text-xs text-emerald-400">
+                              ✓ Commission transferred on {new Date(ev.paid_at).toLocaleDateString("en-IN")}
+                              {ev.transaction_ref ? ` • UTR: ${ev.transaction_ref}` : ""}
+                              {ev.note ? ` • Note: ${ev.note}` : ""}
+                            </div>
+                          )}
+                          {ev.payment_status !== "paid" && (
+                            <div className="mt-2 text-xs text-amber-400/80">
+                              ⏳ Commission will be transferred within 24 hours of approval
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-2xl font-black text-orange-400">₹{ev.commission_amount.toLocaleString("en-IN")}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">your share</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── PAYMENT TAB ── */}
           {activeTab === "payment" && (
             <div className="max-w-xl space-y-5">
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                <h2 className="font-semibold text-white mb-5">Earnings Summary</h2>
+                <h2 className="font-semibold text-white mb-4">Earnings Summary</h2>
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: "Total Earned", value: `₹${(agent?.totalEarnings || 0).toLocaleString("en-IN")}`, color: "text-orange-400", bg: "bg-orange-400/10" },
-                    { label: "Received", value: `₹${(agent?.totalPaid || 0).toLocaleString("en-IN")}`, color: "text-emerald-400", bg: "bg-emerald-400/10" },
-                    { label: "Pending", value: `₹${(agent?.pendingAmount || 0).toLocaleString("en-IN")}`, color: "text-amber-400", bg: "bg-amber-400/10" },
+                    { label: "Total Earned", value: `₹${(stats?.totalCommission ?? 0).toLocaleString("en-IN")}`, color: "text-orange-400", bg: "bg-orange-400/10" },
+                    { label: "Received", value: `₹${(stats?.totalPaid ?? 0).toLocaleString("en-IN")}`, color: "text-emerald-400", bg: "bg-emerald-400/10" },
+                    { label: "Pending", value: `₹${(stats?.pendingPayout ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400", bg: "bg-amber-400/10" },
                   ].map((item, i) => (
                     <div key={i} className={`${item.bg} rounded-xl p-4 text-center`}>
                       <div className={`text-xl font-bold ${item.color}`}>{item.value}</div>
@@ -367,12 +521,13 @@ export default function PartnerDashboard() {
                     </div>
                   ))}
                 </div>
-                {(agent?.pendingAmount || 0) > 0 && (
+                {(stats?.pendingPayout ?? 0) > 0 && (
                   <div className="mt-4 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-400 text-center">
                     ⚡ Payments processed within 24 hours of commission approval
                   </div>
                 )}
               </div>
+
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-5">
                   <div>
@@ -432,6 +587,7 @@ export default function PartnerDashboard() {
         </div>
       </main>
 
+      {/* Add Lead Modal */}
       {showAddLead && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-7 w-full max-w-md shadow-2xl">
@@ -440,7 +596,7 @@ export default function PartnerDashboard() {
                 <h3 className="text-lg font-bold text-white">Add New Lead</h3>
                 <p className="text-slate-400 text-sm mt-0.5">Register a prospect under your account</p>
               </div>
-              <button onClick={() => { setShowAddLead(false); setAddLeadMsg(null); setLeadEmail(""); setLeadName(""); }} className="text-slate-500 hover:text-slate-300 transition-colors text-xl">✕</button>
+              <button onClick={() => { setShowAddLead(false); setAddLeadMsg(null); setLeadEmail(""); setLeadName(""); }} className="text-slate-500 hover:text-slate-300 text-xl">✕</button>
             </div>
             {addLeadMsg && (
               <div className={`rounded-xl p-3.5 mb-4 text-sm ${addLeadMsg.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
