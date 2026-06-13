@@ -19,18 +19,17 @@ export async function GET() {
   try {
     if (!verifyAdminToken()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    // FIX: Subqueries to avoid Cartesian product between leads and commission_events
     const agents = await sql`
       SELECT ra.id, ra.name, ra.email, ra.phone, ra.referral_code,
         ra.upi_id, ra.bank_account, ra.bank_ifsc, ra.bank_name, ra.bank_holder_name,
         ra.total_earnings, ra.total_paid, ra.is_active, ra.created_at,
-        COUNT(DISTINCT rl.id) as total_leads,
-        COUNT(DISTINCT CASE WHEN rl.status = 'onboarded' THEN rl.id END) as converted_leads,
-        COALESCE(SUM(ce.commission_amount), 0) as total_commission,
-        COALESCE(SUM(CASE WHEN ce.payment_status = 'paid' THEN ce.commission_amount ELSE 0 END), 0) as paid_commission
+        (SELECT COUNT(*) FROM referral_leads WHERE agent_id = ra.id) as total_leads,
+        (SELECT COUNT(*) FROM referral_leads WHERE agent_id = ra.id AND status = 'onboarded') as converted_leads,
+        (SELECT COALESCE(SUM(commission_amount), 0) FROM referral_commission_events WHERE agent_id = ra.id) as total_commission,
+        (SELECT COALESCE(SUM(commission_amount), 0) FROM referral_commission_events WHERE agent_id = ra.id AND payment_status = 'paid') as paid_commission
       FROM referral_agents ra
-      LEFT JOIN referral_leads rl ON rl.agent_id = ra.id
-      LEFT JOIN referral_commission_events ce ON ce.agent_id = ra.id
-      GROUP BY ra.id ORDER BY ra.created_at DESC
+      ORDER BY ra.created_at DESC
     `;
 
     const leads = await sql`
