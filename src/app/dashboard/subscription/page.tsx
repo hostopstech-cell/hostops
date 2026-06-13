@@ -21,6 +21,58 @@ export default function SubscriptionPage() {
   const [subData, setSubData] = useState<any>(null);
   const [ownerData, setOwnerData] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<typeof plans[0] | null>(null);
+  const [verifyEmail, setVerifyEmail] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpValue, setOtpValue] = useState("");
+  const [verifyError, setVerifyError] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+
+  useEffect(() => {
+    if (ownerData?.email) setVerifyEmail(ownerData.email);
+  }, [ownerData]);
+
+  async function sendOtp() {
+    setVerifyError(""); setVerifyLoading(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: verifyEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setVerifyError(data.error || "Failed to send OTP"); setVerifyLoading(false); return; }
+      setOtpSent(true);
+    } catch { setVerifyError("Something went wrong. Please try again."); }
+    setVerifyLoading(false);
+  }
+
+  async function verifyOtp() {
+    setVerifyError(""); setVerifyLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: verifyEmail, otp: otpValue }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setVerifyError(data.error || "Verification failed"); setVerifyLoading(false); return; }
+      setOwnerData((prev: any) => ({ ...prev, email: verifyEmail, emailVerified: true }));
+      setShowVerifyModal(false);
+      setOtpSent(false); setOtpValue("");
+      if (pendingPlan) { handlePayment(pendingPlan); setPendingPlan(null); }
+    } catch { setVerifyError("Something went wrong. Please try again."); }
+    setVerifyLoading(false);
+  }
+
+  function startSubscribe(plan: typeof plans[0]) {
+    if (!ownerData?.emailVerified) {
+      setPendingPlan(plan);
+      setShowVerifyModal(true);
+      setOtpSent(false); setOtpValue(""); setVerifyError("");
+      return;
+    }
+    handlePayment(plan);
+  }
 
   useEffect(() => {
     fetch("/api/subscription").then(r => r.json()).then(setSubData).catch(() => {});
@@ -217,7 +269,7 @@ export default function SubscriptionPage() {
                 </ul>
 
                 <button
-                  onClick={() => !current && handlePayment(plan)}
+                  onClick={() => !current && startSubscribe(plan)}
                   disabled={isLoading || current}
                   className={`w-full py-3 rounded-xl text-sm font-semibold transition-all
                     ${current
@@ -254,6 +306,72 @@ export default function SubscriptionPage() {
           Refer a property owner. When they subscribe, you get <strong className="text-white">1 month free!</strong>
         </p>
       </div>
+
+      {showVerifyModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Verify Your Email</h3>
+            <p className="text-sm text-slate-500 mb-4">Please verify your email address before subscribing so we can keep you updated about your plan.</p>
+
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email Address</label>
+            <input
+              value={verifyEmail}
+              onChange={e => { setVerifyEmail(e.target.value); setOtpSent(false); setOtpValue(""); setVerifyError(""); }}
+              disabled={otpSent}
+              className="input-field w-full text-sm text-slate-900 mb-3 disabled:bg-slate-50 disabled:text-slate-500"
+              placeholder="you@example.com"
+            />
+
+            {otpSent && (
+              <div className="mb-3">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Enter OTP</label>
+                <input
+                  value={otpValue}
+                  onChange={e => setOtpValue(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  maxLength={6}
+                  className="input-field w-full text-sm text-slate-900 font-mono tracking-widest text-center"
+                  placeholder="6-digit code"
+                />
+                <p className="text-xs text-slate-400 mt-1">We sent a code to {verifyEmail}. It expires in 10 minutes.</p>
+              </div>
+            )}
+
+            {verifyError && <p className="text-xs text-red-500 bg-red-50 p-2 rounded-lg mb-3">{verifyError}</p>}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowVerifyModal(false); setPendingPlan(null); }}
+                className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              {!otpSent ? (
+                <button
+                  onClick={sendOtp}
+                  disabled={verifyLoading || !verifyEmail}
+                  className="flex-1 bg-orange-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-orange-700 disabled:opacity-50"
+                >
+                  {verifyLoading ? "Sending..." : "Send OTP"}
+                </button>
+              ) : (
+                <button
+                  onClick={verifyOtp}
+                  disabled={verifyLoading || otpValue.length !== 6}
+                  className="flex-1 bg-green-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
+                >
+                  {verifyLoading ? "Verifying..." : "Verify & Continue"}
+                </button>
+              )}
+            </div>
+
+            {otpSent && (
+              <button onClick={() => { setOtpValue(""); setVerifyError(""); sendOtp(); }} disabled={verifyLoading} className="text-xs text-orange-600 mt-3 hover:underline">
+                Resend OTP
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );

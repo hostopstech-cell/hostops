@@ -18,7 +18,7 @@ export async function GET() {
     }
 
     const rows = await sql`
-      SELECT id, name, email, phone,
+      SELECT id, name, email, phone, email_verified,
              subscription_plan, created_at,
              trial_starts_at, subscription_ends_at, subscription_billing
       FROM owners WHERE id = ${payload.ownerId}
@@ -34,6 +34,7 @@ export async function GET() {
         ownerId: o.id,
         name: o.name,
         email: o.email,
+        emailVerified: o.email_verified || false,
         phone: o.phone || null,
         plan: o.subscription_plan || "trial",
         memberSince: o.created_at,
