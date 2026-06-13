@@ -27,13 +27,14 @@ const handler = NextAuth({
           if (rows.length === 0) {
             const hash = await bcrypt.hash("google-" + user.email, 10);
             const newOwner = await sql`
-              INSERT INTO owners (name, email, password_hash)
-              VALUES (${user.name || "Owner"}, ${user.email!.toLowerCase()}, ${hash})
+              INSERT INTO owners (name, email, password_hash, email_verified)
+              VALUES (${user.name || "Owner"}, ${user.email!.toLowerCase()}, ${hash}, true)
               RETURNING id, name, email
             `;
             owner = newOwner[0];
           } else {
             owner = rows[0];
+            await sql`UPDATE owners SET email_verified = true WHERE id = ${owner.id}`;
           }
           const token = signToken({ ownerId: owner.id, email: owner.email, name: owner.name });
           await setAuthCookie(token);
