@@ -11,7 +11,7 @@ const TYPE_BG: Record<string, string> = {
 const STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu and Kashmir","Ladakh","Chandigarh","Puducherry"];
 const emptyForm = () => ({
   name: "", type: "hostel", address: "", city: "", state: "Rajasthan",
-  pincode: "", contactNumber: "", email: "", totalBeds: "", description: "",
+  pincode: "", contactNumber: "", countryCode: "+91", email: "", totalBeds: "", description: "",
   checkInTime: "14:00", checkOutTime: "11:00", status: "active", amenities: [] as string[],
 });
 const SITE_URL = typeof window !== "undefined" ? window.location.origin : "https://hostops-six.vercel.app";
@@ -75,7 +75,13 @@ export default function PropertiesPage() {
   }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault(); setError(""); setSubmitting(true);
+    e.preventDefault(); setError("");
+    const phoneDigits = form.contactNumber.replace(/\D/g, "");
+    if (!/^\d{10}$/.test(phoneDigits)) {
+      setError("Please enter a valid 10-digit contact number.");
+      return;
+    }
+    setSubmitting(true);
     try {
       const url = editingProperty ? `/api/properties/${editingProperty.id}` : "/api/properties";
       const method = editingProperty ? "PUT" : "POST";
@@ -471,8 +477,31 @@ export default function PropertiesPage() {
                   <input value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} autoComplete="off" className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Contact Number</label>
-                  <input value={form.contactNumber} onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value }))} autoComplete="off" className="input-field w-full text-sm text-slate-900" />
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Contact Number *</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={form.countryCode || "+91"}
+                      onChange={e => setForm(f => ({ ...f, countryCode: e.target.value } as any))}
+                      className="input-field text-sm text-slate-900 w-24"
+                    >
+                      <option value="+91">+91 (IN)</option>
+                      <option value="+1">+1 (US)</option>
+                      <option value="+44">+44 (UK)</option>
+                      <option value="+971">+971 (UAE)</option>
+                    </select>
+                    <input
+                      value={form.contactNumber}
+                      onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                      autoComplete="off"
+                      placeholder="10-digit number"
+                      maxLength={10}
+                      required
+                      className="input-field flex-1 text-sm text-slate-900"
+                    />
+                  </div>
+                  {form.contactNumber && form.contactNumber.length !== 10 && (
+                    <p className="text-xs text-red-500 mt-1">Please make sure you are entering the correct 10-digit number.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Check-in Time</label>
