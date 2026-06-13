@@ -17,16 +17,10 @@ function verifyAdminToken() {
 export async function POST(request: Request) {
   try {
     if (!verifyAdminToken()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const { lead_id, commission_percent, commission_amount } = await request.json();
-    if (!lead_id) return NextResponse.json({ error: "lead_id required" }, { status: 400 });
-    await sql`UPDATE referral_leads SET commission_percent = ${commission_percent || 0}, commission_amount = ${commission_amount || 0} WHERE id = ${lead_id}`;
-    const leadRows = await sql`SELECT agent_id FROM referral_leads WHERE id = ${lead_id}`;
-    if (leadRows.length) {
-      await sql`UPDATE referral_agents SET total_earnings = (SELECT COALESCE(SUM(commission_amount), 0) FROM referral_leads WHERE agent_id = ${leadRows[0].agent_id}) WHERE id = ${leadRows[0].agent_id}`;
-    }
+    const { agent_id, is_active } = await request.json();
+    await sql`UPDATE referral_agents SET is_active = ${is_active} WHERE id = ${agent_id}`;
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Update commission error:", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

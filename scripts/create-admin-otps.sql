@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS admin_otps (
+  email TEXT PRIMARY KEY,
+  otp TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
