@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
-interface Props { onClose: () => void; }
+interface Props { onClose: () => void; externalError?: string; }
 
-export default function LoginModal({ onClose }: Props) {
+export default function LoginModal({ onClose, externalError }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<"login"|"register">("login");
   const [name, setName] = useState("");
@@ -16,6 +16,10 @@ export default function LoginModal({ onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [referralCode, setReferralCode] = useState("");
+
+  useEffect(() => {
+    if (externalError) setError(externalError);
+  }, [externalError]);
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true); setError("");
@@ -40,11 +44,7 @@ export default function LoginModal({ onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-
-      <div
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 font-[family-name:var(--font-geist-sans)]"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 font-[family-name:var(--font-geist-sans)]" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">×</button>
 
         <div className="flex items-center gap-2 mb-6">
@@ -63,14 +63,12 @@ export default function LoginModal({ onClose }: Props) {
 
         {error && (
           <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 mb-4">
-            <p className="text-sm font-semibold text-red-700">⚠️ {error}</p>
+            <p className="text-sm font-semibold text-red-700">{error}</p>
           </div>
         )}
 
-        <button
-          onClick={handleGoogleSignIn} disabled={googleLoading}
-          className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 rounded-xl py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all mb-5 disabled:opacity-60"
-        >
+        <button onClick={handleGoogleSignIn} disabled={googleLoading}
+          className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 rounded-xl py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all mb-5 disabled:opacity-60">
           <svg width="18" height="18" viewBox="0 0 18 18">
             <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/>
             <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/>
@@ -90,14 +88,12 @@ export default function LoginModal({ onClose }: Props) {
           {mode === "register" && (
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
-              <input type="text" value={name} onChange={(e)=>setName(e.target.value)} required
-                className={inputClass} placeholder="Rajesh Kumar" />
+              <input type="text" value={name} onChange={(e)=>setName(e.target.value)} required className={inputClass} placeholder="Rajesh Kumar" />
             </div>
           )}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
-            <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required
-              className={inputClass} placeholder="owner@hostel.com" />
+            <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required className={inputClass} placeholder="owner@hostel.com" />
           </div>
           <div>
             <div className="flex justify-between mb-1.5">
