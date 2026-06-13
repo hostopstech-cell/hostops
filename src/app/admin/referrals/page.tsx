@@ -14,9 +14,18 @@ interface Lead {
   created_at: string; onboarded_at?: string; paid_at?: string; payment_note?: string;
   agent_name: string; referral_code: string; owner_name?: string; owner_number?: number;
 }
+interface CommissionEvent {
+  id: number; lead_id: number; agent_id: number; event_type: string;
+  plan_name?: string; plan_amount: number; billing_type?: string;
+  commission_percent: number; commission_amount: number;
+  payment_status: string; transaction_ref?: string; note?: string;
+  paid_at?: string; created_at: string;
+  agent_name: string; referral_code: string;
+  prospect_email: string; prospect_name?: string; owner_name?: string;
+}
 type AuthStep = "login" | "otp" | "done";
 type Tab = "overview" | "leads" | "agents";
-type ModalMode = "commission" | "paid" | null;
+type ModalMode = "commission" | "paid" | "event_paid" | null;
 
 export default function AdminReferrals() {
   const [authStep, setAuthStep] = useState<AuthStep>("login");
@@ -40,6 +49,8 @@ export default function AdminReferrals() {
   const [payNote, setPayNote] = useState("");
   const [modalLoading, setModalLoading] = useState(false);
   const [modalMsg, setModalMsg] = useState("");
+  const [commissionEvents, setCommissionEvents] = useState<CommissionEvent[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<CommissionEvent | null>(null);
   const ADMIN_EMAIL = "hostops.tech@gmail.com";
 
   const loadData = useCallback(async () => {
@@ -50,6 +61,7 @@ export default function AdminReferrals() {
       const data = await res.json();
       setAgents(data.agents || []);
       setLeads(data.leads || []);
+      setCommissionEvents(data.commissionEvents || []);
     } catch {}
     setDataLoading(false);
   }, []);
@@ -117,6 +129,19 @@ export default function AdminReferrals() {
     setModalLoading(false);
   }
 
+  async function handleMarkEventPaid() {
+    if (!selectedEvent) return;
+    setModalLoading(true); setModalMsg("");
+    const res = await fetch("/api/admin/referrals/mark-paid", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: selectedEvent.id, transaction_ref: txnRef, note: payNote, commission_amount: selectedEvent.commission_amount }),
+    });
+    const data = await res.json();
+    if (res.ok) { setModalMsg("✅ Marked as paid!"); await loadData(); setTimeout(() => { setModalMode(null); setSelectedEvent(null); setModalMsg(""); setTxnRef(""); setPayNote(""); }, 1200); }
+    else setModalMsg("❌ " + data.error);
+    setModalLoading(false);
+  }
+
   async function handleToggleAgent(agentId: number, currentActive: boolean) {
     await fetch("/api/admin/referrals/toggle-agent", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -132,8 +157,8 @@ export default function AdminReferrals() {
     return true;
   });
 
-  const totalCommission = leads.reduce((a, l) => a + (parseFloat(String(l.commission_amount)) || 0), 0);
-  const totalPaid = leads.filter(l => l.payment_status === "paid").reduce((a, l) => a + (parseFloat(String(l.commission_amount)) || 0), 0);
+  const totalCommission = commissionEvents.reduce((a, e) => a + (parseFloat(String(e.commission_amount)) || 0), 0);
+  const totalPaid = commissionEvents.filter(e => e.payment_status === "paid").reduce((a, e) => a + (parseFloat(String(e.commission_amount)) || 0), 0);
   const totalPending = totalCommission - totalPaid;
   const totalConverted = leads.filter(l => l.status === "onboarded").length;
 
@@ -185,7 +210,11 @@ export default function AdminReferrals() {
               {authError && <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm text-red-400 text-center">{authError}</div>}
               <button onClick={handleSendOtp} disabled={authLoading || !authPassword}
                 className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-all">
-                {authLoading ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Sending OTP...</span> : "Send OTP →"}
+                {authLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Sending OTP...
+                  </span>
+                ) : "Send OTP →"}
               </button>
             </div>
           ) : (
@@ -209,7 +238,11 @@ export default function AdminReferrals() {
                   className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-medium transition-colors">← Back</button>
                 <button onClick={handleVerifyOtp} disabled={authLoading || authOtp.length !== 6}
                   className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-all">
-                  {authLoading ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Verifying...</span> : "Verify & Enter"}
+                  {authLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Verifying...
+                    </span>
+                  ) : "Verify & Enter"}
                 </button>
               </div>
               <button onClick={() => { setAuthStep("login"); setAuthOtp(""); setAuthError(""); }}
@@ -224,6 +257,8 @@ export default function AdminReferrals() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+
+      {/* ── Header ── */}
       <div className="border-b border-slate-800 bg-slate-900/50 sticky top-0 z-10 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -248,7 +283,10 @@ export default function AdminReferrals() {
         </div>
       </div>
 
+      {/* ── Main content ── */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+
+        {/* Stats row */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           {[
             { label: "Partners", value: agents.length, color: "text-blue-400", icon: "👥" },
@@ -265,6 +303,7 @@ export default function AdminReferrals() {
           ))}
         </div>
 
+        {/* Tab bar */}
         <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 mb-6 w-fit">
           {(["overview", "leads", "agents"] as Tab[]).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
@@ -274,69 +313,149 @@ export default function AdminReferrals() {
           ))}
         </div>
 
+        {/* ── Overview tab ── */}
         {activeTab === "overview" && (
-          <div className="grid lg:grid-cols-2 gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-                <h2 className="text-base font-semibold">Needs Commission Setup</h2>
-                <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-0.5 rounded-full font-medium">{leads.filter(l => l.status === "onboarded" && l.commission_amount === 0).length}</span>
-              </div>
-              <div className="space-y-3">
-                {leads.filter(l => l.status === "onboarded" && l.commission_amount === 0).length === 0 ? (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500 text-sm">✅ All commissions are set</div>
-                ) : leads.filter(l => l.status === "onboarded" && l.commission_amount === 0).map(lead => (
-                  <div key={lead.id} className="bg-slate-900 border border-orange-500/20 rounded-xl p-5">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm">{lead.owner_name || lead.prospect_name || "—"}</div>
-                        <div className="text-xs text-slate-400 mt-0.5">{lead.prospect_email}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">Agent: <span className="text-orange-400">{lead.agent_name}</span> • Plan: <span className="text-white capitalize">{lead.plan_name}</span> • <span className="text-emerald-400">₹{parseFloat(String(lead.plan_amount)).toLocaleString("en-IN")}</span></div>
-                        <div className="text-xs text-slate-600 mt-0.5 capitalize">{lead.billing_type} • {new Date(lead.onboarded_at || lead.created_at).toLocaleDateString("en-IN")}</div>
+          <div className="space-y-6">
+
+            {/* Top two columns: commission setup + pending payouts */}
+            <div className="grid lg:grid-cols-2 gap-6">
+
+              {/* Needs Commission Setup */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+                  <h2 className="text-base font-semibold">Needs Commission Setup</h2>
+                  <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-0.5 rounded-full font-medium">
+                    {leads.filter(l => l.status === "onboarded" && l.commission_amount === 0).length}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {leads.filter(l => l.status === "onboarded" && l.commission_amount === 0).length === 0 ? (
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500 text-sm">✅ All commissions are set</div>
+                  ) : leads.filter(l => l.status === "onboarded" && l.commission_amount === 0).map(lead => (
+                    <div key={lead.id} className="bg-slate-900 border border-orange-500/20 rounded-xl p-5">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm">{lead.owner_name || lead.prospect_name || "—"}</div>
+                          <div className="text-xs text-slate-400 mt-0.5">{lead.prospect_email}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            Agent: <span className="text-orange-400">{lead.agent_name}</span> • Plan: <span className="text-white capitalize">{lead.plan_name}</span> • <span className="text-emerald-400">₹{parseFloat(String(lead.plan_amount)).toLocaleString("en-IN")}</span>
+                          </div>
+                          <div className="text-xs text-slate-600 mt-0.5 capitalize">{lead.billing_type} • {new Date(lead.onboarded_at || lead.created_at).toLocaleDateString("en-IN")}</div>
+                        </div>
+                        <button
+                          onClick={() => { setSelectedLead(lead); setModalMode("commission"); setCommPercent("40"); setCommAmount(String(Math.round(parseFloat(String(lead.plan_amount)) * 0.4))); setModalMsg(""); }}
+                          className="px-3 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-xs font-semibold transition-colors flex-shrink-0">
+                          Set Commission
+                        </button>
                       </div>
-                      <button onClick={() => { setSelectedLead(lead); setModalMode("commission"); setCommPercent("40"); setCommAmount(String(Math.round(parseFloat(String(lead.plan_amount)) * 0.4))); setModalMsg(""); }}
-                        className="px-3 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-xs font-semibold transition-colors flex-shrink-0">Set Commission</button>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              {/* Pending Payouts */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                  <h2 className="text-base font-semibold">Pending Payouts</h2>
+                  <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full font-medium">
+                    {leads.filter(l => l.commission_amount > 0 && l.payment_status !== "paid").length}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {leads.filter(l => l.commission_amount > 0 && l.payment_status !== "paid").length === 0 ? (
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500 text-sm">✅ No pending payouts</div>
+                  ) : leads.filter(l => l.commission_amount > 0 && l.payment_status !== "paid").map(lead => {
+                    const ag = agents.find(a => a.id === lead.agent_id);
+                    return (
+                      <div key={lead.id} className="bg-slate-900 border border-amber-500/20 rounded-xl p-5">
+                        <div className="flex items-start justify-between gap-3 flex-wrap">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-sm">{lead.owner_name || lead.prospect_name || "—"}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">Agent: <span className="text-slate-200">{lead.agent_name}</span></div>
+                            <div className="text-lg font-bold text-orange-400 mt-1">₹{parseFloat(String(lead.commission_amount)).toLocaleString("en-IN")}</div>
+                            <div className="mt-1.5 space-y-0.5">
+                              {ag?.upi_id && <div className="text-xs text-slate-500">UPI: <span className="text-slate-300">{ag.upi_id}</span></div>}
+                              {ag?.bank_account && <div className="text-xs text-slate-500">Bank: <span className="text-slate-300">{ag.bank_name} • {ag.bank_account}</span></div>}
+                              {ag?.bank_ifsc && <div className="text-xs text-slate-500">IFSC: <span className="text-slate-300">{ag.bank_ifsc}</span></div>}
+                              {ag?.bank_holder_name && <div className="text-xs text-slate-500">Holder: <span className="text-slate-300">{ag.bank_holder_name}</span></div>}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => { setSelectedLead(lead); setModalMode("paid"); setTxnRef(""); setPayNote(""); setModalMsg(""); }}
+                            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold transition-colors flex-shrink-0">
+                            Mark Paid ✓
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
+
+            {/* Renewal Commissions — full width below the grid */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-                <h2 className="text-base font-semibold">Pending Payouts</h2>
-                <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full font-medium">{leads.filter(l => l.commission_amount > 0 && l.payment_status !== "paid").length}</span>
+                <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                <h2 className="text-base font-semibold">Renewal Commissions</h2>
+                <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded-full font-medium">
+                  {commissionEvents.filter(e => e.event_type === "renewal" && e.payment_status !== "paid").length} pending
+                </span>
               </div>
               <div className="space-y-3">
-                {leads.filter(l => l.commission_amount > 0 && l.payment_status !== "paid").length === 0 ? (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500 text-sm">✅ No pending payouts</div>
-                ) : leads.filter(l => l.commission_amount > 0 && l.payment_status !== "paid").map(lead => {
-                  const ag = agents.find(a => a.id === lead.agent_id);
+                {commissionEvents.filter(e => e.event_type === "renewal").length === 0 ? (
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center text-slate-500 text-sm">No renewal commissions yet</div>
+                ) : commissionEvents.filter(e => e.event_type === "renewal").map(event => {
+                  const ag = agents.find(a => a.id === event.agent_id);
+                  const borderClass = event.payment_status === "paid" ? "border-slate-800" : "border-purple-500/20";
                   return (
-                    <div key={lead.id} className="bg-slate-900 border border-amber-500/20 rounded-xl p-5">
+                    <div key={event.id} className={"bg-slate-900 border rounded-xl p-5 " + borderClass}>
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div className="min-w-0 flex-1">
-                          <div className="font-semibold text-sm">{lead.owner_name || lead.prospect_name || "—"}</div>
-                          <div className="text-xs text-slate-400 mt-0.5">Agent: <span className="text-slate-200">{lead.agent_name}</span></div>
-                          <div className="text-lg font-bold text-orange-400 mt-1">₹{parseFloat(String(lead.commission_amount)).toLocaleString("en-IN")}</div>
-                          <div className="mt-1.5 space-y-0.5">
-                            {ag?.upi_id && <div className="text-xs text-slate-500">UPI: <span className="text-slate-300">{ag.upi_id}</span></div>}
-                            {ag?.bank_account && <div className="text-xs text-slate-500">Bank: <span className="text-slate-300">{ag.bank_name} • {ag.bank_account}</span></div>}
-                            {ag?.bank_ifsc && <div className="text-xs text-slate-500">IFSC: <span className="text-slate-300">{ag.bank_ifsc}</span></div>}
-                            {ag?.bank_holder_name && <div className="text-xs text-slate-500">Holder: <span className="text-slate-300">{ag.bank_holder_name}</span></div>}
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-semibold text-sm">{event.owner_name || event.prospect_name || "—"}</span>
+                            <span className="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-lg">20% Renewal</span>
+                            <span className={"text-xs px-2 py-0.5 rounded-lg font-medium border " + (event.payment_status === "paid" ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" : "text-amber-400 bg-amber-400/10 border-amber-400/20")}>
+                              {event.payment_status === "paid" ? "✓ Paid" : "Unpaid"}
+                            </span>
                           </div>
+                          <div className="text-xs text-slate-400">Agent: <span className="text-slate-200">{event.agent_name}</span> • Plan: <span className="text-white capitalize">{event.plan_name}</span> • ₹{parseFloat(String(event.plan_amount)).toLocaleString("en-IN")}</div>
+                          <div className="text-lg font-bold text-purple-400 mt-1">₹{parseFloat(String(event.commission_amount)).toLocaleString("en-IN")} commission</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{new Date(event.created_at).toLocaleDateString("en-IN")}</div>
+                          {event.payment_status === "paid" && event.paid_at && (
+                            <div className="mt-1 text-xs text-emerald-400">
+                              ✓ Paid on {new Date(event.paid_at).toLocaleDateString("en-IN")}
+                              {event.transaction_ref ? " • UTR: " + event.transaction_ref : ""}
+                              {event.note ? " • " + event.note : ""}
+                            </div>
+                          )}
+                          {ag && event.payment_status !== "paid" && (
+                            <div className="mt-1.5 space-y-0.5">
+                              {ag.upi_id && <div className="text-xs text-slate-500">UPI: <span className="text-slate-300">{ag.upi_id}</span></div>}
+                              {ag.bank_account && <div className="text-xs text-slate-500">Bank: <span className="text-slate-300">{ag.bank_name} • {ag.bank_account}</span></div>}
+                            </div>
+                          )}
                         </div>
-                        <button onClick={() => { setSelectedLead(lead); setModalMode("paid"); setTxnRef(""); setPayNote(""); setModalMsg(""); }}
-                          className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold transition-colors flex-shrink-0">Mark Paid ✓</button>
+                        {event.payment_status !== "paid" && (
+                          <button
+                            onClick={() => { setSelectedEvent(event); setModalMode("event_paid"); setTxnRef(""); setPayNote(""); setModalMsg(""); }}
+                            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold transition-colors flex-shrink-0">
+                            Mark Paid ✓
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
+
           </div>
         )}
 
+        {/* ── Leads tab ── */}
         {activeTab === "leads" && (
           <div>
             <div className="flex gap-3 mb-6 flex-wrap items-center">
@@ -379,12 +498,18 @@ export default function AdminReferrals() {
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       {lead.status === "onboarded" && lead.commission_amount === 0 && (
-                        <button onClick={() => { setSelectedLead(lead); setModalMode("commission"); setCommPercent("40"); setCommAmount(String(Math.round(parseFloat(String(lead.plan_amount)) * 0.4))); setModalMsg(""); }}
-                          className="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 rounded-lg text-xs font-medium transition-colors">Set Commission</button>
+                        <button
+                          onClick={() => { setSelectedLead(lead); setModalMode("commission"); setCommPercent("40"); setCommAmount(String(Math.round(parseFloat(String(lead.plan_amount)) * 0.4))); setModalMsg(""); }}
+                          className="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 rounded-lg text-xs font-medium transition-colors">
+                          Set Commission
+                        </button>
                       )}
                       {lead.commission_amount > 0 && lead.payment_status !== "paid" && (
-                        <button onClick={() => { setSelectedLead(lead); setModalMode("paid"); setTxnRef(""); setPayNote(""); setModalMsg(""); }}
-                          className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-medium transition-colors">Mark Paid</button>
+                        <button
+                          onClick={() => { setSelectedLead(lead); setModalMode("paid"); setTxnRef(""); setPayNote(""); setModalMsg(""); }}
+                          className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-medium transition-colors">
+                          Mark Paid
+                        </button>
                       )}
                     </div>
                   </div>
@@ -406,6 +531,7 @@ export default function AdminReferrals() {
           </div>
         )}
 
+        {/* ── Agents tab ── */}
         {activeTab === "agents" && (
           <div className="space-y-4">
             {agents.length === 0 ? (
@@ -462,8 +588,10 @@ export default function AdminReferrals() {
             ))}
           </div>
         )}
+
       </div>
 
+      {/* ── Modal: Set Commission ── */}
       {modalMode === "commission" && selectedLead && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-7 w-full max-w-md shadow-2xl">
@@ -498,6 +626,7 @@ export default function AdminReferrals() {
         </div>
       )}
 
+      {/* ── Modal: Mark Lead Paid ── */}
       {modalMode === "paid" && selectedLead && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-7 w-full max-w-md shadow-2xl">
@@ -543,6 +672,53 @@ export default function AdminReferrals() {
           </div>
         </div>
       )}
+
+      {/* ── Modal: Mark Renewal Event Paid ── */}
+      {modalMode === "event_paid" && selectedEvent && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-7 w-full max-w-md shadow-2xl">
+            <h3 className="text-lg font-bold mb-4">Mark Renewal Commission as Paid</h3>
+            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-5 mb-5 text-center">
+              <div className="text-xs text-slate-400 mb-1">Renewal Commission (20%)</div>
+              <div className="text-3xl font-black text-purple-400">₹{parseFloat(String(selectedEvent.commission_amount)).toLocaleString("en-IN")}</div>
+              <div className="text-xs text-slate-400 mt-1">Agent: {selectedEvent.agent_name}</div>
+            </div>
+            {(() => {
+              const ag = agents.find(a => a.id === selectedEvent.agent_id);
+              if (!ag) return null;
+              return (
+                <div className="bg-slate-800 rounded-xl p-4 mb-5 text-xs space-y-1.5">
+                  <div className="font-semibold text-slate-300 mb-2">Pay to:</div>
+                  {ag.upi_id && <div className="flex justify-between"><span className="text-slate-500">UPI</span><span className="text-white font-medium">{ag.upi_id}</span></div>}
+                  {ag.bank_name && <div className="flex justify-between"><span className="text-slate-500">Bank</span><span className="text-white">{ag.bank_name}</span></div>}
+                  {ag.bank_account && <div className="flex justify-between"><span className="text-slate-500">Account</span><span className="text-white">{ag.bank_account}</span></div>}
+                  {ag.bank_ifsc && <div className="flex justify-between"><span className="text-slate-500">IFSC</span><span className="text-white">{ag.bank_ifsc}</span></div>}
+                </div>
+              );
+            })()}
+            {modalMsg && <div className="text-sm mb-4 text-center p-3 rounded-xl bg-slate-800">{modalMsg}</div>}
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-slate-400 font-semibold mb-1.5 block">Transaction Reference (UTR)</label>
+                <input value={txnRef} onChange={e => setTxnRef(e.target.value)} placeholder="UPI Ref / UTR Number"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 font-semibold mb-1.5 block">Note (optional)</label>
+                <input value={payNote} onChange={e => setPayNote(e.target.value)} placeholder="Any note..."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors" />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => { setModalMode(null); setSelectedEvent(null); setModalMsg(""); }} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
+                <button onClick={handleMarkEventPaid} disabled={modalLoading} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl text-sm font-semibold transition-all">
+                  {modalLoading ? "Processing..." : "✓ Confirm Paid"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
