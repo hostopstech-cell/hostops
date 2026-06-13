@@ -175,7 +175,7 @@ export default function AdminReferrals() {
   const totalCommission = commissionEvents.reduce((a, e) => a + (parseFloat(String(e.commission_amount)) || 0), 0);
   const totalPaid = commissionEvents.filter(e => e.payment_status === "paid").reduce((a, e) => a + (parseFloat(String(e.commission_amount)) || 0), 0);
   const totalPending = totalCommission - totalPaid;
-  const totalConverted = leads.filter(l => l.status === "onboarded").length;
+  const totalConverted = leads.filter(l => l.status === "onboarded" && parseFloat(String(l.commission_amount)) > 0).length;
 
   const sc = (s: string) => {
     if (s === "onboarded") return "text-emerald-400 bg-emerald-400/10 border-emerald-400/20";

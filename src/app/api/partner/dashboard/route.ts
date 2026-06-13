@@ -67,7 +67,7 @@ export async function GET() {
     const pendingPayout = totalCommission - totalPaid;
 
     const totalLeads = leads.length;
-    const converted = leads.filter((l: any) => l.status === "onboarded").length;
+    const converted = leads.filter((l: any) => l.status === "onboarded" && parseFloat(String(l.commission_amount || 0)) > 0).length;
     const pending = leads.filter((l: any) => l.status === "pending").length;
 
     return NextResponse.json({
