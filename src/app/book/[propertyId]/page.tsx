@@ -208,7 +208,13 @@ export default function BookPage({ params }: { params: { propertyId: string } })
           <div className="flex justify-between"><span className="text-slate-400">Guests</span><span className="font-medium text-slate-800">{guestCount}</span></div>
           <div className="flex justify-between border-t border-slate-200 pt-1.5"><span className="font-bold text-slate-700">Total Paid</span><span className="font-bold text-green-600">₹{totalAmount}</span></div>
         </div>
-        <p className="text-xs text-slate-400">📞 {property?.contact}</p>
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mt-2 text-left">
+          <p className="text-sm font-bold text-orange-700 mb-1">⚠️ Important: Confirm Your Booking</p>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            To make sure your booking is not cancelled and you can check in smoothly, please <strong>call {property?.contact}</strong> now to confirm your payment with the property.
+          </p>
+        </div>
+        <p className="text-xs text-slate-400 mt-2">📞 {property?.contact}</p>
         <p className="text-xs text-green-600 mt-2 font-medium">See you soon! 🙏</p>
       </div>
     </div>
