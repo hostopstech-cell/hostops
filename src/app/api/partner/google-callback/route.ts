@@ -13,7 +13,10 @@ function generateReferralCode(name: string): string {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  
+  // Request URL se baseUrl nikalo — NEXTAUTH_URL pe depend mat karo
+  const reqUrl = new URL(request.url);
+  const baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
 
   if (!code) return NextResponse.redirect(`${baseUrl}/partner?error=no_code`);
 
@@ -31,7 +34,10 @@ export async function GET(request: Request) {
     });
 
     const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) return NextResponse.redirect(`${baseUrl}/partner?error=token_failed`);
+    if (!tokenData.access_token) {
+      console.error("Token exchange failed:", tokenData);
+      return NextResponse.redirect(`${baseUrl}/partner?error=token_failed`);
+    }
 
     const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
@@ -76,7 +82,6 @@ export async function GET(request: Request) {
     );
 
     const response = NextResponse.redirect(`${baseUrl}/partner/dashboard`);
-    // FIXED: use hostops_agent_token (same as me/route.ts checks)
     response.cookies.set("hostops_agent_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
