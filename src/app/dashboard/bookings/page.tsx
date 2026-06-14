@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { getCurrencySymbol } from "@/lib/currency-utils";
 import { formatDate, capitalize } from "@/lib/format";
 import type { Booking, BookingStatus, BookingSource, PaymentMethod, Property, Room, Bed } from "@/types";
 import {
@@ -255,6 +256,7 @@ function GuestCell({ booking }: { booking: Booking }) {
 }
 
 export default function BookingsPage() {
+  const [currencySymbol, setCurrencySymbol] = useState("₹")
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -321,7 +323,7 @@ export default function BookingsPage() {
     }
   }
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); setCurrencySymbol(getCurrencySymbol()); }, []);
 
   useEffect(() => {
     if (success) {
@@ -641,7 +643,7 @@ export default function BookingsPage() {
                           <p className="text-[11px] text-slate-400">{new Date(booking.check_out).toLocaleDateString("en-IN", { weekday: "short" })}</p>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-sm font-bold text-slate-900">₹{Number(booking.final_amount).toLocaleString("en-IN")}</p>
+                          <p className="text-sm font-bold text-slate-900">{currencySymbol}{Number(booking.final_amount).toLocaleString("en-IN")}</p>
                           <p className={`text-[11px] font-semibold ${
                             booking.payment_status === "paid" ? "text-emerald-600" :
                             booking.payment_status === "partial" ? "text-amber-600" : "text-red-500"
@@ -776,13 +778,13 @@ export default function BookingsPage() {
                       className="input-field w-full text-sm" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Amount (₹) *</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Amount *</label>
                     <input type="number" required min={0} placeholder="2000"
                       value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })}
                       className="input-field w-full text-sm" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Discount (₹)</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Discount</label>
                     <input type="number" min={0} placeholder="0"
                       value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value })}
                       className="input-field w-full text-sm" />
@@ -791,7 +793,7 @@ export default function BookingsPage() {
                     <div className="col-span-2 bg-orange-50 border border-orange-100 rounded-xl px-4 py-2.5 flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-600">Final Amount</span>
                       <span className="text-base font-bold text-orange-600">
-                        ₹{Math.max(Number(form.amount) - Number(form.discount || 0), 0).toLocaleString("en-IN")}
+                        {currencySymbol}{Math.max(Number(form.amount) - Number(form.discount || 0), 0).toLocaleString("en-IN")}
                       </span>
                     </div>
                   )}
@@ -922,7 +924,7 @@ export default function BookingsPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Amount</span>
-                <span className="font-bold text-slate-900">₹{Number(infoBooking.final_amount).toLocaleString("en-IN")}</span>
+                <span className="font-bold text-slate-900">{currencySymbol}{Number(infoBooking.final_amount).toLocaleString("en-IN")}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Status</span>
