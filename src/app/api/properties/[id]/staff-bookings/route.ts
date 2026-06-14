@@ -3,13 +3,24 @@ import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+const KNOWN_DIAL_CODES = ["+971", "+974", "+966", "+91", "+44", "+61", "+65", "+49", "+33", "+1"];
+
 async function verifyToken(request: Request, propertyId: number) {
   const token = request.headers.get("x-staff-token");
-  const props = await sql`SELECT id, name, staff_token FROM properties WHERE id = ${propertyId}`;
+  const props = await sql`SELECT p.id, p.name, p.staff_token, p.owner_id FROM properties p WHERE p.id = ${propertyId}`;
   if (!props.length) return null;
   const property = props[0];
   if (!token || token !== property.staff_token) return null;
-  return property;
+
+  let dialCode = "+91";
+  if (property.owner_id) {
+    const ownerRows = await sql`SELECT phone FROM owners WHERE id = ${property.owner_id} LIMIT 1`;
+    const ownerPhone = ownerRows[0]?.phone || "";
+    const matched = KNOWN_DIAL_CODES.find(code => ownerPhone.startsWith(code));
+    if (matched) dialCode = matched;
+  }
+
+  return { ...property, dialCode };
 }
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
@@ -39,7 +50,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
       sql`SELECT id, name, type, price_per_night, number_of_beds FROM rooms WHERE property_id = ${propertyId} AND status = 'available' ORDER BY name`
     ]);
 
-    return NextResponse.json({ bookings, rooms, propertyName: property.name });
+    return NextResponse.json({
+      bookings,
+      rooms,
+      propertyName: property.name,
+      dialCode: property.dialCode,
+    });
   } catch (error) {
     console.error("Staff GET error:", error);
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
@@ -66,19 +82,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!checkOut) return NextResponse.json({ error: "Check-out required" }, { status: 400 });
     if (checkIn >= checkOut) return NextResponse.json({ error: "Check-out must be after check-in" }, { status: 400 });
 
-    // ID proof validation
-    if (idProofNumber) {
-      const id = idProofNumber.trim().toUpperCase();
-      let valid = true;
-      if (idProofType === "aadhar" && !/^\d{12}$/.test(id)) valid = false;
-      else if (idProofType === "pan" && !/^[A-Z]{5}\d{4}[A-Z]$/.test(id)) valid = false;
-      else if (idProofType === "passport" && !/^[A-Z]\d{7}$/.test(id)) valid = false;
-      else if (idProofType === "voter_id" && !/^[A-Z]{3}\d{7}$/.test(id)) valid = false;
-      else if (idProofType === "driving_license" && !/^[A-Z0-9]{10,16}$/.test(id)) valid = false;
-      if (!valid) return NextResponse.json({ error: `Invalid ${idProofType} number format` }, { status: 400 });
-    }
-
-    // Availability check
     const resolvedRoomId = roomId ? parseInt(roomId) : null;
     if (resolvedRoomId) {
       const roomRows = await sql`SELECT type, number_of_beds FROM rooms WHERE id = ${resolvedRoomId} LIMIT 1`;

@@ -149,6 +149,7 @@ export default function StaffPage() {
       setBookings(data.bookings || []);
       setRooms(data.rooms || []);
       setPropertyName(data.propertyName || "");
+      setOwnerDialCode(data.dialCode || null);
     } catch {}
     setLoading(false);
   }
@@ -163,6 +164,7 @@ export default function StaffPage() {
       setBookings(data.bookings || []);
       setRooms(data.rooms || []);
       setPropertyName(data.propertyName || "");
+      setOwnerDialCode(data.dialCode || null);
       setToken(inputToken.trim());
       setAuthed(true);
     } catch { setAuthError("Something went wrong. Try again."); }
