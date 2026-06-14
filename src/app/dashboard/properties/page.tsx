@@ -20,14 +20,17 @@ const COUNTRY_CODES = [
   { code: "+65",  label: "+65 (Singapore)",     digits: 8  },
   { code: "+49",  label: "+49 (Germany)",       digits: 10 },
   { code: "+33",  label: "+33 (France)",        digits: 9  },
+  { code: "+974", label: "+974 (Qatar)",        digits: 8  },
   { code: "+966", label: "+966 (Saudi Arabia)", digits: 9  },
   { code: "+977", label: "+977 (Nepal)",        digits: 10 },
   { code: "other", label: "Other",                digits: 15 },
 ];
 function getDigitsForCode(code) { return COUNTRY_CODES.find(c => c.code === code)?.digits ?? 10; }
-const emptyForm = () => ({
+function isValidCountryCode(code: string | null | undefined) { return COUNTRY_CODES.some(c => c.code === code); }
+const SORTED_CODES_BY_LENGTH = COUNTRY_CODES.filter(c => c.code !== "other").map(c => c.code).sort((a, b) => b.length - a.length);
+const emptyForm = (defaultCountryCode: string = "+91") => ({
   name: "", type: "hostel", address: "", city: "", state: "",
-  pincode: "", contactNumber: "", countryCode: "+91", email: "", totalBeds: "", description: "",
+  pincode: "", contactNumber: "", countryCode: defaultCountryCode, email: "", totalBeds: "", description: "",
   checkInTime: "14:00", checkOutTime: "11:00", status: "active", amenities: [] as string[],
 });
 const SITE_URL = typeof window !== "undefined" ? window.location.origin : "https://hostops-six.vercel.app";
@@ -69,21 +72,27 @@ export default function PropertiesPage() {
   useEffect(() => { fetchProperties(); }, []);
   useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(""), 3000); return () => clearTimeout(t); } }, [success]);
 
-  function openAdd() { setEditingProperty(null); setForm(emptyForm()); setError(""); setShowModal(true); }
+  function openAdd() {
+    setEditingProperty(null);
+    const defaultCode = (_cc && isValidCountryCode(_cc)) ? _cc : "+91";
+    setForm(emptyForm(defaultCode));
+    setError("");
+    setShowModal(true);
+  }
   function openEdit(p: Property) {
     setEditingProperty(p);
     const rawContact = (p as any).contact || "";
-    let countryCode = "+91";
+    let countryCode = (_cc && isValidCountryCode(_cc)) ? _cc : "+91";
     let contactNumber = rawContact;
-    for (const code of ["+971", "+44", "+1", "+91"]) {
+    for (const code of SORTED_CODES_BY_LENGTH) {
       if (rawContact.startsWith(code)) {
         countryCode = code;
-        contactNumber = rawContact.slice(code.length).replace(/\D/g, "").slice(0, 10);
+        contactNumber = rawContact.slice(code.length).replace(/\D/g, "").slice(0, getDigitsForCode(code));
         break;
       }
     }
     if (contactNumber === rawContact) {
-      contactNumber = rawContact.replace(/\D/g, "").slice(0, 10);
+      contactNumber = rawContact.replace(/\D/g, "").slice(0, getDigitsForCode(countryCode));
     }
     setForm({
       name: p.name || "", type: p.type || "hostel",

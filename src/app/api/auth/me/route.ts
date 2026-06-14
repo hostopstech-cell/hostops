@@ -17,10 +17,13 @@ export async function GET() {
       return NextResponse.json({ owner: null }, { status: 200 });
     }
 
+    await sql`ALTER TABLE owners ADD COLUMN IF NOT EXISTS country_code TEXT DEFAULT '+91'`;
+
     const rows = await sql`
       SELECT id, name, email, phone, email_verified,
              subscription_plan, created_at,
-             trial_starts_at, subscription_ends_at, subscription_billing
+             trial_starts_at, subscription_ends_at, subscription_billing,
+             country_code
       FROM owners WHERE id = ${payload.ownerId}
     `;
 
@@ -36,6 +39,7 @@ export async function GET() {
         email: o.email,
         emailVerified: o.email_verified || false,
         phone: o.phone || null,
+        countryCode: o.country_code || "+91",
         plan: o.subscription_plan || "trial",
         memberSince: o.created_at,
         subscriptionEndsAt: o.subscription_ends_at,
