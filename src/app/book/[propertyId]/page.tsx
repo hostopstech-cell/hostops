@@ -211,10 +211,10 @@ export default function BookPage({ params }: { params: { propertyId: string } })
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mt-2 text-left">
           <p className="text-sm font-bold text-orange-700 mb-1">⚠️ Important: Confirm Your Booking</p>
           <p className="text-xs text-slate-600 leading-relaxed">
-            To make sure your booking is not cancelled and you can check in smoothly, please <strong>call {property?.contact}</strong> now to confirm your payment with the property.
+            To make sure your booking is not cancelled and you can check in smoothly, please <strong>call {property?.contact || 'the property'}</strong> now to confirm your payment with the property.
           </p>
         </div>
-        <p className="text-xs text-slate-400 mt-2">📞 {property?.contact}</p>
+        {property?.contact && <p className="text-xs text-slate-400 mt-2">📞 {property.contact}</p>}
         <p className="text-xs text-green-600 mt-2 font-medium">See you soon! 🙏</p>
       </div>
     </div>
@@ -315,18 +315,18 @@ export default function BookPage({ params }: { params: { propertyId: string } })
             <div className="space-y-4">
               <h2 className="font-bold text-slate-800 text-lg">Choose Room & Dates</h2>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-slate-500 font-medium block mb-1">Check-in</label>
+                  <label className="text-xs text-slate-500 font-semibold uppercase tracking-wide block mb-1.5">📅 Check-in</label>
                   <input type="date" value={checkin} min={today}
                     onChange={e => { setCheckin(e.target.value); setSelectedRoom(null); }}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 bg-white appearance-none" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 font-medium block mb-1">Check-out</label>
+                  <label className="text-xs text-slate-500 font-semibold uppercase tracking-wide block mb-1.5">📅 Check-out</label>
                   <input type="date" value={checkout} min={checkin || today}
                     onChange={e => { setCheckout(e.target.value); setSelectedRoom(null); }}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 bg-white appearance-none" />
                 </div>
               </div>
 
@@ -478,13 +478,13 @@ export default function BookPage({ params }: { params: { propertyId: string } })
                   <label className="text-xs text-slate-500 font-medium block mb-1">Sender Name</label>
                   <input placeholder="Name as in bank account" value={senderName}
                     onChange={e => setSenderName(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 bg-white appearance-none" />
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 font-medium block mb-1">Payment Date</label>
                   <input type="date" value={payDate} max={today}
                     onChange={e => setPayDate(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 bg-white appearance-none" />
                 </div>
               </div>
               {stepError && <p className="text-red-500 text-xs bg-red-50 p-2.5 rounded-lg">{stepError}</p>}

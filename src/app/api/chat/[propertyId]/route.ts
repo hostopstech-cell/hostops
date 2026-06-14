@@ -118,7 +118,7 @@ export async function GET(req: NextRequest, { params }: { params: { propertyId: 
     return NextResponse.json({
       property: {
         name: p.name, city: p.city, type: p.type,
-        contact: p.contact || 'N/A',
+        contact: p.contact || '',
         upi_id: p.upi_id || null,
         payment_name: p.payment_name || p.name,
         check_in_time: p.check_in_time || '14:00',
