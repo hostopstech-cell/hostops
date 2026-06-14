@@ -5,7 +5,6 @@ import { Timer } from "lucide-react";
 import { plans, PRICING_BY_DIAL } from "@/lib/pricing-data";
 import { getDialCode } from "@/lib/currency-utils";
 
-
 declare global { interface Window { Razorpay: any; } }
 
 function CountdownBox({ value, label }: { value: number; label: string }) {
@@ -32,7 +31,6 @@ export default function SubscriptionPage() {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [dialCode, setDialCodeState] = useState("+91");
 
-  // Dial code se pricing get karo
   const pricing = PRICING_BY_DIAL[dialCode] || PRICING_BY_DIAL["default"];
   const currency = pricing.currency;
 
@@ -56,8 +54,8 @@ export default function SubscriptionPage() {
   }, [ownerData]);
 
   useEffect(() => {
-    // Dial code localStorage se load karo
-    setDialCodeState(getDialCode());
+    const dc = getDialCode();
+    setDialCodeState(dc);
     fetch("/api/subscription").then(r => r.json()).then(setSubData).catch(() => {});
     fetch("/api/auth/me").then(r => r.json()).then(d => { if (d.owner) setOwnerData(d.owner); }).catch(() => {});
   }, []);
@@ -135,22 +133,30 @@ export default function SubscriptionPage() {
       const loaded = await loadRazorpay();
       if (!loaded) { alert("Razorpay failed to load."); setLoading(null); return; }
 
-      const amount = billing === "monthly" ? getPlanMonthlyPrice(plan.planKey) : getPlanSixMonthPrice(plan.planKey);
+      const currentDialCode = getDialCode();
+      const amount = billing === "monthly"
+        ? getPlanMonthlyPrice(plan.planKey)
+        : getPlanSixMonthPrice(plan.planKey);
 
       const res = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, dialCode: getDialCode(), receipt: `hostops_${plan.planKey}_${Date.now()}`, notes: { plan: plan.planKey, billing } }),
+        body: JSON.stringify({
+          amount,
+          dialCode: currentDialCode,
+          receipt: `hostops_${plan.planKey}_${Date.now()}`,
+          notes: { plan: plan.planKey, billing },
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: data.amount,
-        currency: data.currency,
+        amount: data.amount,           // already in smallest unit from backend
+        currency: data.currency,       // ✅ USD / GBP / INR etc — jo backend ne set kiya
         name: "HostOps",
-        description: `${plan.name} Plan - ${billing === "6month" ? "6 Months" : "1 Month"}`,
+        description: `${plan.name} Plan — ${billing === "6month" ? "6 Months" : "1 Month"}`,
         order_id: data.orderId,
         prefill: { name: ownerData?.name || "", email: ownerData?.email || "" },
         theme: { color: "#ea580c" },
@@ -158,7 +164,12 @@ export default function SubscriptionPage() {
           const verify = await fetch("/api/razorpay/verify-payment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...response, plan: plan.planKey, billing, amount }),
+            body: JSON.stringify({
+              ...response,
+              plan: plan.planKey,
+              billing,
+              amount,                  // original amount in user's currency (for commission calc)
+            }),
           });
           const verifyData = await verify.json();
           if (verifyData.success) {
@@ -172,10 +183,13 @@ export default function SubscriptionPage() {
       };
 
       const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", (r: any) => { alert(`Payment failed: ${r.error.description}`); setLoading(null); });
+      rzp.on("payment.failed", (r: any) => {
+        alert(`Payment failed: ${r.error.description}`);
+        setLoading(null);
+      });
       rzp.open();
-    } catch {
-      alert("Failed to initiate payment. Please try again.");
+    } catch (err: any) {
+      alert(err?.message || "Failed to initiate payment. Please try again.");
       setLoading(null);
     }
   };
@@ -247,15 +261,13 @@ export default function SubscriptionPage() {
           const current = isCurrent(plan.planKey);
 
           return (
-            <div
-              key={plan.planKey}
+            <div key={plan.planKey}
               className={`relative rounded-2xl flex flex-col overflow-hidden transition-all
                 ${current
                   ? "border-2 border-green-400 shadow-lg ring-4 ring-green-100"
                   : "border border-gray-200 shadow-sm hover:shadow-md"
-                }
-              `}
-            >
+                }`}>
+
               {current && (
                 <div className="bg-green-500 text-white text-xs font-semibold text-center py-1.5">
                   ✅ Current Plan
@@ -307,9 +319,7 @@ export default function SubscriptionPage() {
                       : plan.planKey === "business"
                       ? "bg-purple-600 hover:bg-purple-700 text-white"
                       : "bg-slate-800 hover:bg-slate-900 text-white"
-                    } ${isLoading ? "opacity-60 cursor-not-allowed" : ""}
-                  `}
-                >
+                    } ${isLoading ? "opacity-60 cursor-not-allowed" : ""}`}>
                   {current ? "Active Plan" : isLoading ? (
                     <span className="flex items-center justify-center gap-2">
                       <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -335,6 +345,7 @@ export default function SubscriptionPage() {
         </p>
       </div>
 
+      {/* Email Verify Modal */}
       {showVerifyModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -375,7 +386,7 @@ export default function SubscriptionPage() {
               )}
             </div>
             {otpSent && (
-              <button onClick={() => { setOtpValue(""); setVerifyError(""); sendOtp(); }} disabled={verifyLoading} className="text-xs text-orange-600 mt-3 hover:underline">
+              <button onClick={() => { setOtpValue(""); setVerifyError(""); sendOtp(); }} disabled={verifyLoading} className="text-xs text-orange-600 mt-3 hover:underline block">
                 Resend OTP
               </button>
             )}
