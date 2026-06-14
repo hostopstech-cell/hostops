@@ -5,6 +5,7 @@ import { Timer } from "lucide-react";
 import { plans, PRICING_BY_DIAL } from "@/lib/pricing-data";
 import { getDialCode } from "@/lib/currency-utils";
 
+
 declare global { interface Window { Razorpay: any; } }
 
 function CountdownBox({ value, label }: { value: number; label: string }) {
@@ -139,7 +140,7 @@ export default function SubscriptionPage() {
       const res = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, receipt: `hostops_${plan.planKey}_${Date.now()}`, notes: { plan: plan.planKey, billing } }),
+        body: JSON.stringify({ amount, dialCode: getDialCode(), receipt: `hostops_${plan.planKey}_${Date.now()}`, notes: { plan: plan.planKey, billing } }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
