@@ -13,6 +13,16 @@ export async function GET(req: NextRequest, { params }: { params: { propertyId: 
     if (!props[0].bot_enabled) return NextResponse.json({ error: 'Bot not enabled' }, { status: 403 });
     const p = props[0];
 
+    // Derive owner's dial code from their phone number (e.g. "+1909090909" -> "+1")
+    const KNOWN_DIAL_CODES = ["+971", "+974", "+966", "+91", "+44", "+61", "+65", "+49", "+33", "+1"];
+    let dialCode = "+91";
+    if (p.owner_id) {
+      const ownerRows = await sql`SELECT phone FROM owners WHERE id = ${p.owner_id} LIMIT 1`;
+      const ownerPhone = ownerRows[0]?.phone || "";
+      const matched = KNOWN_DIAL_CODES.find(code => ownerPhone.startsWith(code));
+      if (matched) dialCode = matched;
+    }
+
     const rooms = await sql`
       SELECT id, name, type, price_per_night, number_of_beds, status
       FROM rooms WHERE property_id = ${params.propertyId} AND status = 'available'
@@ -123,6 +133,7 @@ export async function GET(req: NextRequest, { params }: { params: { propertyId: 
         payment_name: p.payment_name || p.name,
         check_in_time: p.check_in_time || '14:00',
         check_out_time: p.check_out_time || '11:00',
+        dial_code: dialCode,
       },
       rooms: groupedRooms,
     });

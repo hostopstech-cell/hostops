@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { getCurrencySymbol } from "@/lib/currency-utils";
+import { getCountryConfig } from "@/lib/country-config";
 import { formatDate, capitalize } from "@/lib/format";
 import type { Booking, BookingStatus, BookingSource, PaymentMethod, Property, Room, Bed } from "@/types";
 import {
@@ -38,13 +39,7 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "bank_transfer", label: "Bank Transfer" },
 ];
 
-const ID_PROOF_TYPES = [
-  { value: "aadhar", label: "Aadhar Card" },
-  { value: "pan", label: "PAN Card" },
-  { value: "passport", label: "Passport" },
-  { value: "driving_license", label: "Driving License" },
-  { value: "voter_id", label: "Voter ID" },
-];
+// ID_PROOF_TYPES is now dynamic — driven by owner's dial code via getCountryConfig()
 
 const ITEMS_PER_PAGE = 10;
 
@@ -57,46 +52,37 @@ interface GuestDetail {
 }
 
 function makeGuest(): GuestDetail {
-  return { name: "", phone: "", idProofType: "aadhar", idProofNumber: "", idError: "" };
+  const dc = typeof window !== "undefined" ? localStorage.getItem("hostops_dial_code") : null;
+  const firstType = getCountryConfig(dc).idProofTypes[0]?.value || "aadhar";
+  return { name: "", phone: "", idProofType: firstType, idProofNumber: "", idError: "" };
 }
 
-function validateIdProof(type: string, value: string): string {
-  if (!value) return "";
-  switch (type) {
-    case "aadhar":
-      if (!/^\d{12}$/.test(value)) return "Aadhaar must be exactly 12 digits";
-      break;
-    case "pan":
-      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) return "PAN format: ABCDE1234F";
-      break;
-    case "passport":
-      if (!/^[A-Z]{1}[0-9]{7}$/.test(value)) return "Passport format: A1234567";
-      break;
-    case "voter_id":
-      if (!/^[A-Z]{3}[0-9]{7}$/.test(value)) return "Voter ID format: ABC1234567";
-      break;
-    case "driving_license":
-      if (!/^[A-Z]{2}[0-9]{2}[0-9]{11}$/.test(value) && !/^[A-Z]{2}-\d{2}-\d{4}-\d{7}$/.test(value))
-        return "Invalid driving license format";
-      break;
+function validateIdProof(type: string, value: string, dialCode?: string): string {
+  const config = getCountryConfig(dialCode || (typeof window !== "undefined" ? localStorage.getItem("hostops_dial_code") : null));
+  const proof = config.idProofTypes.find(p => p.value === type);
+  if (!proof || !proof.validate) return "";
+  return proof.validate(value) || "";
+}
+
+function getIdMaxLength(type: string, dialCode?: string): number {
+  const config = getCountryConfig(dialCode || (typeof window !== "undefined" ? localStorage.getItem("hostops_dial_code") : null));
+  const proof = config.idProofTypes.find(p => p.value === type);
+  if (proof?.pattern) {
+    // Extract max length from pattern if possible, else use placeholder length
+    const digits = proof.placeholder.replace(/[^0-9a-zA-Z]/g, "").length;
+    return digits > 0 ? digits : 20;
   }
-  return "";
+  return 20;
 }
 
-function getIdMaxLength(type: string): number {
-  switch (type) {
-    case "aadhar": return 12;
-    case "pan": return 10;
-    case "passport": return 8;
-    case "voter_id": return 10;
-    default: return 20;
-  }
-}
-
-function sanitizeId(type: string, value: string): string {
-  if (type === "aadhar") return value.replace(/\D/g, "").slice(0, 12);
-  if (type === "pan" || type === "passport" || type === "voter_id") return value.toUpperCase().slice(0, getIdMaxLength(type));
-  return value.toUpperCase().slice(0, 20);
+function sanitizeId(type: string, value: string, dialCode?: string): string {
+  const dc = dialCode || (typeof window !== "undefined" ? localStorage.getItem("hostops_dial_code") : null);
+  const config = getCountryConfig(dc);
+  const proof = config.idProofTypes.find(p => p.value === type);
+  const maxLen = getIdMaxLength(type, dc || undefined);
+  // Digit-only types (aadhar, medicare, ssn)
+  if (proof?.pattern && /^\\d/.test(proof.pattern)) return value.replace(/\D/g, "").slice(0, maxLen);
+  return value.toUpperCase().slice(0, maxLen);
 }
 
 function getInitials(name: string) {
@@ -873,7 +859,7 @@ export default function BookingsPage() {
                           <select value={guest.idProofType}
                             onChange={e => updateGuest(index, "idProofType", e.target.value)}
                             className="input-field w-full text-sm">
-                            {ID_PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                            {getCountryConfig(typeof window !== "undefined" ? localStorage.getItem("hostops_dial_code") : null).idProofTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
                         </div>
                         <div>

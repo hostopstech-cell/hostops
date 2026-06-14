@@ -1,4 +1,5 @@
 "use client";
+import { getCountryConfig } from "@/lib/country-config";
 import ConfirmModal from '@/components/ConfirmModal';
 import { useEffect, useState } from "react";
 import type { Property } from "@/types";
@@ -32,6 +33,8 @@ export default function PropertiesPage() {
   const [paymentModal, setPaymentModal] = useState(false);
   const [paymentProp, setPaymentProp] = useState<Property | null>(null);
   const [upiId, setUpiId] = useState("");
+  const _cc = typeof window !== "undefined" ? localStorage.getItem("hostops_dial_code") : null;
+  const _cfg = getCountryConfig(_cc);
   const [paymentName, setPaymentName] = useState("");
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentFromBot, setPaymentFromBot] = useState(false);
@@ -119,7 +122,7 @@ export default function PropertiesPage() {
   async function savePaymentDetails() {
     if (!paymentProp) return;
     if (!paymentName.trim() || !upiId.trim()) {
-      setError("Owner name aur UPI ID dono required hain");
+      setError(`Owner name aur ${_cfg.paymentFieldLabel} dono required hain`);
       return;
     }
     setPaymentSaving(true);
@@ -138,7 +141,7 @@ export default function PropertiesPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bot_enabled: true }),
       });
-      setSuccess("UPI saved & Bot activated! 🤖");
+      setSuccess(`${_cfg.paymentFieldLabel} saved & Bot activated! 🤖`);
       fetchProperties();
       setBotLinkProp({ ...updatedProp, bot_enabled: true });
     } else {
@@ -301,7 +304,7 @@ export default function PropertiesPage() {
                     <button
                       onClick={() => { setPaymentProp(p); setUpiId(""); setPaymentName(""); setPaymentFromBot(false); setPaymentModal(true); }}
                       className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${hasPayment ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-orange-50 hover:text-orange-600"}`}>
-                      💳 {hasPayment ? "UPI ✓" : "Add UPI"}
+                      {hasPayment ? `💳 ${_cfg.paymentMethodLabel} ✓` : `💳 Add ${_cfg.paymentMethodLabel}`}
                     </button>
                   </div>
 
@@ -362,7 +365,7 @@ export default function PropertiesPage() {
                         </div>
                       </div>
                       <button onClick={() => toggleBot(p)}
-                        title={!hasPayment && !botEnabled ? "UPI details required" : ""}
+                        title={!hasPayment && !botEnabled ? `${_cfg.paymentFieldLabel} details required` : ""}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${botEnabled ? "bg-emerald-500" : "bg-slate-300"}`}>
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${botEnabled ? "translate-x-6" : "translate-x-1"}`} />
                       </button>
@@ -572,11 +575,11 @@ export default function PropertiesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">UPI ID <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{_cfg.paymentFieldLabel} <span className="text-red-500">*</span></label>
                 <input
                   value={upiId}
                   onChange={e => setUpiId(e.target.value)}
-                  placeholder="e.g. rajesh@upi"
+                  placeholder={_cfg.paymentFieldPlaceholder}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100"
                 />
               </div>

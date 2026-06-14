@@ -1,7 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
+import { getCountryConfig } from "@/lib/country-config";
 
 interface Guest { name: string; phone: string; idtype: string; idnumber: string; }
+interface PropertyData { name?: string; city?: string; type?: string; contact?: string; upi_id?: string; payment_name?: string; check_in_time?: string; check_out_time?: string; dial_code?: string; }
 interface RoomGroup {
   id: string;
   name: string;
@@ -27,7 +29,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
   const [guestCount, setGuestCount] = useState(1);
-  const [guests, setGuests] = useState<Guest[]>([{ name: "", phone: "", idtype: "aadhaar", idnumber: "" }]);
+  const [guests, setGuests] = useState<Guest[]>([{ name: "", phone: "", idtype: "passport", idnumber: "" }]);
   const [utr, setUtr] = useState("");
   const [senderName, setSenderName] = useState("");
   const [payDate, setPayDate] = useState("");
@@ -72,7 +74,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
   useEffect(() => {
     setGuests(prev => {
       const arr = [...prev];
-      while (arr.length < guestCount) arr.push({ name: "", phone: "", idtype: "aadhaar", idnumber: "" });
+      while (arr.length < guestCount) arr.push({ name: "", phone: "", idtype: "passport", idnumber: "" });
       return arr.slice(0, guestCount);
     });
   }, [guestCount]);
@@ -86,27 +88,21 @@ export default function BookPage({ params }: { params: { propertyId: string } })
     : 0;
 
   function validateId(type: string, num: string) {
-    const n = num.trim().toUpperCase();
-    switch (type) {
-      case "aadhaar": return /^\d{12}$/.test(n);
-      case "pan": return /^[A-Z]{5}\d{4}[A-Z]$/.test(n);
-      case "passport": return /^[A-Z]\d{7}$/.test(n);
-      case "voter": return /^[A-Z]{3}\d{7}$/.test(n);
-      case "driving": return /^[A-Z0-9]{10,16}$/.test(n);
-      default: return true;
+    if (!num) return true;
+    const proofTypes = _cfg?.idProofTypes || [];
+    const proof = proofTypes.find((p: any) => p.value === type);
+    if (proof?.validate) {
+      const err = proof.validate(num);
+      return !err;
     }
+    return num.length >= 3;
   }
 
-  function idPlaceholder(type: string) {
-    switch (type) {
-      case "aadhaar": return "123456789012 (12 digits)";
-      case "pan": return "ABCDE1234F";
-      case "passport": return "A1234567";
-      case "voter": return "ABC1234567";
-      case "driving": return "MH0120210012345";
-      default: return "Enter ID number";
-    }
-  }
+  function idPlaceholder(type: string, cfg?: any): string {
+  const proofTypes = cfg?.idProofTypes || [];
+  const proof = proofTypes.find((p: any) => p.value === type);
+  return proof?.placeholder || "ID number";
+}
 
   function validateStep() {
     if (step === 1) {
@@ -124,7 +120,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
         if (!g.name.trim()) return `Guest ${i + 1}: name is required.`;
         if (!/^\d{7,12}$/.test(g.phone)) return `Guest ${i + 1}: enter valid phone number.`;
         if (!g.idnumber.trim()) return `Guest ${i + 1}: ID number is required.`;
-        if (!validateId(g.idtype, g.idnumber)) return `Guest ${i + 1}: ${g.idtype} number is invalid.`;
+        if (!validateId(g.idtype, g.idnumber, _cfg)) return `Guest ${i + 1}: ${g.idtype} number is invalid.`;
       }
     }
     if (step === 4) {
@@ -185,6 +181,10 @@ export default function BookPage({ params }: { params: { propertyId: string } })
     </div>
   );
 
+  const _dc = (property as any)?.dial_code || null;
+  const _cfg = getCountryConfig(_dc);
+  const sym = _cfg.currencySymbol;
+
   if (error) return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 to-indigo-200 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-8 text-center shadow-xl max-w-sm w-full">
@@ -206,7 +206,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
           <div className="flex justify-between"><span className="text-slate-400">Check-in</span><span className="font-medium text-slate-800">{checkin}</span></div>
           <div className="flex justify-between"><span className="text-slate-400">Check-out</span><span className="font-medium text-slate-800">{checkout}</span></div>
           <div className="flex justify-between"><span className="text-slate-400">Guests</span><span className="font-medium text-slate-800">{guestCount}</span></div>
-          <div className="flex justify-between border-t border-slate-200 pt-1.5"><span className="font-bold text-slate-700">Total Paid</span><span className="font-bold text-green-600">₹{totalAmount}</span></div>
+          <div className="flex justify-between border-t border-slate-200 pt-1.5"><span className="font-bold text-slate-700">Total Paid</span><span className="font-bold text-green-600">{sym}{totalAmount}</span></div>
         </div>
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mt-2 text-left">
           <p className="text-sm font-bold text-orange-700 mb-1">⚠️ Important: Confirm Your Booking</p>
@@ -252,7 +252,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
               <span className="text-xs font-semibold text-red-400 bg-red-50 px-2 py-1 rounded-lg">Sold Out</span>
             ) : (
               <div>
-                <p className="font-bold text-indigo-600">₹{r.price_per_night}</p>
+                <p className="font-bold text-indigo-600">{sym}{r.price_per_night}</p>
                 <p className="text-xs text-slate-400">/{dorm ? "bed" : "room"}/night</p>
               </div>
             )}
@@ -360,9 +360,9 @@ export default function BookPage({ params }: { params: { propertyId: string } })
                   <p className="text-indigo-700 font-semibold">{selectedRoom.name} · {nights} night{nights > 1 ? "s" : ""}</p>
                   <p className="text-indigo-500 text-xs mt-0.5">
                     {isDorm(selectedRoom.type)
-                      ? `₹${selectedRoom.price_per_night} × ${guestCount} guest${guestCount > 1 ? "s" : ""} × ${nights} night${nights > 1 ? "s" : ""}`
-                      : `₹${selectedRoom.price_per_night} × ${nights} night${nights > 1 ? "s" : ""}`}
-                    {" = "}<strong className="text-indigo-700">₹{totalAmount}</strong>
+                      ? `${sym}${selectedRoom.price_per_night} × ${guestCount} guest${guestCount > 1 ? "s" : ""} × ${nights} night${nights > 1 ? "s" : ""}`
+                      : `${sym}${selectedRoom.price_per_night} × ${nights} night${nights > 1 ? "s" : ""}`}
+                    {" = "}<strong className="text-indigo-700">{sym}{totalAmount}</strong>
                   </p>
                 </div>
               )}
@@ -401,14 +401,10 @@ export default function BookPage({ params }: { params: { propertyId: string } })
                       className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
                     <select value={g.idtype}
                       onChange={e => { const a = [...guests]; a[i].idtype = e.target.value; a[i].idnumber = ""; setGuests(a); }}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 bg-white">
-                      <option value="aadhaar">Aadhaar Card</option>
-                      <option value="pan">PAN Card</option>
-                      <option value="passport">Passport</option>
-                      <option value="voter">Voter ID</option>
-                      <option value="driving">Driving License</option>
+                      className="input-field text-sm flex-1">
+                      {(_cfg?.idProofTypes || []).map((t: any) => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
-                    <input placeholder={idPlaceholder(g.idtype)} value={g.idnumber}
+                    <input placeholder={idPlaceholder(g.idtype, _cfg)} value={g.idnumber}
                       onChange={e => { const a = [...guests]; a[i].idnumber = e.target.value.toUpperCase(); setGuests(a); }}
                       className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono" />
                   </div>
@@ -435,7 +431,7 @@ export default function BookPage({ params }: { params: { propertyId: string } })
                 <div className="flex justify-between"><span className="text-slate-400">Guests</span><span className="font-medium text-slate-800">{guestCount}</span></div>
                 <div className="border-t border-slate-200 pt-2 flex justify-between">
                   <span className="font-bold text-slate-700">Total</span>
-                  <span className="font-bold text-indigo-600 text-base">₹{totalAmount}</span>
+                  <span className="font-bold text-indigo-600 text-base">{sym}{totalAmount}</span>
                 </div>
               </div>
               <div className="space-y-1">
@@ -458,21 +454,21 @@ export default function BookPage({ params }: { params: { propertyId: string } })
             <div className="space-y-4">
               <h2 className="font-bold text-slate-800 text-lg">Payment</h2>
               <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center">
-                <p className="text-xs text-indigo-400 mb-1">Pay via UPI</p>
+                <p className="text-xs text-indigo-400 mb-1">Pay via {_cfg.paymentMethodLabel}</p>
                 <p className="text-indigo-700 font-bold text-lg">{property?.upi_id || "Contact property"}</p>
                 <p className="text-xs text-indigo-400 mt-1">{property?.payment_name || property?.name}</p>
                 <div className="mt-3 bg-white rounded-lg px-4 py-2 inline-block">
-                  <p className="text-2xl font-black text-indigo-600">₹{totalAmount}</p>
+                  <p className="text-2xl font-black text-indigo-600">{sym}{totalAmount}</p>
                 </div>
               </div>
               <p className="text-xs text-slate-500 text-center">After paying, enter UTR/transaction details below:</p>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-slate-500 font-medium block mb-1">UTR Number <span className="text-slate-400">(12 digits)</span></label>
-                  <input placeholder="123456789012" value={utr} maxLength={12}
-                    onChange={e => setUtr(e.target.value.replace(/\D/g, ""))}
+                  <label className="text-xs text-slate-500 font-medium block mb-1">{_cfg.paymentReferenceLabel}</label>
+                  <input placeholder={_cfg.paymentReferencePlaceholder} value={utr} maxLength={12}
+                    onChange={e => setUtr(_dc === "+91" ? e.target.value.replace(/\D/g, "") : e.target.value)}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono tracking-widest" />
-                  {utr.length > 0 && utr.length !== 12 && <p className="text-xs text-amber-500 mt-1">{utr.length}/12 digits</p>}
+                  {utr.length > 0 && _dc === "+91" && utr.length !== 12 && <p className="text-xs text-amber-500 mt-1">{utr.length}/12 digits</p>}
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 font-medium block mb-1">Sender Name</label>

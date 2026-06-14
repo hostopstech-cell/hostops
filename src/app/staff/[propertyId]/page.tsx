@@ -1,4 +1,5 @@
 "use client";
+import { getCountryConfig } from "@/lib/country-config";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
@@ -46,7 +47,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 interface GuestDetail { name: string; phone: string; idProofType: string; idProofNumber: string; }
-function makeGuest(): GuestDetail { return { name: "", phone: "", idProofType: "aadhar", idProofNumber: "" }; }
+function makeGuest(): GuestDetail { return { name: "", phone: "", idProofType: "passport", idProofNumber: "" }; }
 
 function parseAllGuests(booking: any): GuestDetail[] {
   const primary: GuestDetail = { name: booking.guest_name || "", phone: booking.guest_phone || "", idProofType: booking.id_proof_type || "aadhar", idProofNumber: booking.id_proof_number || "" };
@@ -65,6 +66,28 @@ const emptyForm = () => ({ checkIn: "", checkOut: "", amount: "", paymentStatus:
 const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 bg-white";
 const SELECT = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 bg-white";
 
+
+function GuestCell({ booking }: { booking: any }) {
+  const allGuests = parseAllGuests(booking);
+  const color = getAvatarColor(booking.guest_name || "G");
+  if (booking.number_of_guests <= 1 || allGuests.length <= 1) return (
+    <div className="flex items-center gap-2.5">
+      <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${color}`}>{getInitials(booking.guest_name)}</div>
+      <div><p className="font-semibold text-slate-900 text-sm">{booking.guest_name}</p><p className="text-xs text-slate-400">{booking.guest_phone}</p></div>
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-1">
+      {allGuests.map((g: any, i: number) => (
+        <div key={i} className="flex items-center gap-2">
+          <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${getAvatarColor(g.name || "G")}`}>{getInitials(g.name || "G")}</div>
+          <div><p className="text-xs font-semibold text-slate-900">{g.name || "—"}</p><p className="text-[11px] text-slate-400">{g.phone || ""}</p></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function StaffPage() {
   const params = useParams();
   const propertyId = params.propertyId as string;
@@ -77,6 +100,9 @@ export default function StaffPage() {
 
   const [bookings, setBookings] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
+  const [ownerDialCode, setOwnerDialCode] = useState<string | null>(null);
+  const _cfg = getCountryConfig(ownerDialCode);
+  const sym = _cfg.currencySymbol;
   const [propertyName, setPropertyName] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
@@ -172,11 +198,8 @@ export default function StaffPage() {
     if (form.checkIn >= form.checkOut) { setFormError("Check-out must be after check-in"); return; }
     if (pg.idProofNumber) {
       const id = pg.idProofNumber.trim().toUpperCase();
-      if (pg.idProofType === "aadhar" && !/^\d{12}$/.test(id)) { setFormError("Aadhar must be exactly 12 digits"); return; }
-      if (pg.idProofType === "pan" && !/^[A-Z]{5}\d{4}[A-Z]$/.test(id)) { setFormError("Invalid PAN format (e.g. ABCDE1234F)"); return; }
-      if (pg.idProofType === "passport" && !/^[A-Z]\d{7}$/.test(id)) { setFormError("Invalid Passport (e.g. A1234567)"); return; }
-      if (pg.idProofType === "voter_id" && !/^[A-Z]{3}\d{7}$/.test(id)) { setFormError("Invalid Voter ID format"); return; }
-      if (pg.idProofType === "driving_license" && !/^[A-Z0-9]{10,16}$/.test(id)) { setFormError("Invalid Driving License format"); return; }
+      const _proof = _cfg.idProofTypes.find((p: any) => p.value === pg.idProofType);
+        if (_proof?.validate) { const _err = _proof.validate(id); if (_err) { setFormError(_err); return; } }
     }
     if (form.utrNumber && !/^\d{12}$/.test(form.utrNumber.trim())) { setFormError("UTR must be exactly 12 digits"); return; }
     setSubmitting(true); setFormError("");
@@ -291,26 +314,6 @@ export default function StaffPage() {
     </div>
   );
 
-  function GuestCell({ booking }: { booking: any }) {
-    const allGuests = parseAllGuests(booking);
-    const color = getAvatarColor(booking.guest_name || "G");
-    if (booking.number_of_guests <= 1 || allGuests.length <= 1) return (
-      <div className="flex items-center gap-2.5">
-        <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${color}`}>{getInitials(booking.guest_name)}</div>
-        <div><p className="font-semibold text-slate-900 text-sm">{booking.guest_name}</p><p className="text-xs text-slate-400">{booking.guest_phone}</p></div>
-      </div>
-    );
-    return (
-      <div className="flex flex-col gap-1">
-        {allGuests.map((g, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${getAvatarColor(g.name || "G")}`}>{getInitials(g.name || "G")}</div>
-            <div><p className="text-xs font-semibold text-slate-900">{g.name || "—"}</p><p className="text-[11px] text-slate-400">{g.phone || ""}</p></div>
-          </div>
-        ))}
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -319,361 +322,237 @@ export default function StaffPage() {
           <p className={`text-sm font-semibold ${success.startsWith("Error") ? "text-red-700" : "text-emerald-700"}`}>{success.startsWith("Error") ? "⚠ " : "✓ "}{success}</p>
         </div>
       )}
-
-      <div className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-orange-500 rounded-xl flex items-center justify-center text-white font-bold text-sm">H</div>
-            <div><p className="font-bold text-slate-800 text-sm">{propertyName}</p><p className="text-xs text-slate-400">Staff Portal • Last 7 days</p></div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-green-100 text-green-700 font-semibold px-2.5 py-1 rounded-full hidden sm:block">● Live</span>
-            <button onClick={() => { setForm(emptyForm()); setGuests([makeGuest()]); setFormError(""); setShowAddModal(true); }} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-xl">+ Add Booking</button>
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 bg-orange-100 rounded-xl flex items-center justify-center text-lg">🏨</div>
+          <div>
+            <p className="font-bold text-slate-800 text-sm">{propertyName || "Staff Portal"}</p>
+            <p className="text-xs text-slate-400">Booking Management</p>
           </div>
         </div>
+        <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-xl">
+          + New Booking
+        </button>
       </div>
 
-      <div className="max-w-6xl mx-auto p-4 space-y-5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {[
-            { label: "Total Bookings", value: bookings.length, icon: "📋" },
-            { label: "Today Check-ins", value: todayCheckIns, icon: "🔑" },
-            { label: "Today Check-outs", value: todayCheckOuts, icon: "🧳" },
-            { label: "Currently In", value: currentlyIn, icon: "🛏" },
-            { label: "Rooms Available", value: `${availableRooms}/${totalRooms}`, icon: "🏠" },
-          ].map(({ label, value, icon }) => (
-            <div key={label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-              <div className="flex items-center gap-1.5 mb-1"><span className="text-base">{icon}</span><p className="text-xs text-slate-500 font-medium">{label}</p></div>
-              <p className="text-2xl font-bold text-slate-900">{value}</p>
-            </div>
-          ))}
-        </div>
+      {/* Filters */}
+      <div className="px-4 py-3 bg-white border-b border-slate-100 flex gap-2 flex-wrap">
+        <input value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Search guest, room..." className="flex-1 min-w-[160px] border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400" />
+        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400 bg-white">
+          <option value="all">All Status</option>
+          {BOOKING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
+      </div>
 
-        {rooms.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Room Status Today</p>
-            <div className="flex flex-wrap gap-2">
-              {rooms.map((r: any) => {
-                const active = bookings.find(b => b.room_id === r.id && b.status === "checked_in");
-                const reserved = bookings.find(b => b.room_id === r.id && b.status === "confirmed" && b.check_in?.slice(0,10) <= today && b.check_out?.slice(0,10) >= today);
-                const s = active ? "in" : reserved ? "reserved" : "free";
-                return (
-                  <div key={r.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold ${s === "in" ? "bg-red-50 border-red-200 text-red-700" : s === "reserved" ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
-                    <span>{s === "in" ? "🔴" : s === "reserved" ? "🟡" : "🟢"}</span>
-                    <span>{r.name}</span>
-                    {s === "in" && <span className="opacity-60">({active?.guest_name?.split(" ")[0]})</span>}
-                  </div>
-                );
-              })}
-            </div>
-            <p className="text-xs text-slate-400 mt-2">🔴 Checked In &nbsp; 🟡 Reserved &nbsp; 🟢 Available</p>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
-            <input type="text" placeholder="Search guest, phone, booking ID..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="w-full pl-8 pr-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-400 bg-white" />
-          </div>
-          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="text-sm text-slate-900 border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:border-orange-400">
-            <option value="all">All Status</option>
-            {BOOKING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-          {filtered.length > 0 && <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-full font-medium ml-auto">{filtered.length} booking{filtered.length !== 1 ? "s" : ""}</span>}
-        </div>
-
+      {/* Table */}
+      <div className="p-4">
         {loading ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
-            <div className="h-8 w-8 border-[3px] border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm text-slate-400">Loading bookings...</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
-            <p className="text-3xl mb-2">📋</p>
-            <p className="text-lg font-bold text-slate-800 mb-1">No bookings found</p>
-            <p className="text-sm text-slate-400">{searchTerm || statusFilter !== "all" ? "Try adjusting your filters." : "No bookings in last 7 days."}</p>
-          </div>
+          <div className="text-center py-16 text-slate-400">Loading bookings...</div>
+        ) : paginated.length === 0 ? (
+          <div className="text-center py-16 text-slate-400">No bookings found</div>
         ) : (
-          <>
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100">
-                      {["Guest", "Room", "Check-in → Check-out", "Nights", "Amount", "Status", "Actions"].map(h => (
-                        <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {paginated.map(b => {
-                      const nights = b.check_in && b.check_out ? Math.max(1, Math.round((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000)) : "—";
-                      const roomName = b.room_id ? getRoomName(b.room_id) : null;
-                      const isLoading = actionLoading === b.id;
-                      return (
-                        <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="px-4 py-3"><GuestCell booking={b} /></td>
-                          <td className="px-4 py-3">
-                            {roomName ? <span className="text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded-lg">{roomName}</span> : <span className="text-xs text-slate-400">—</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="text-sm font-medium text-slate-800 whitespace-nowrap">{formatDate(b.check_in)} → {formatDate(b.check_out)}</p>
-                            <p className="text-[11px] text-slate-400">{b.booking_code}</p>
-                          </td>
-                          <td className="px-4 py-3 text-sm font-semibold text-slate-700">{nights}</td>
-                          <td className="px-4 py-3">
-                            <p className="text-sm font-bold text-slate-900">₹{Number(b.final_amount || b.amount || 0).toLocaleString("en-IN")}</p>
-                            <p className={`text-[11px] font-semibold ${b.payment_status === "paid" ? "text-emerald-600" : "text-amber-600"}`}>{capitalize(b.payment_status)}</p>
-                          </td>
-                          <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1 flex-wrap">
-                              {b.status === "confirmed" && (
-                                <button onClick={() => handleCheckIn(b.id)} disabled={isLoading} className="text-[10px] font-semibold bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1.5 rounded-lg disabled:opacity-50 whitespace-nowrap">
-                                  {isLoading ? "..." : "✓ Check In"}
-                                </button>
-                              )}
-                              {b.status === "checked_in" && (
-                                <button onClick={() => handleCheckOut(b.id)} disabled={isLoading} className="text-[10px] font-semibold bg-slate-700 hover:bg-slate-800 text-white px-2 py-1.5 rounded-lg disabled:opacity-50 whitespace-nowrap">
-                                  {isLoading ? "..." : "→ Check Out"}
-                                </button>
-                              )}
-                              <button onClick={() => openEditModal(b)} className="h-7 w-7 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-500 hover:bg-orange-100" title="Edit">✏️</button>
-                              <button onClick={() => setInfoBooking(b)} className="h-7 w-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-blue-50" title="Info">👁</button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    {["Guest", "Room", "Check-in → Check-out", "Nights", "Amount", "Status", "Actions"].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.map((b: any) => {
+                    const nights = Math.ceil((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000);
+                    const roomName = getRoomName(b.room_id);
+                    return (
+                      <tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                        <td className="px-4 py-3"><GuestCell booking={b} /></td>
+                        <td className="px-4 py-3 text-slate-700 text-xs">{roomName || "—"}</td>
+                        <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{formatDate(b.check_in)} → {formatDate(b.check_out)}</td>
+                        <td className="px-4 py-3 text-xs text-slate-600">{nights}n</td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-bold text-slate-900">{sym}{Number(b.final_amount || b.amount || 0).toLocaleString()}</p>
+                          <p className="text-xs text-slate-400">{capitalize(b.payment_status || "")}</p>
+                        </td>
+                        <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1 flex-wrap">
+                            <button onClick={() => setInfoBooking(b)} className="text-xs px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">Info</button>
+                            <button onClick={() => openEdit(b)} className="text-xs px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700">Edit</button>
+                            {b.status === "confirmed" && (
+                              <button onClick={() => handleAction(b.id, "check_in")} disabled={actionLoading === b.id} className="text-xs px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 disabled:opacity-50">Check-in</button>
+                            )}
+                            {b.status === "checked_in" && (
+                              <button onClick={() => handleAction(b.id, "check_out")} disabled={actionLoading === b.id} className="text-xs px-2 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 disabled:opacity-50">Check-out</button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
+            {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-500">Showing {(currentPage-1)*ITEMS_PER_PAGE+1}–{Math.min(currentPage*ITEMS_PER_PAGE, filtered.length)} of {filtered.length}</p>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setCurrentPage(p => Math.max(1, p-1))} disabled={currentPage===1} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30">‹</button>
-                  {Array.from({ length: totalPages }, (_, i) => i+1).map(p => (
-                    <button key={p} onClick={() => setCurrentPage(p)} className={`h-8 w-8 rounded-lg text-sm font-semibold ${currentPage===p ? "bg-orange-500 text-white" : "border border-slate-200 text-slate-600"}`}>{p}</button>
-                  ))}
-                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} disabled={currentPage===totalPages} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30">›</button>
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
+                <p className="text-xs text-slate-500">{filtered.length} bookings</p>
+                <div className="flex gap-1">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-2 py-1 text-xs rounded-lg border border-slate-200 disabled:opacity-40">←</button>
+                  <span className="px-3 py-1 text-xs text-slate-600">{currentPage}/{totalPages}</span>
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-2 py-1 text-xs rounded-lg border border-slate-200 disabled:opacity-40">→</button>
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
-        <p className="text-xs text-slate-400 text-center pb-4">HostOps Staff Portal</p>
       </div>
-
-      {/* Add Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between z-10">
-              <div><h2 className="text-base font-bold text-slate-800">Add New Booking</h2><p className="text-xs text-slate-400 mt-0.5">Fill in booking and guest details</p></div>
-              <button onClick={() => setShowAddModal(false)} className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 text-sm">✕</button>
-            </div>
-            <div className="p-5 space-y-5">
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">📅 Booking Details</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-in *</label><input type="date" value={form.checkIn} onChange={e => setForm(f => ({ ...f, checkIn: e.target.value }))} className={INPUT} /></div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-out *</label><input type="date" value={form.checkOut} min={form.checkIn} onChange={e => setForm(f => ({ ...f, checkOut: e.target.value }))} className={INPUT} /></div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Status</label>
-                    <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className={SELECT}>
-                      <option value="confirmed">Confirmed</option><option value="checked_in">Checked In</option><option value="pending">Pending</option>
-                    </select>
-                  </div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Source</label>
-                    <select value={form.bookingSource} onChange={e => setForm(f => ({ ...f, bookingSource: e.target.value }))} className={SELECT}>
-                      {BOOKING_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                    </select>
-                  </div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">No. of Guests</label><input type="number" min="1" max="20" value={form.numberOfGuests} onChange={e => setForm(f => ({ ...f, numberOfGuests: e.target.value }))} className={INPUT} /></div>
-                  <div className="col-span-2"><label className="block text-xs font-semibold text-slate-700 mb-1.5">🏠 Room (Optional)</label>
-                    <select value={form.roomId} onChange={e => setForm(f => ({ ...f, roomId: e.target.value }))} className={SELECT}>
-                      <option value="">— No specific room —</option>
-                      {rooms.map((r: any) => <option key={r.id} value={r.id}>{r.name} ({r.type}) — ₹{r.price_per_night}/night</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div className="border-t border-slate-100" />
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">💳 Payment</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Amount (₹)</label><input type="number" min="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" className={INPUT} /></div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Payment Status</label>
-                    <select value={form.paymentStatus} onChange={e => setForm(f => ({ ...f, paymentStatus: e.target.value }))} className={SELECT}>
-                      <option value="pending">Pending</option><option value="paid">Paid</option><option value="partial">Partial</option>
-                    </select>
-                  </div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Method</label>
-                    <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))} className={SELECT}>
-                      {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
-                  </div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">UTR Number</label><input value={form.utrNumber} onChange={e => setForm(f => ({ ...f, utrNumber: e.target.value }))} placeholder="123456789012" className={INPUT} /></div>
-                  <div className="col-span-2"><label className="block text-xs font-semibold text-slate-700 mb-1.5">Sender Name</label><input value={form.paymentSenderName} onChange={e => setForm(f => ({ ...f, paymentSenderName: e.target.value }))} className={INPUT} /></div>
-                </div>
-              </div>
-              <div className="border-t border-slate-100" />
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">👤 Guest Details</p>
-                  <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{guests.length} guest{guests.length !== 1 ? "s" : ""}</span>
-                </div>
-                {guests.map((guest, index) => (
-                  <div key={index} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                    <p className="text-xs font-bold text-slate-600 mb-3">{index === 0 ? "👤 Primary Guest" : `👤 Guest ${index + 1}`}</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Name {index === 0 ? "*" : ""}</label><input value={guest.name} onChange={e => updateGuest(index, "name", e.target.value)} placeholder="Guest name" className={INPUT} /></div>
-                      <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone {index === 0 ? "*" : ""}</label><input type="tel" value={guest.phone} onChange={e => updateGuest(index, "phone", e.target.value)} placeholder="Phone" className={INPUT} /></div>
-                      <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">ID Type</label>
-                        <select value={guest.idProofType} onChange={e => updateGuest(index, "idProofType", e.target.value)} className={SELECT}>
-                          {ID_PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                        </select>
-                      </div>
-                      <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">ID Number</label><input value={guest.idProofNumber} onChange={e => updateGuest(index, "idProofNumber", e.target.value)} placeholder="ID number" className={INPUT} /></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {formError && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">{formError}</p>}
-              <div className="flex gap-3 pt-1">
-                <button onClick={handleAddBooking} disabled={submitting} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50">{submitting ? "Adding..." : "Add Booking"}</button>
-                <button onClick={() => setShowAddModal(false)} className="flex-1 border border-slate-200 py-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {showEditModal && editingBooking && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between z-10">
-              <div><h2 className="text-base font-bold text-slate-800">Edit Booking</h2><p className="text-xs text-slate-400 mt-0.5">#{editingBooking.booking_code}</p></div>
-              <button onClick={() => setShowEditModal(false)} className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 text-sm">✕</button>
-            </div>
-            <div className="p-5 space-y-5">
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">📅 Booking Details</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-in *</label><input type="date" value={editForm.checkIn} onChange={e => setEditForm(f => ({ ...f, checkIn: e.target.value }))} className={INPUT} /></div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-out *</label><input type="date" value={editForm.checkOut} min={editForm.checkIn} onChange={e => setEditForm(f => ({ ...f, checkOut: e.target.value }))} className={INPUT} /></div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Status</label>
-                    <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className={SELECT}>
-                      {BOOKING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                    </select>
-                  </div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Source</label>
-                    <select value={editForm.bookingSource} onChange={e => setEditForm(f => ({ ...f, bookingSource: e.target.value }))} className={SELECT}>
-                      {BOOKING_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                    </select>
-                  </div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">No. of Guests</label><input type="number" min="1" max="20" value={editForm.numberOfGuests} onChange={e => setEditForm(f => ({ ...f, numberOfGuests: e.target.value }))} className={INPUT} /></div>
-                  <div className="col-span-2"><label className="block text-xs font-semibold text-slate-700 mb-1.5">🏠 Room</label>
-                    <select value={editForm.roomId} onChange={e => setEditForm(f => ({ ...f, roomId: e.target.value }))} className={SELECT}>
-                      <option value="">— No specific room —</option>
-                      {rooms.map((r: any) => <option key={r.id} value={r.id}>{r.name} ({r.type}) — ₹{r.price_per_night}/night</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div className="border-t border-slate-100" />
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">💳 Payment</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Amount (₹)</label><input type="number" min="0" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className={INPUT} /></div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Payment Status</label>
-                    <select value={editForm.paymentStatus} onChange={e => setEditForm(f => ({ ...f, paymentStatus: e.target.value }))} className={SELECT}>
-                      <option value="pending">Pending</option><option value="paid">Paid</option><option value="partial">Partial</option>
-                    </select>
-                  </div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Method</label>
-                    <select value={editForm.paymentMethod} onChange={e => setEditForm(f => ({ ...f, paymentMethod: e.target.value }))} className={SELECT}>
-                      {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
-                  </div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">UTR Number</label><input value={editForm.utrNumber} onChange={e => setEditForm(f => ({ ...f, utrNumber: e.target.value }))} className={INPUT} /></div>
-                  <div className="col-span-2"><label className="block text-xs font-semibold text-slate-700 mb-1.5">Sender Name</label><input value={editForm.paymentSenderName} onChange={e => setEditForm(f => ({ ...f, paymentSenderName: e.target.value }))} className={INPUT} /></div>
-                </div>
-              </div>
-              <div className="border-t border-slate-100" />
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">👤 Guest Details</p>
-                  <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{editGuests.length} guest{editGuests.length !== 1 ? "s" : ""}</span>
-                </div>
-                {editGuests.map((guest, index) => (
-                  <div key={index} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                    <p className="text-xs font-bold text-slate-600 mb-3">{index === 0 ? "👤 Primary Guest" : `👤 Guest ${index + 1}`}</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Name</label><input value={guest.name} onChange={e => updateEditGuest(index, "name", e.target.value)} className={INPUT} /></div>
-                      <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone</label><input value={guest.phone} onChange={e => updateEditGuest(index, "phone", e.target.value)} className={INPUT} /></div>
-                      <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">ID Type</label>
-                        <select value={guest.idProofType} onChange={e => updateEditGuest(index, "idProofType", e.target.value)} className={SELECT}>
-                          {ID_PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                        </select>
-                      </div>
-                      <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">ID Number</label><input value={guest.idProofNumber} onChange={e => updateEditGuest(index, "idProofNumber", e.target.value)} className={INPUT} /></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {editError && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">{editError}</p>}
-              <div className="flex gap-3 pt-1">
-                <button onClick={handleEditBooking} disabled={editSubmitting} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50">{editSubmitting ? "Saving..." : "Update Booking"}</button>
-                <button onClick={() => setShowEditModal(false)} className="flex-1 border border-slate-200 py-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Info Modal */}
       {infoBooking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <div><h2 className="text-lg font-bold text-slate-900">Booking Details</h2><p className="text-sm text-slate-500">{infoBooking.guest_name} — #{infoBooking.booking_code}</p></div>
-              <button onClick={() => setInfoBooking(null)} className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">✕</button>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h2 className="font-bold text-slate-800">Booking Details</h2>
+              <button onClick={() => setInfoBooking(null)} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
             </div>
-            <div className="space-y-1 text-sm">
-              {[
-                { label: "Room", value: infoBooking.room_id ? (getRoomName(infoBooking.room_id) || "—") : "—" },
-                { label: "Check-in", value: formatDate(infoBooking.check_in) },
-                { label: "Check-out", value: formatDate(infoBooking.check_out) },
-                { label: "Guests", value: infoBooking.number_of_guests },
-                { label: "Amount", value: `₹${Number(infoBooking.final_amount || infoBooking.amount || 0).toLocaleString("en-IN")}` },
-                { label: "Payment", value: capitalize(infoBooking.payment_status), colored: true },
-                { label: "Method", value: capitalize(infoBooking.payment_method) || "—" },
-                { label: "UTR", value: infoBooking.utr_number || "—" },
-                { label: "Sender", value: infoBooking.payment_sender_name || "—" },
-                { label: "Source", value: infoBooking.booking_source?.replace(/_/g, " ") || "—" },
-              ].map(item => (
-                <div key={item.label} className="flex justify-between py-2 border-b border-slate-100 last:border-0">
-                  <span className="text-slate-500">{item.label}</span>
-                  <span className={`font-semibold ${ (item as any).colored ? (infoBooking.payment_status === "paid" ? "text-emerald-600" : "text-amber-600") : "text-slate-900"}`}>{item.value}</span>
+            <div className="p-4 space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div><p className="text-xs text-slate-400">Guest</p><p className="font-semibold">{infoBooking.guest_name}</p></div>
+                <div><p className="text-xs text-slate-400">Phone</p><p className="font-semibold">{infoBooking.guest_phone || "—"}</p></div>
+                <div><p className="text-xs text-slate-400">Check-in</p><p className="font-semibold">{formatDate(infoBooking.check_in)}</p></div>
+                <div><p className="text-xs text-slate-400">Check-out</p><p className="font-semibold">{formatDate(infoBooking.check_out)}</p></div>
+                <div><p className="text-xs text-slate-400">Amount</p><p className="font-semibold">{sym}{Number(infoBooking.final_amount || infoBooking.amount || 0).toLocaleString()}</p></div>
+                <div><p className="text-xs text-slate-400">Status</p><StatusBadge status={infoBooking.status} /></div>
+                <div><p className="text-xs text-slate-400">Source</p><p className="font-semibold">{capitalize(infoBooking.booking_source || "direct")}</p></div>
+                <div><p className="text-xs text-slate-400">Payment</p><p className="font-semibold">{capitalize(infoBooking.payment_method || "")}</p></div>
+              </div>
+              {infoBooking.utr_number && <div><p className="text-xs text-slate-400">UTR</p><p className="font-mono text-xs">{infoBooking.utr_number}</p></div>}
+              {infoBooking.id_proof_type && <div><p className="text-xs text-slate-400">ID Proof</p><p className="text-xs">{infoBooking.id_proof_type.toUpperCase()}: {infoBooking.id_proof_number}</p></div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Booking Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 sticky top-0 bg-white">
+              <h2 className="font-bold text-slate-800">Add Booking</h2>
+              <button onClick={() => { setShowAddModal(false); setForm(emptyForm()); setGuests([makeGuest()]); setFormError(""); }} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-in *</label><input type="date" required value={form.checkIn} onChange={e => setForm(f => ({ ...f, checkIn: e.target.value }))} className={INPUT} /></div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-out *</label><input type="date" required value={form.checkOut} onChange={e => setForm(f => ({ ...f, checkOut: e.target.value }))} className={INPUT} /></div>
+              </div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Room</label>
+                <select value={form.roomId} onChange={e => setForm(f => ({ ...f, roomId: e.target.value }))} className={SELECT}>
+                  <option value="">No specific room</option>
+                  {rooms.map((r: any) => <option key={r.id} value={r.id}>{r.name} ({r.type}) — {sym}{r.price_per_night}/night</option>)}
+                </select>
+              </div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Number of Guests</label><input type="number" min="1" max="20" value={form.numberOfGuests} onChange={e => setForm(f => ({ ...f, numberOfGuests: e.target.value }))} className={INPUT} /></div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Amount ({sym})</label><input type="number" min="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" className={INPUT} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Payment Status</label>
+                  <select value={form.paymentStatus} onChange={e => setForm(f => ({ ...f, paymentStatus: e.target.value }))} className={SELECT}>
+                    <option value="pending">Pending</option><option value="paid">Paid</option><option value="partial">Partial</option>
+                  </select>
+                </div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Payment Method</label>
+                  <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))} className={SELECT}>
+                    {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Booking Source</label>
+                <select value={form.bookingSource} onChange={e => setForm(f => ({ ...f, bookingSource: e.target.value }))} className={SELECT}>
+                  {BOOKING_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Booking Status</label>
+                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className={SELECT}>
+                  {BOOKING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+              <hr className="border-slate-100" />
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Guest Details</p>
+              {guests.map((guest, index) => (
+                <div key={index} className="border border-slate-200 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-semibold text-slate-600">Guest {index + 1}{index === 0 ? " (Primary)" : ""}</p>
+                  <input placeholder="Full Name *" value={guest.name} onChange={e => updateGuest(index, "name", e.target.value)} className={INPUT} />
+                  <input placeholder="Phone" value={guest.phone} onChange={e => updateGuest(index, "phone", e.target.value)} className={INPUT} />
+                  <select value={guest.idProofType} onChange={e => updateGuest(index, "idProofType", e.target.value)} className={SELECT}>
+                    {_cfg.idProofTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                  <input placeholder={_cfg.idProofTypes.find(t => t.value === guest.idProofType)?.placeholder || "ID number"} value={guest.idProofNumber} onChange={e => updateGuest(index, "idProofNumber", e.target.value)} className={INPUT} />
                 </div>
               ))}
-            </div>
-            {infoBooking.number_of_guests > 1 && (
-              <div className="mt-4">
-                <p className="text-xs font-bold text-slate-500 uppercase mb-2">All Guests</p>
-                {parseAllGuests(infoBooking).map((g, i) => (
-                  <div key={i} className="text-xs bg-slate-50 rounded-lg px-3 py-2 mb-1.5">
-                    <span className="font-semibold">{i + 1}. {g.name || "—"}</span>
-                    {g.phone && <span className="text-slate-400 ml-2">{g.phone}</span>}
-                    {g.idProofNumber && <span className="text-slate-400 ml-2">• {g.idProofType?.toUpperCase()}: {g.idProofNumber}</span>}
-                  </div>
-                ))}
+              {formError && <p className="text-xs text-red-500 bg-red-50 rounded-lg p-2">{formError}</p>}
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => { setShowAddModal(false); setForm(emptyForm()); setGuests([makeGuest()]); setFormError(""); }} className="flex-1 border border-slate-200 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+                <button onClick={handleAddBooking} disabled={submitting} className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-orange-600 disabled:opacity-60">{submitting ? "Saving..." : "Add Booking"}</button>
               </div>
-            )}
-            <button onClick={() => setInfoBooking(null)} className="w-full mt-4 bg-slate-800 text-white py-2.5 rounded-xl text-sm font-semibold">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Booking Modal */}
+      {showEditModal && editingBooking && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 sticky top-0 bg-white">
+              <h2 className="font-bold text-slate-800">Edit Booking</h2>
+              <button onClick={() => { setShowEditModal(false); setEditingBooking(null); setEditError(""); }} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-in</label><input type="date" value={editForm.checkIn} onChange={e => setEditForm(f => ({ ...f, checkIn: e.target.value }))} className={INPUT} /></div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Check-out</label><input type="date" value={editForm.checkOut} onChange={e => setEditForm(f => ({ ...f, checkOut: e.target.value }))} className={INPUT} /></div>
+              </div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Room</label>
+                <select value={editForm.roomId} onChange={e => setEditForm(f => ({ ...f, roomId: e.target.value }))} className={SELECT}>
+                  <option value="">No specific room</option>
+                  {rooms.map((r: any) => <option key={r.id} value={r.id}>{r.name} ({r.type}) — {sym}{r.price_per_night}/night</option>)}
+                </select>
+              </div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Amount ({sym})</label><input type="number" min="0" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className={INPUT} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Payment Status</label>
+                  <select value={editForm.paymentStatus} onChange={e => setEditForm(f => ({ ...f, paymentStatus: e.target.value }))} className={SELECT}>
+                    <option value="pending">Pending</option><option value="paid">Paid</option><option value="partial">Partial</option>
+                  </select>
+                </div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Booking Status</label>
+                  <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className={SELECT}>
+                    {BOOKING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <hr className="border-slate-100" />
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Guest Details</p>
+              {editGuests.map((guest, index) => (
+                <div key={index} className="border border-slate-200 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-semibold text-slate-600">Guest {index + 1}{index === 0 ? " (Primary)" : ""}</p>
+                  <input placeholder="Full Name" value={guest.name} onChange={e => updateEditGuest(index, "name", e.target.value)} className={INPUT} />
+                  <input placeholder="Phone" value={guest.phone} onChange={e => updateEditGuest(index, "phone", e.target.value)} className={INPUT} />
+                  <select value={guest.idProofType} onChange={e => updateEditGuest(index, "idProofType", e.target.value)} className={SELECT}>
+                    {_cfg.idProofTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                  <input placeholder={_cfg.idProofTypes.find(t => t.value === guest.idProofType)?.placeholder || "ID number"} value={guest.idProofNumber} onChange={e => updateEditGuest(index, "idProofNumber", e.target.value)} className={INPUT} />
+                </div>
+              ))}
+              {editError && <p className="text-xs text-red-500 bg-red-50 rounded-lg p-2">{editError}</p>}
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => { setShowEditModal(false); setEditingBooking(null); setEditError(""); }} className="flex-1 border border-slate-200 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+                <button onClick={handleEditBooking} disabled={editSubmitting} className="flex-1 bg-blue-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-600 disabled:opacity-60">{editSubmitting ? "Saving..." : "Save Changes"}</button>
+              </div>
+            </div>
           </div>
         </div>
       )}

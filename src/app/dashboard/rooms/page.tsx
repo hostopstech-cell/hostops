@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { capitalize } from "@/lib/format";
+import { getCurrencySymbol } from "@/lib/currency-utils";
 import type { Room, RoomType, Property } from "@/types";
 import ConfirmModal from "@/components/ConfirmModal";
 import {
@@ -74,6 +75,7 @@ export default function RoomsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currencySymbol, setCurrencySymbol] = useState("₹");
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -123,7 +125,7 @@ export default function RoomsPage() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); setCurrencySymbol(getCurrencySymbol()); }, []);
 
   useEffect(() => {
     function handle(e: MouseEvent) {
@@ -651,7 +653,7 @@ export default function RoomsPage() {
               {/* Price + Status */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Price/Night (₹) *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Price/Night ({currencySymbol}) *</label>
                   <input type="number" required min={0} placeholder="500" value={roomForm.pricePerNight} onChange={e => setRoomForm({ ...roomForm, pricePerNight: e.target.value })} className="input-field w-full text-sm" />
                 </div>
                 <div>
