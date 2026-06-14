@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       name, type, address, city, state, totalBeds,
-      pincode, contact, email, description,
+      pincode, contactNumber, email, description,
       checkInTime, checkOutTime, amenities, policies,
       googleMapLink, upiId, status, images,
     } = body;
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       )
       VALUES (
         ${owner.ownerId}, ${name.trim()}, ${type}, ${address.trim()}, ${city.trim()},
-        ${state.trim()}, ${pincode?.trim() || null}, ${contact?.trim() || null},
+        ${state.trim()}, ${pincode?.trim() || null}, ${contactNumber?.trim() || null},
         ${email?.trim() || null}, ${description?.trim() || null},
         ${checkInTime || "14:00"}, ${checkOutTime || "11:00"},
         ${amenities || null}, ${policies?.trim() || null},

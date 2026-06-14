@@ -54,11 +54,24 @@ export default function PropertiesPage() {
   function openAdd() { setEditingProperty(null); setForm(emptyForm()); setError(""); setShowModal(true); }
   function openEdit(p: Property) {
     setEditingProperty(p);
+    const rawContact = (p as any).contact || "";
+    let countryCode = "+91";
+    let contactNumber = rawContact;
+    for (const code of ["+971", "+44", "+1", "+91"]) {
+      if (rawContact.startsWith(code)) {
+        countryCode = code;
+        contactNumber = rawContact.slice(code.length).replace(/\D/g, "").slice(0, 10);
+        break;
+      }
+    }
+    if (contactNumber === rawContact) {
+      contactNumber = rawContact.replace(/\D/g, "").slice(0, 10);
+    }
     setForm({
       name: p.name || "", type: p.type || "hostel",
       address: (p as any).address || "", city: (p as any).city || "",
       state: (p as any).state || "Rajasthan", pincode: (p as any).pincode || "",
-      contactNumber: (p as any).contact_number || "", email: (p as any).email || "",
+      countryCode, contactNumber, email: (p as any).email || "",
       totalBeds: String(p.total_beds || ""), description: (p as any).description || "",
       checkInTime: (p as any).check_in_time || "14:00", checkOutTime: (p as any).check_out_time || "11:00",
       status: p.status || "active", amenities: (p as any).amenities || [],
