@@ -87,9 +87,9 @@ export default function BookPage({ params }: { params: { propertyId: string } })
       : selectedRoom.price_per_night * nights
     : 0;
 
-  function validateId(type: string, num: string) {
+  function validateId(type: string, num: string, cfg?: any) {
     if (!num) return true;
-    const proofTypes = _cfg?.idProofTypes || [];
+    const proofTypes = cfg?.idProofTypes || [];
     const proof = proofTypes.find((p: any) => p.value === type);
     if (proof?.validate) {
       const err = proof.validate(num);
@@ -99,10 +99,10 @@ export default function BookPage({ params }: { params: { propertyId: string } })
   }
 
   function idPlaceholder(type: string, cfg?: any): string {
-  const proofTypes = cfg?.idProofTypes || [];
-  const proof = proofTypes.find((p: any) => p.value === type);
-  return proof?.placeholder || "ID number";
-}
+    const proofTypes = cfg?.idProofTypes || [];
+    const proof = proofTypes.find((p: any) => p.value === type);
+    return proof?.placeholder || "ID number";
+  }
 
   function validateStep() {
     if (step === 1) {
@@ -118,13 +118,13 @@ export default function BookPage({ params }: { params: { propertyId: string } })
       for (let i = 0; i < guestCount; i++) {
         const g = guests[i];
         if (!g.name.trim()) return `Guest ${i + 1}: name is required.`;
-        if (!/^\d{7,12}$/.test(g.phone)) return `Guest ${i + 1}: enter valid phone number.`;
+        if (!/^\d{7,15}$/.test(g.phone)) return `Guest ${i + 1}: enter valid phone number.`;
         if (!g.idnumber.trim()) return `Guest ${i + 1}: ID number is required.`;
         if (!validateId(g.idtype, g.idnumber, _cfg)) return `Guest ${i + 1}: ${g.idtype} number is invalid.`;
       }
     }
     if (step === 4) {
-      if (!/^\d{12}$/.test(utr)) return "UTR must be exactly 12 digits.";
+      if (!utr.trim()) return "Reference / Transaction ID is required.";
       if (!senderName.trim()) return "Sender name is required.";
       if (!payDate) return "Payment date is required.";
     }
@@ -396,12 +396,12 @@ export default function BookPage({ params }: { params: { propertyId: string } })
                     <input placeholder="Full Name" value={g.name}
                       onChange={e => { const a = [...guests]; a[i].name = e.target.value; setGuests(a); }}
                       className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
-                    <input placeholder="Phone Number" value={g.phone} type="tel" maxLength={12}
+                    <input placeholder="Phone Number" value={g.phone} type="tel" maxLength={15}
                       onChange={e => { const a = [...guests]; a[i].phone = e.target.value.replace(/\D/g, ""); setGuests(a); }}
                       className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800" />
                     <select value={g.idtype}
                       onChange={e => { const a = [...guests]; a[i].idtype = e.target.value; a[i].idnumber = ""; setGuests(a); }}
-                      className="input-field text-sm flex-1">
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 text-slate-800">
                       {(_cfg?.idProofTypes || []).map((t: any) => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                     <input placeholder={idPlaceholder(g.idtype, _cfg)} value={g.idnumber}
@@ -461,14 +461,16 @@ export default function BookPage({ params }: { params: { propertyId: string } })
                   <p className="text-2xl font-black text-indigo-600">{sym}{totalAmount}</p>
                 </div>
               </div>
-              <p className="text-xs text-slate-500 text-center">After paying, enter UTR/transaction details below:</p>
+              <p className="text-xs text-slate-500 text-center">After paying, enter your payment reference details below:</p>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-slate-500 font-medium block mb-1">{_cfg.paymentReferenceLabel}</label>
-                  <input placeholder={_cfg.paymentReferencePlaceholder} value={utr} maxLength={12}
-                    onChange={e => setUtr(_dc === "+91" ? e.target.value.replace(/\D/g, "") : e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono tracking-widest" />
-                  {utr.length > 0 && _dc === "+91" && utr.length !== 12 && <p className="text-xs text-amber-500 mt-1">{utr.length}/12 digits</p>}
+                  <label className="text-xs text-slate-500 font-medium block mb-1">Reference / Transaction ID</label>
+                  <input
+                    placeholder="Enter your transaction or reference number"
+                    value={utr}
+                    onChange={e => setUtr(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 text-slate-800 font-mono tracking-widest"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 font-medium block mb-1">Sender Name</label>
