@@ -37,16 +37,12 @@ export default function Dashboard() {
       fetch('/api/properties').then(r => r.json()),
     ]).then(([authData, bookingsData, propsData]) => {
       if (authData?.owner?.name) setOwnerName(authData.owner.name.split(' ')[0])
+      if (!authData?.owner?.phone) setShowPhonePopup(true)
       if (bookingsData?.bookings) setAllBookings(bookingsData.bookings)
       if (propsData?.properties) setProperties(propsData.properties)
 
-      // Phone popup logic — dial code localStorage mein nahi hai toh show karo
-      const hasDialCode = !!localStorage.getItem('hostops_dial_code')
-      if (!hasDialCode) {
-        setShowPhonePopup(true)
-      } else {
-        setCurrencySymbol(getCurrencySymbol())
-      }
+      // Always set currency — no popup needed, phone number se already set hota hai
+      setCurrencySymbol(getCurrencySymbol())
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
@@ -174,8 +170,6 @@ export default function Dashboard() {
 
   return (
     <>
-      {showPhonePopup && <PhonePopup onComplete={handlePhoneComplete} />}
-
       <div className="py-4 md:py-6 space-y-4 max-w-[1400px] mx-auto">
         <SubscriptionBanner />
 
@@ -542,6 +536,7 @@ export default function Dashboard() {
           <p className="text-center text-xs text-slate-300 pb-2">© {new Date().getFullYear()} HostOps. All rights reserved.</p>
         </div>
       </div>
+      {showPhonePopup && <PhonePopup onComplete={handlePhoneComplete} />}
     </>
   )
 }

@@ -9,9 +9,23 @@ const TYPE_BG: Record<string, string> = {
   hostel: "from-orange-50 to-orange-100", hotel: "from-blue-50 to-blue-100",
   guesthouse: "from-green-50 to-green-100", default: "from-slate-50 to-slate-100",
 };
-const STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu and Kashmir","Ladakh","Chandigarh","Puducherry"];
+
+
+const COUNTRY_CODES = [
+  { code: "+91",  label: "+91 (India)",        digits: 10 },
+  { code: "+1",   label: "+1 (USA/Canada)",     digits: 10 },
+  { code: "+44",  label: "+44 (UK)",            digits: 10 },
+  { code: "+971", label: "+971 (UAE)",          digits: 9  },
+  { code: "+61",  label: "+61 (Australia)",     digits: 9  },
+  { code: "+65",  label: "+65 (Singapore)",     digits: 8  },
+  { code: "+49",  label: "+49 (Germany)",       digits: 10 },
+  { code: "+33",  label: "+33 (France)",        digits: 9  },
+  { code: "+966", label: "+966 (Saudi Arabia)", digits: 9  },
+  { code: "+977", label: "+977 (Nepal)",        digits: 10 },
+];
+function getDigitsForCode(code) { return COUNTRY_CODES.find(c => c.code === code)?.digits ?? 10; }
 const emptyForm = () => ({
-  name: "", type: "hostel", address: "", city: "", state: "Rajasthan",
+  name: "", type: "hostel", address: "", city: "", state: "",
   pincode: "", contactNumber: "", countryCode: "+91", email: "", totalBeds: "", description: "",
   checkInTime: "14:00", checkOutTime: "11:00", status: "active", amenities: [] as string[],
 });
@@ -483,10 +497,8 @@ export default function PropertiesPage() {
                   <input required value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} autoComplete="off" className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">State *</label>
-                  <select required value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} className="input-field w-full text-sm text-slate-900">
-                    {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">State / Region</label>
+                  <input value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} placeholder="" autoComplete="off" className="input-field w-full text-sm text-slate-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Pincode</label>
@@ -497,26 +509,23 @@ export default function PropertiesPage() {
                   <div className="flex gap-2">
                     <select
                       value={form.countryCode || "+91"}
-                      onChange={e => setForm(f => ({ ...f, countryCode: e.target.value } as any))}
-                      className="input-field text-sm text-slate-900 w-24"
+                      onChange={e => setForm(f => ({ ...f, countryCode: e.target.value, contactNumber: "" } as any))}
+                      className="input-field text-sm text-slate-900 w-36"
                     >
-                      <option value="+91">+91 (IN)</option>
-                      <option value="+1">+1 (US)</option>
-                      <option value="+44">+44 (UK)</option>
-                      <option value="+971">+971 (UAE)</option>
+                      {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
                     </select>
                     <input
                       value={form.contactNumber}
-                      onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                      onChange={e => { const d = getDigitsForCode(form.countryCode); setForm(f => ({ ...f, contactNumber: e.target.value.replace(/\D/g, "").slice(0, d) })); }}
                       autoComplete="off"
-                      placeholder="10-digit number"
-                      maxLength={10}
+                      placeholder={`${getDigitsForCode(form.countryCode)}-digit number`}
+                      maxLength={getDigitsForCode(form.countryCode)}
                       required
                       className="input-field flex-1 text-sm text-slate-900"
                     />
                   </div>
-                  {form.contactNumber && form.contactNumber.length !== 10 && (
-                    <p className="text-xs text-red-500 mt-1">Please make sure you are entering the correct 10-digit number.</p>
+                  {form.contactNumber && form.contactNumber.length !== getDigitsForCode(form.countryCode) && (
+                    <p className="text-xs text-red-500 mt-1">Please enter a valid {getDigitsForCode(form.countryCode)}-digit number.</p>
                   )}
                 </div>
                 <div>
