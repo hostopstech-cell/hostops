@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
-import { plans } from "@/lib/pricing-data";
+import { plans, PRICING_BY_DIAL } from "@/lib/pricing-data";
+import { getDialCode } from "@/lib/currency-utils";
 
 declare global { interface Window { Razorpay: any; } }
 
@@ -28,10 +29,54 @@ export default function SubscriptionPage() {
   const [otpValue, setOtpValue] = useState("");
   const [verifyError, setVerifyError] = useState("");
   const [verifyLoading, setVerifyLoading] = useState(false);
+  const [dialCode, setDialCodeState] = useState("+91");
+
+  // Dial code se pricing get karo
+  const pricing = PRICING_BY_DIAL[dialCode] || PRICING_BY_DIAL["default"];
+  const currency = pricing.currency;
+
+  function getPlanMonthlyPrice(planKey: string): number {
+    return pricing.plans[planKey as keyof typeof pricing.plans]?.monthly || 0;
+  }
+  function getPlanSixMonthPrice(planKey: string): number {
+    return pricing.plans[planKey as keyof typeof pricing.plans]?.sixMonth || 0;
+  }
+  function getDisplayPrice(planKey: string): string {
+    const amount = billing === "monthly" ? getPlanMonthlyPrice(planKey) : getPlanSixMonthPrice(planKey);
+    return currency + amount.toLocaleString();
+  }
+  function getSavingText(planKey: string): string {
+    const saved = getPlanMonthlyPrice(planKey);
+    return `${currency}${saved.toLocaleString()} savings (1 month free!)`;
+  }
 
   useEffect(() => {
     if (ownerData?.email) setVerifyEmail(ownerData.email);
   }, [ownerData]);
+
+  useEffect(() => {
+    // Dial code localStorage se load karo
+    setDialCodeState(getDialCode());
+    fetch("/api/subscription").then(r => r.json()).then(setSubData).catch(() => {});
+    fetch("/api/auth/me").then(r => r.json()).then(d => { if (d.owner) setOwnerData(d.owner); }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!subData?.trialEndsAt) return;
+    const calc = () => {
+      const diff = new Date(subData.trialEndsAt).getTime() - Date.now();
+      if (diff <= 0) return setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      setTimeLeft({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((diff / (1000 * 60)) % 60),
+        seconds: Math.floor((diff / 1000) % 60),
+      });
+    };
+    calc();
+    const interval = setInterval(calc, 1000);
+    return () => clearInterval(interval);
+  }, [subData]);
 
   async function sendOtp() {
     setVerifyError(""); setVerifyLoading(true);
@@ -74,28 +119,6 @@ export default function SubscriptionPage() {
     handlePayment(plan);
   }
 
-  useEffect(() => {
-    fetch("/api/subscription").then(r => r.json()).then(setSubData).catch(() => {});
-    fetch("/api/auth/me").then(r => r.json()).then(d => { if (d.owner) setOwnerData(d.owner); }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!subData?.trialEndsAt) return;
-    const calc = () => {
-      const diff = new Date(subData.trialEndsAt).getTime() - Date.now();
-      if (diff <= 0) return setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-      setTimeLeft({
-        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((diff / (1000 * 60)) % 60),
-        seconds: Math.floor((diff / 1000) % 60),
-      });
-    };
-    calc();
-    const interval = setInterval(calc, 1000);
-    return () => clearInterval(interval);
-  }, [subData]);
-
   const loadRazorpay = () => new Promise((resolve) => {
     if (window.Razorpay) return resolve(true);
     const script = document.createElement("script");
@@ -111,7 +134,7 @@ export default function SubscriptionPage() {
       const loaded = await loadRazorpay();
       if (!loaded) { alert("Razorpay failed to load."); setLoading(null); return; }
 
-      const amount = billing === "monthly" ? plan.monthlyPrice : plan.sixMonthPrice;
+      const amount = billing === "monthly" ? getPlanMonthlyPrice(plan.planKey) : getPlanSixMonthPrice(plan.planKey);
 
       const res = await fetch("/api/razorpay/create-order", {
         method: "POST",
@@ -162,6 +185,13 @@ export default function SubscriptionPage() {
   return (
     <div className="min-h-screen bg-white p-6 md:p-8">
 
+      {/* Currency indicator */}
+      <div className="flex justify-end mb-2">
+        <span className="text-xs text-slate-400 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full">
+          {pricing.flag} Prices in {pricing.currency.trim()} · {pricing.country}
+        </span>
+      </div>
+
       {/* Banner */}
       {isActivePlan ? (
         <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 flex items-center gap-4">
@@ -210,7 +240,8 @@ export default function SubscriptionPage() {
       {/* Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-10">
         {plans.map((plan) => {
-          const displayPrice = billing === "monthly" ? plan.monthlyDisplay : plan.sixMonthDisplay;
+          const displayPrice = getDisplayPrice(plan.planKey);
+          const savingText = getSavingText(plan.planKey);
           const isLoading = loading === plan.planKey;
           const current = isCurrent(plan.planKey);
 
@@ -224,14 +255,12 @@ export default function SubscriptionPage() {
                 }
               `}
             >
-              {/* Current Plan Tag - only for current plan */}
               {current && (
                 <div className="bg-green-500 text-white text-xs font-semibold text-center py-1.5">
                   ✅ Current Plan
                 </div>
               )}
 
-              {/* Header */}
               <div className={`${plan.headerBg} px-6 pt-5 pb-4`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-xs font-bold px-3 py-1 rounded-full ${plan.badgeColor}`}>{plan.badge}</span>
@@ -244,18 +273,16 @@ export default function SubscriptionPage() {
                     <span className="text-3xl font-black text-gray-900">{displayPrice}</span>
                     {billing === "monthly" && <span className="text-gray-400 text-sm">/month</span>}
                   </div>
-                  {billing === "6month" && (
-                    <p className="text-green-600 text-xs font-semibold mt-1">✅ {plan.sixMonthSaving}</p>
-                  )}
-                  {billing === "monthly" && (
+                  {billing === "6month" ? (
+                    <p className="text-green-600 text-xs font-semibold mt-1">✅ {savingText}</p>
+                  ) : (
                     <p className="text-gray-400 text-xs mt-1">
-                      Save <span className="text-green-600 font-medium">{plan.sixMonthSaving.split("(")[0].trim()}</span> with 6 months
+                      Save <span className="text-green-600 font-medium">{currency}{getPlanMonthlyPrice(plan.planKey).toLocaleString()}</span> with 6 months
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Features */}
               <div className="px-6 py-4 bg-white flex-1 flex flex-col">
                 <ul className="space-y-2.5 mb-6 flex-1">
                   {plan.features.map((f, i) => (
@@ -311,17 +338,15 @@ export default function SubscriptionPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
             <h3 className="text-lg font-bold text-slate-800 mb-1">Verify Your Email</h3>
-            <p className="text-sm text-slate-500 mb-4">Please verify your email address before subscribing so we can keep you updated about your plan.</p>
-
+            <p className="text-sm text-slate-500 mb-4">Please verify your email before subscribing.</p>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email Address</label>
             <input
               value={verifyEmail}
               onChange={e => { setVerifyEmail(e.target.value); setOtpSent(false); setOtpValue(""); setVerifyError(""); }}
               disabled={otpSent}
-              className="input-field w-full text-sm text-slate-900 mb-3 disabled:bg-slate-50 disabled:text-slate-500"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 mb-3 disabled:bg-slate-50"
               placeholder="you@example.com"
             />
-
             {otpSent && (
               <div className="mb-3">
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Enter OTP</label>
@@ -329,41 +354,25 @@ export default function SubscriptionPage() {
                   value={otpValue}
                   onChange={e => setOtpValue(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   maxLength={6}
-                  className="input-field w-full text-sm text-slate-900 font-mono tracking-widest text-center"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-mono tracking-widest text-center"
                   placeholder="6-digit code"
                 />
-                <p className="text-xs text-slate-400 mt-1">We sent a code to {verifyEmail}. It expires in 10 minutes.</p>
+                <p className="text-xs text-slate-400 mt-1">Sent to {verifyEmail}. Expires in 10 minutes.</p>
               </div>
             )}
-
             {verifyError && <p className="text-xs text-red-500 bg-red-50 p-2 rounded-lg mb-3">{verifyError}</p>}
-
             <div className="flex gap-2">
-              <button
-                onClick={() => { setShowVerifyModal(false); setPendingPlan(null); }}
-                className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50"
-              >
-                Cancel
-              </button>
+              <button onClick={() => { setShowVerifyModal(false); setPendingPlan(null); }} className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50">Cancel</button>
               {!otpSent ? (
-                <button
-                  onClick={sendOtp}
-                  disabled={verifyLoading || !verifyEmail}
-                  className="flex-1 bg-orange-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-orange-700 disabled:opacity-50"
-                >
+                <button onClick={sendOtp} disabled={verifyLoading || !verifyEmail} className="flex-1 bg-orange-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-orange-700 disabled:opacity-50">
                   {verifyLoading ? "Sending..." : "Send OTP"}
                 </button>
               ) : (
-                <button
-                  onClick={verifyOtp}
-                  disabled={verifyLoading || otpValue.length !== 6}
-                  className="flex-1 bg-green-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
-                >
+                <button onClick={verifyOtp} disabled={verifyLoading || otpValue.length !== 6} className="flex-1 bg-green-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50">
                   {verifyLoading ? "Verifying..." : "Verify & Continue"}
                 </button>
               )}
             </div>
-
             {otpSent && (
               <button onClick={() => { setOtpValue(""); setVerifyError(""); sendOtp(); }} disabled={verifyLoading} className="text-xs text-orange-600 mt-3 hover:underline">
                 Resend OTP
@@ -372,7 +381,6 @@ export default function SubscriptionPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

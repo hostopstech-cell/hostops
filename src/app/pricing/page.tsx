@@ -1,274 +1,261 @@
 "use client";
-
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import { plans } from "@/lib/pricing-data";
+
+const PLANS = [
+  {
+    key: "starter", icon: "⚡", name: "Starter",
+    badge: "For Beginners", badgeColor: "bg-slate-100 text-slate-600",
+    desc: "Perfect for small guesthouses & boutique stays",
+    highlight: "border-slate-200", headerBg: "from-slate-50 to-white",
+    btnClass: "bg-slate-900 hover:bg-slate-800 text-white",
+    popular: false,
+    features: [
+      { text: "1 Property", icon: "🏠" },
+      { text: "AI Booking Bot", icon: "🤖" },
+      { text: "1 Staff Account", icon: "👤" },
+      { text: "Basic Dashboard", icon: "📊" },
+      { text: "Email Support", icon: "📧" },
+    ],
+    locked: [
+      { text: "Revenue Reports" },
+      { text: "WhatsApp Integration" },
+      { text: "Priority Support" },
+    ],
+  },
+  {
+    key: "growth", icon: "🚀", name: "Growth",
+    badge: "Most Popular", badgeColor: "bg-orange-500 text-white",
+    desc: "Built for hotels & hostels scaling up fast",
+    highlight: "border-orange-400", headerBg: "from-orange-50 to-white",
+    btnClass: "bg-orange-600 hover:bg-orange-700 text-white",
+    popular: true,
+    features: [
+      { text: "5 Properties", icon: "🏨" },
+      { text: "AI Booking Bot", icon: "🤖" },
+      { text: "3 Staff Accounts", icon: "👥" },
+      { text: "Advanced Dashboard", icon: "📈" },
+      { text: "Revenue Reports", icon: "💰" },
+      { text: "WhatsApp Integration", icon: "💬" },
+      { text: "Priority Support", icon: "⚡" },
+      { text: "Email Automation", icon: "📬" },
+    ],
+    locked: [],
+  },
+  {
+    key: "business", icon: "👑", name: "Business",
+    badge: "Best Value", badgeColor: "bg-purple-600 text-white",
+    desc: "For chains, villas & large-scale operations",
+    highlight: "border-purple-400", headerBg: "from-purple-50 to-white",
+    btnClass: "bg-purple-700 hover:bg-purple-800 text-white",
+    popular: false,
+    features: [
+      { text: "Unlimited Properties", icon: "♾️" },
+      { text: "AI Booking Bot", icon: "🤖" },
+      { text: "Unlimited Staff", icon: "👨‍👩‍👧‍👦" },
+      { text: "Full Dashboard Suite", icon: "🎛️" },
+      { text: "Revenue Reports", icon: "💰" },
+      { text: "WhatsApp Integration", icon: "💬" },
+      { text: "24/7 Priority Support", icon: "🛡️" },
+      { text: "Custom Integrations", icon: "🔧" },
+    ],
+    locked: [],
+  },
+];
+
+const COUNTRIES = [
+  { flag: "🇮🇳", name: "India" },
+  { flag: "🇺🇸", name: "USA" },
+  { flag: "🇬🇧", name: "UK" },
+  { flag: "🇦🇪", name: "UAE" },
+  { flag: "🇦🇺", name: "Australia" },
+  { flag: "🇸🇬", name: "Singapore" },
+  { flag: "🇩🇪", name: "Germany" },
+  { flag: "🇫🇷", name: "France" },
+  { flag: "🇶🇦", name: "Qatar" },
+  { flag: "🇸🇦", name: "KSA" },
+];
 
 export default function PricingPage() {
-  const [billing, setBilling] = useState<"monthly" | "6month">("monthly");
-  const [selectedPlan, setSelectedPlan] = useState<(typeof plans)[0] | null>(null);
-
-  const getDisplayPrice = (plan: (typeof plans)[0]) =>
-    billing === "monthly" ? plan.monthlyDisplay : plan.sixMonthDisplay;
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
 
-      {/* Hero Section with Orbital Diagram */}
-      <div className="pt-24 pb-16 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800 relative overflow-hidden">
-        {/* Background grid */}
-        <div className="absolute inset-0 opacity-10" style={{backgroundImage: "linear-gradient(#ea580c 1px, transparent 1px), linear-gradient(90deg, #ea580c 1px, transparent 1px)", backgroundSize: "60px 60px"}}></div>
+      {/* ── HERO ─────────────────────────────────────── */}
+      <section className="pt-24 pb-20 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800 relative overflow-hidden">
+        {/* Grid bg */}
+        <div className="absolute inset-0 opacity-[0.06]"
+          style={{ backgroundImage: "linear-gradient(#ea580c 1px,transparent 1px),linear-gradient(90deg,#ea580c 1px,transparent 1px)", backgroundSize: "64px 64px" }} />
+        <div className="absolute top-16 left-1/4 w-72 h-72 bg-orange-500 rounded-full opacity-[0.06] blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-400 rounded-full opacity-[0.04] blur-3xl" />
 
-        {/* Floating orbs */}
-        <div className="absolute top-20 left-10 w-64 h-64 bg-orange-500 rounded-full opacity-5 blur-3xl"></div>
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-orange-400 rounded-full opacity-5 blur-3xl"></div>
+        <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+          <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 px-4 py-2 rounded-full text-sm font-medium mb-6">
+            <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
+            No credit card required · 7-day free trial
+          </div>
 
-        <div className="max-w-6xl mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <h1 className="text-4xl md:text-6xl font-black text-white mb-5 leading-[1.1] tracking-tight">
+            Property management<br />
+            <span className="text-orange-500">that pays for itself</span>
+          </h1>
+          <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
+            Plans crafted for every scale — from a single guesthouse to a chain of hotels.
+            <span className="text-slate-300 font-medium"> Sign up to see pricing in your currency.</span>
+          </p>
 
-            {/* Left: Text */}
-            <div>
-              <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 px-4 py-2 rounded-full text-sm font-medium mb-6">
-                <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></span>
-                Simple, Transparent Pricing
+          {/* Country flags strip */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
+            {COUNTRIES.map(c => (
+              <div key={c.name} className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5">
+                <span className="text-lg">{c.flag}</span>
+                <span className="text-xs text-slate-400 font-medium">{c.name}</span>
               </div>
-              <h1 className="text-4xl md:text-5xl font-black text-white mb-4 leading-tight">
-                One Plan for<br/>
-                <span className="text-orange-500">Every Property</span>
-              </h1>
-              <p className="text-slate-400 text-lg mb-8">
-                Start free, scale as you grow. No hidden fees, no surprises.
-              </p>
+            ))}
+          </div>
 
-              {/* Stats row */}
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { value: "500+", label: "Active Properties" },
-                  { value: "1 Day", label: "Free Trial" },
-                  { value: "24/7", label: "Support" },
-                ].map((s) => (
-                  <div key={s.label} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-                    <div className="text-2xl font-black text-orange-400">{s.value}</div>
-                    <div className="text-xs text-slate-400 mt-1">{s.label}</div>
-                  </div>
-                ))}
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto">
+            {[
+              { v: "500+", l: "Properties Live" },
+              { v: "7 Days", l: "Free Trial" },
+              { v: "10+", l: "Countries" },
+            ].map(s => (
+              <div key={s.l} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                <div className="text-2xl font-black text-orange-400">{s.v}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{s.l}</div>
               </div>
-            </div>
-
-            {/* Right: Orbital diagram */}
-            <div className="relative flex items-center justify-center h-72 lg:h-80">
-              {/* Center */}
-              <div className="absolute z-20 w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-orange-500/30">
-                <span className="text-white font-black text-2xl">H</span>
-              </div>
-
-              {/* Orbit ring 1 */}
-              <div className="absolute w-44 h-44 border border-orange-500/20 rounded-full"></div>
-              {/* Orbit ring 2 */}
-              <div className="absolute w-72 h-72 border border-orange-500/10 rounded-full"></div>
-
-              {/* Floating feature pills */}
-              {[
-                { icon: "🏨", label: "Hotels", top: "0%", left: "50%", transform: "translateX(-50%)" },
-                { icon: "🛏", label: "Hostels", top: "50%", right: "0%", transform: "translateY(-50%)" },
-                { icon: "🏠", label: "Villas", bottom: "0%", left: "50%", transform: "translateX(-50%)" },
-                { icon: "🏢", label: "Serviced Apts", top: "50%", left: "0%", transform: "translateY(-50%)" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="absolute bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 flex items-center gap-2 shadow-lg"
-                  style={{ top: item.top, left: item.left, right: item.right, bottom: item.bottom, transform: item.transform }}
-                >
-                  <span className="text-base">{item.icon}</span>
-                  <span className="text-xs text-white font-medium whitespace-nowrap">{item.label}</span>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Billing Toggle */}
-      <div className="bg-slate-50 border-b border-slate-100 py-6">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-center">
-          <div className="inline-flex items-center bg-white border border-slate-200 rounded-2xl p-1.5 gap-1 shadow-sm">
-            <button
-              onClick={() => setBilling("monthly")}
-              className={billing === "monthly" ? "px-8 py-2.5 rounded-xl text-sm font-semibold transition-all bg-slate-900 text-white shadow-sm" : "px-8 py-2.5 rounded-xl text-sm font-semibold transition-all text-slate-500 hover:text-slate-700"}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBilling("6month")}
-              className={billing === "6month" ? "px-8 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 bg-slate-900 text-white shadow-sm" : "px-8 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-slate-500 hover:text-slate-700"}
-            >
-              6 Months
-              <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">Save 1 Month</span>
-            </button>
+      {/* ── COMPARISON STRIP ─────────────────────────── */}
+      <section className="bg-orange-600 py-4">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-white text-sm font-medium">
+            <span>✦ Others charge $200+/month</span>
+            <span className="hidden sm:block opacity-40">|</span>
+            <span>✦ No hidden fees ever</span>
+            <span className="hidden sm:block opacity-40">|</span>
+            <span>✦ Cancel anytime</span>
+            <span className="hidden sm:block opacity-40">|</span>
+            <span>✦ 1 month free on 6-month plans</span>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Plans */}
-      <div className="max-w-6xl mx-auto px-4 py-16">
+      {/* ── PLAN CARDS ───────────────────────────────── */}
+      <section className="max-w-6xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-black text-slate-900 mb-3">Choose Your Plan</h2>
-          <p className="text-slate-500">Click on any plan to see full details</p>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-3">
+            Choose your plan
+          </h2>
+          <p className="text-slate-500 text-base">
+            Pricing adjusts to your country after you sign up — always fair, always local.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.planKey}
-              onClick={() => setSelectedPlan(plan)}
-              className={plan.popular ? "relative rounded-2xl border-2 " + plan.color + " overflow-hidden shadow-xl cursor-pointer hover:scale-105 transition-all duration-300 scale-105" : "relative rounded-2xl border-2 " + plan.color + " overflow-hidden shadow-sm cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-300"}
-            >
+          {PLANS.map(plan => (
+            <div key={plan.key}
+              className={`relative rounded-3xl border-2 ${plan.highlight} overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${plan.popular ? "shadow-xl -translate-y-1" : "shadow-sm"}`}>
+
               {plan.popular && (
-                <div className="bg-orange-500 text-white text-xs font-bold text-center py-2 tracking-wide uppercase">
+                <div className="bg-orange-500 text-white text-xs font-bold text-center py-2 tracking-widest uppercase">
                   ✦ Most Popular
                 </div>
               )}
-              <div className={plan.headerBg + " px-6 pt-6 pb-4"}>
+
+              {/* Header */}
+              <div className={`bg-gradient-to-b ${plan.headerBg} px-6 pt-6 pb-5`}>
                 <div className="flex items-center justify-between mb-3">
-                  <span className={"text-xs font-bold px-3 py-1 rounded-full " + plan.badgeColor}>
-                    {plan.badge}
-                  </span>
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${plan.badgeColor}`}>{plan.badge}</span>
                   <span className="text-3xl">{plan.icon}</span>
                 </div>
-                <h3 className="text-2xl font-black text-slate-900">{plan.name}</h3>
-                <p className="text-sm text-slate-500 mt-1">{plan.desc}</p>
-                <div className="mt-4">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-5xl font-black text-slate-900">{getDisplayPrice(plan)}</span>
-                    <span className="text-slate-400 text-sm">/month</span>
+                <h3 className="text-2xl font-black text-slate-900 mb-1">{plan.name}</h3>
+                <p className="text-sm text-slate-500">{plan.desc}</p>
+
+                {/* Price CTA area */}
+                <div className="mt-5 bg-slate-900 rounded-2xl px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-400">Pricing unlocks after signup</p>
+                    <p className="text-sm font-bold text-orange-400">Local currency · No surprises</p>
                   </div>
-                  {billing === "6month" ? (
-                    <p className="text-green-600 text-xs font-semibold mt-1">✅ {plan.sixMonthSaving}</p>
-                  ) : (
-                    <p className="text-slate-400 text-xs mt-1">
-                      Save <span className="text-green-600 font-semibold">{plan.sixMonthSaving.split(" savings")[0]}</span> with 6 months
-                    </p>
-                  )}
+                  <div className="w-8 h-8 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                    <span className="text-orange-400 text-sm">🔓</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Features */}
               <div className="px-6 py-5 bg-white">
-                <ul className="space-y-3">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <span className={feature.included ? "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs bg-green-100 text-green-600 font-bold" : "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs bg-slate-100 text-slate-400"}>
-                        {feature.included ? "✓" : "✕"}
-                      </span>
-                      <span className={feature.included ? "text-sm text-slate-700" : "text-sm text-slate-400"}>
-                        {feature.text}
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">What you get</p>
+                <ul className="space-y-2.5 mb-4">
+                  {plan.features.map((f, i) => (
+                    <li key={i} className="flex items-center gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 text-xs">✓</span>
+                      <span className="text-sm text-slate-700 flex items-center gap-1.5">
+                        <span>{f.icon}</span> {f.text}
                       </span>
                     </li>
                   ))}
+                  {plan.locked.map((f, i) => (
+                    <li key={i} className="flex items-center gap-2.5 opacity-40">
+                      <span className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 text-xs text-slate-400">✕</span>
+                      <span className="text-sm text-slate-400">{f.text}</span>
+                    </li>
+                  ))}
                 </ul>
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Click to view details</span>
-                  <span className="text-orange-500 text-sm font-semibold">View Plan →</span>
-                </div>
+
+                <button
+                  onClick={() => router.push("/login")}
+                  className={`w-full py-3 rounded-2xl text-sm font-bold transition-all ${plan.btnClass} shadow-sm`}>
+                  Get Started Free →
+                </button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Feature comparison band */}
-        <div className="mt-16 bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-8 md:p-12">
-          <div className="text-center mb-10">
-            <h3 className="text-2xl font-black text-white mb-2">Everything Included</h3>
-            <p className="text-slate-400 text-sm">All plans come with these core features</p>
+        {/* All plans include */}
+        <div className="mt-16 bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 md:p-12">
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-black text-white mb-1">Every plan includes</h3>
+            <p className="text-slate-400 text-sm">No feature-gating on the basics. Ever.</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { icon: "🤖", title: "AI Booking Bot", desc: "24/7 automated guest handling" },
-              { icon: "📊", title: "Dashboard", desc: "Real-time property insights" },
-              { icon: "💳", title: "Easy Payments", desc: "Razorpay integrated" },
-              { icon: "🔒", title: "Secure & Reliable", desc: "99.9% uptime guaranteed" },
-            ].map((f) => (
-              <div key={f.title} className="text-center">
-                <div className="w-12 h-12 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3">
+              { icon: "🤖", t: "AI Booking Bot", d: "24/7 automated guest handling" },
+              { icon: "📊", t: "Live Dashboard", d: "Real-time property insights" },
+              { icon: "💳", t: "Easy Payments", d: "Razorpay integrated" },
+              { icon: "🔒", t: "99.9% Uptime", d: "Reliable & always on" },
+              { icon: "📱", t: "Mobile Ready", d: "Manage from anywhere" },
+              { icon: "🌍", t: "Multi-currency", d: "Auto-detected for you" },
+              { icon: "🎁", t: "7-Day Trial", d: "No card needed to start" },
+              { icon: "🛡️", t: "Secure Data", d: "Bank-grade encryption" },
+            ].map(f => (
+              <div key={f.t} className="text-center">
+                <div className="w-10 h-10 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-center text-xl mx-auto mb-2">
                   {f.icon}
                 </div>
-                <div className="text-white font-semibold text-sm">{f.title}</div>
-                <div className="text-slate-400 text-xs mt-1">{f.desc}</div>
+                <div className="text-white font-semibold text-xs mb-0.5">{f.t}</div>
+                <div className="text-slate-400 text-xs">{f.d}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* FAQ */}
-        <div className="mt-8 text-center">
-          <p className="text-slate-500 text-sm">
-            Have questions? <a href="mailto:support@hostops.in" className="text-orange-600 font-medium hover:underline">support@hostops.in</a>
-          </p>
+        {/* FAQ / CTA */}
+        <div className="mt-10 text-center">
+          <p className="text-slate-500 text-sm mb-1">Still have questions?</p>
+          <a href="mailto:support@hostops.in" className="text-orange-600 font-semibold hover:underline text-sm">
+            support@hostops.in
+          </a>
         </div>
-      </div>
-
-      {/* Popup Modal */}
-      {selectedPlan && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedPlan(null)}
-        >
-          <div
-            className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal header */}
-            <div className={selectedPlan.headerBg + " px-8 pt-8 pb-6 relative"}>
-              <button
-                onClick={() => setSelectedPlan(null)}
-                className="absolute top-4 right-4 w-8 h-8 bg-white/80 hover:bg-white rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all text-lg"
-              >
-                ✕
-              </button>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-4xl">{selectedPlan.icon}</span>
-                <div>
-                  <span className={"text-xs font-bold px-3 py-1 rounded-full " + selectedPlan.badgeColor}>{selectedPlan.badge}</span>
-                  <h3 className="text-2xl font-black text-slate-900 mt-1">{selectedPlan.name}</h3>
-                </div>
-              </div>
-              <p className="text-slate-500 text-sm mb-4">{selectedPlan.desc}</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-5xl font-black text-slate-900">{getDisplayPrice(selectedPlan)}</span>
-                <span className="text-slate-400">/month</span>
-              </div>
-              {billing === "6month" ? (
-                <p className="text-green-600 text-xs font-semibold mt-2">✅ {selectedPlan.sixMonthSaving}</p>
-              ) : (
-                <p className="text-slate-400 text-xs mt-2">
-                  Save <span className="text-green-600 font-semibold">{selectedPlan.sixMonthSaving.split(" savings")[0]}</span> with 6 months
-                </p>
-              )}
-            </div>
-
-            {/* Modal features */}
-            <div className="px-8 py-6">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">What is included</p>
-              <ul className="space-y-3 mb-6">
-                {selectedPlan.features.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <span className={feature.included ? "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs bg-green-100 text-green-600 font-bold" : "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs bg-slate-100 text-slate-400"}>
-                      {feature.included ? "✓" : "✕"}
-                    </span>
-                    <span className={feature.included ? "text-sm text-slate-700 font-medium" : "text-sm text-slate-400"}>
-                      {feature.text}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 text-center">
-                <p className="text-sm text-slate-600">
-                  To subscribe, login to your <span className="font-bold text-orange-600">HostOps Dashboard</span> and go to Subscription.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </section>
     </div>
   );
 }
