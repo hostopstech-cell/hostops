@@ -204,5 +204,6 @@ export const COUNTRY_CONFIG: Record<string, CountryConfig> = {
 };
 
 export function getCountryConfig(dialCode: string | null | undefined): CountryConfig {
+  if (dialCode === "USD_DEFAULT" || dialCode === "other") dialCode = "+1";
   return COUNTRY_CONFIG[dialCode || "+91"] || INDIA;
 }

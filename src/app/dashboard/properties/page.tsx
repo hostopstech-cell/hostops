@@ -22,6 +22,7 @@ const COUNTRY_CODES = [
   { code: "+33",  label: "+33 (France)",        digits: 9  },
   { code: "+966", label: "+966 (Saudi Arabia)", digits: 9  },
   { code: "+977", label: "+977 (Nepal)",        digits: 10 },
+  { code: "other", label: "Other",                digits: 15 },
 ];
 function getDigitsForCode(code) { return COUNTRY_CODES.find(c => c.code === code)?.digits ?? 10; }
 const emptyForm = () => ({

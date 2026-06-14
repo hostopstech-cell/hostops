@@ -21,6 +21,7 @@ const DIAL_CODES = [
   { code: "+27",  flag: "🇿🇦", name: "South Africa" },
   { code: "+55",  flag: "🇧🇷", name: "Brazil" },
   { code: "+52",  flag: "🇲🇽", name: "Mexico" },
+  { code: "other", flag: "🌍", name: "My country is not listed" },
 ];
 
 interface PhonePopupProps {
@@ -39,7 +40,7 @@ export default function PhonePopup({ onComplete }: PhonePopupProps) {
   const handleSubmit = async () => {
     setError("");
     const digits = phone.replace(/\D/g, "");
-    if (digits.length < 7) {
+    if (dialCode !== "other" && digits.length < 7) {
       setError("Please enter a valid phone number (min 7 digits)");
       return;
     }
@@ -57,7 +58,7 @@ export default function PhonePopup({ onComplete }: PhonePopupProps) {
         return;
       }
       // Save to localStorage
-      setDialCode(dialCode);
+      setDialCode(dialCode === 'other' ? 'USD_DEFAULT' : dialCode);
       onComplete(dialCode, phone);
     } catch {
       setError("Network error. Please try again.");
@@ -129,7 +130,7 @@ export default function PhonePopup({ onComplete }: PhonePopupProps) {
               value={phone}
               onChange={e => setPhone(e.target.value.replace(/[^0-9\s\-]/g, ""))}
               onKeyDown={e => e.key === "Enter" && handleSubmit()}
-              placeholder="98765 43210"
+              placeholder={dialCode === "other" ? "Optional" : "98765 43210"}
               className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
             />
           </div>
@@ -150,7 +151,7 @@ export default function PhonePopup({ onComplete }: PhonePopupProps) {
           {/* Submit button */}
           <button
             onClick={handleSubmit}
-            disabled={loading || phone.replace(/\D/g, "").length < 7}
+            disabled={loading || (dialCode !== "other" && phone.replace(/\D/g, "").length < 7)}
             className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3.5 rounded-2xl transition-all text-sm shadow-lg shadow-orange-500/20 disabled:shadow-none"
           >
             {loading ? (
