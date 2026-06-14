@@ -17,13 +17,13 @@ export default function SupportPage() {
             <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-4"><span className="text-2xl">📧</span></div>
             <h3 className="font-semibold text-slate-900 mb-2">Email Support</h3>
             <p className="text-slate-500 text-sm mb-4">Send us your query anytime. We reply within 24 hours.</p>
-            <a href="mailto:support@hostops.in" className="text-orange-600 font-semibold text-sm hover:underline">support@hostops.in</a>
+            <a href="mailto:supporthostops@gmail.com" className="text-orange-600 font-semibold text-sm hover:underline">supporthostops@gmail.com</a>
           </div>
           <div className="border border-slate-100 rounded-2xl p-6 text-center hover:shadow-md transition-shadow">
             <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mx-auto mb-4"><span className="text-2xl">💬</span></div>
             <h3 className="font-semibold text-slate-900 mb-2">WhatsApp Support</h3>
             <p className="text-slate-500 text-sm mb-4">Chat with us directly on WhatsApp for quick help.</p>
-            <a href="https://wa.me/919999999999" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold text-sm hover:underline">+91 99999 99999</a>
+            <a href="https://wa.me/918306194594" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold text-sm hover:underline">+91 83061 94594</a>
           </div>
           <div className="border border-slate-100 rounded-2xl p-6 text-center hover:shadow-md transition-shadow">
             <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mx-auto mb-4"><span className="text-2xl">⏰</span></div>
@@ -78,7 +78,7 @@ export default function SupportPage() {
         </div>
       </section>
       <section className="border-t border-slate-100 py-8 text-center">
-        <p className="text-slate-400 text-sm">Still have questions? Email us at <a href="mailto:support@hostops.in" className="text-orange-600 hover:underline">support@hostops.in</a></p>
+        <p className="text-slate-400 text-sm">Still have questions? Email us at <a href="mailto:supporthostops@gmail.com" className="text-orange-600 hover:underline">supporthostops@gmail.com</a></p>
       </section>
     </div>
   );
